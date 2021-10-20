@@ -1,29 +1,3 @@
-﻿@model Team
-
-@{
+﻿@{
     ViewData["Title"] = "Home Page";
 }
-
-<table class="table">
-    <thead>
-        <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.Players[0].Points)
-            </th>            
-        </tr>
-    </thead>
-    <tbody>
-        @if (Model != null)
-        {
-            @foreach (var item in Model.Players)
-            {
-                <tr>
-                    <td>
-                        @Html.DisplayFor(modelItem => item.Points)
-                    </td>
-                </tr>
-            }
-        }
-    </tbody>
-</table>
-

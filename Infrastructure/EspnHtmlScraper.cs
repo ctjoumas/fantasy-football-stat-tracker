@@ -50,9 +50,24 @@
                 HtmlDocument doc = new HtmlDocument();
                 doc.LoadHtml(html);
 
-                // we are looking for all <span class="post-play"> nodes
-                var postPlayNodes = doc.DocumentNode.SelectNodes("//span[@class='post-play']");
+                // we are looking for all <span class="post-play"> nodes which have "Two-Point" in the inner text such as:
+                // <span class="post-play">
+                //   (0:27 - 3rd) Tommy Sweeney Pass From Josh Allen for 1 Yard (Pass formation) TWO-POINT CONVERSION ATTEMPT. D.Knox pass to J.Allen is complete. ATTEMPT SUCCEEDS.
+                // </span>
+                var twoPointConversionNodes = doc.DocumentNode.Descendants("span")
+                        .Where(node => node.InnerText.ToLower().Contains("two-point"));
 
+                foreach (var twoPointConversionNode in twoPointConversionNodes)
+                {
+                    // if the two-point conversion didn't fail, check if the player's name was invovled (pass
+                    // or reception, it's 2 points either way)
+                    if (!twoPointConversionNode.InnerText.ToLower().Contains("failed") && twoPointConversionNode.InnerText.ToLower().Contains(playerName.ToLower()))
+                    {
+                        fantasyPoints += 2;
+                    }
+                }
+                
+                /*var postPlayNodes = doc.DocumentNode.Descendants("span").Where(node => node.GetAttributeValue("class", "").Contains("post-play"));
                 // if the game hasn't started, there will be no data, so check for null
                 if (postPlayNodes != null)
                 {
@@ -71,7 +86,7 @@
                             }
                         }
                     }
-                }
+                }*/
             }
 
             return fantasyPoints;
@@ -96,15 +111,47 @@
                 HtmlDocument doc = new HtmlDocument();
                 doc.LoadHtml(html);
 
+                // we are looking for all <span class="post-play"> nodes which have "Field Goal" in the inner text such as:
+                // <span class="post-play">
+                //   (6:07 - 1st) Tyler Bass 24 Yd Field Goal
+                // </span>
+                var fieldGoalNodes = doc.DocumentNode.Descendants("span")
+                        .Where(node => node.InnerText.ToLower().Contains("field goal"));
+
+                foreach (var fieldGoalNode in fieldGoalNodes)
+                {
+                    // if the field goal was good, check if the player's name was invovled (pass
+                    // or reception, it's 2 points either way)
+                    if (!fieldGoalNode.InnerText.ToLower().Contains("no good") && fieldGoalNode.InnerText.ToLower().Contains(playerName.ToLower()))
+                    {
+                        // this player successfully kicked a FG, so we need to parse out the length.
+                        // it will be in this format: (5:02 - 3rd) Justin Tucker 39 Yd Field Goal,
+                        // so we will look for the player name and grab the number between the next two spaces
+                        int playerNameIndex = fieldGoalNode.InnerText.ToLower().IndexOf(playerName.ToLower());
+
+                        int indexOfSpaceAfterPlayerName = fieldGoalNode.InnerText.IndexOf(" ", playerNameIndex + playerName.Length);
+                        int indexOfSpaceAfterFgDisatance = fieldGoalNode.InnerText.IndexOf(" ", indexOfSpaceAfterPlayerName + 1);
+                        int fgDistance = int.Parse(fieldGoalNode.InnerText.Substring(indexOfSpaceAfterPlayerName, (indexOfSpaceAfterFgDisatance - indexOfSpaceAfterPlayerName)));
+
+                        if (fgDistance < 40)
+                            fieldGoalPoints += 3;
+                        else if (fgDistance < 50)
+                            fieldGoalPoints += 4;
+                        else if (fgDistance >= 50)
+                            fieldGoalPoints += 5;
+                    }
+                }
+
+                
                 // we are looking for all <span class="post-play"> nodes
-                var postPlayNodes = doc.DocumentNode.SelectNodes("//span[@class='post-play']");
+                /*var postPlayNodes = doc.DocumentNode.SelectNodes("//span[@class='post-play']");
 
                 // if the game hasn't started, there will be no data, so check for null
                 if (postPlayNodes != null)
                 {
                     foreach (var postPlayNode in postPlayNodes)
                     {
-                        // search for an occurence of a two-point conversion
+                        // search for an occurence of a field goal
                         bool fieldGoalOccurred = postPlayNode.InnerText.ToLower().Contains("field goal");
 
                         if (fieldGoalOccurred)
@@ -131,7 +178,7 @@
                             }
                         }
                     }
-                }
+                }*/
             }
 
             return fieldGoalPoints;
@@ -201,10 +248,10 @@
                         {
                             // the stats node is a <tr> with <td>'s containing the stats we are looking for, which will be different
                             // for each type of stat (passing, rushing, etc), so we will hand this node off to the helper function
-                            // after extracting the player is in a link tag
+                            // after extracting the player id in a link tag
                             var playerIdNode = statsNode.SelectSingleNode(".//a");
 
-                            // if the playerId coming into this function is "", t hat means we are searching for team defense
+                            // if the playerId coming into this function is "", that means we are searching for team defense
                             // stats, so we will fall into the else to do that. Otherwise, if there is a playerID coming into this
                             // function and there isn't a player for this stat (e.g. this player has no interceptions), there will not be
                             // a player ID Node, so we will just skip this stat

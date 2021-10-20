@@ -22,6 +22,8 @@
 
         private readonly IOptions<YahooConfiguration> _config;
 
+        //private Stopwatch loginTimer = new Stopwatch();
+
         /// <summary>
         /// Authentication model that stores auth data (Tokens, Grant Type)
         /// </summary>
@@ -36,6 +38,8 @@
 
         public IActionResult Index()
         {
+            //loginTimer.Start();
+
             // if we already have an Auth token skip loging in and directly go to the scoreboard
             if (AuthModel.AccessToken == null)
             {
@@ -61,7 +65,10 @@
             // now that we have the authorization code, exchange it for an access token using a call to the /get_token endpoint
             await GetAccessToken(code);
 
-            return RedirectToAction("Index", "Scoreboard");//, code);
+            //loginTimer.Stop();
+            //Debug.WriteLine(loginTimer.ElapsedMilliseconds / 1000);
+
+            return RedirectToAction("Index", "Scoreboard");
         }
 
       
@@ -80,8 +87,6 @@
 
             /*Exchange authorization code for Access Token by sending Post Request*/
             Uri address = new Uri("https://api.login.yahoo.com/oauth2/get_token");
-
-            //HttpClient client = new HttpClient();
 
             // Create the web request
             HttpRequestMessage request = new HttpRequestMessage();

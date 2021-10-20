@@ -3,6 +3,7 @@
     using Microsoft.AspNetCore.Mvc;
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Linq;
     using System.Net.Http;
     using System.Net.Http.Headers;
@@ -31,8 +32,17 @@
             {
                 List<Team> teams = new List<Team>();
 
-                // TESTING
-                //client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Auth.AccessToken);
+                //Stopwatch createPlayerTimer = new Stopwatch();
+                //createPlayerTimer.Start();
+                
+                // TESTING pulling multiple players back from Yahoo API
+                /*client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", AuthModel.AccessToken);
+                HttpRequestMessage request = new HttpRequestMessage();
+                request.RequestUri = new Uri("https://fantasysports.yahooapis.com/fantasy/v2/league/nfl.l.434497/players;player_keys={30123},{30977}");
+                request.Method = HttpMethod.Get;
+                var response2 = client.GetAsync(request.RequestUri);
+                string testResponse = await response2.Result.Content.ReadAsStringAsync();*/
+
                 //string LoginString = ";use_login=1";
                 //request = new HttpRequestMessage();
                 //request.RequestUri = new Uri("https://fantasysports.yahooapis.com/fantasy/v2/game/nfl");
@@ -230,6 +240,9 @@
                 };
 
                 teams.Add(team);
+
+                //createPlayerTimer.Stop();
+                //Debug.WriteLine(createPlayerTimer.ElapsedMilliseconds / 1000);
 
                 return View(teams);
             }

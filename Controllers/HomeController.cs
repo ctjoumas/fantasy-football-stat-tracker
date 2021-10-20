@@ -61,7 +61,7 @@
             // now that we have the authorization code, exchange it for an access token using a call to the /get_token endpoint
             await GetAccessToken(code);
 
-            return RedirectToAction("Index", "Scoreboard");//, code);
+            return RedirectToAction("Index", "Scoreboard");
         }
 
       

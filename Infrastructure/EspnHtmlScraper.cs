@@ -2,13 +2,18 @@
 {
     using System;
     using HtmlAgilityPack;
-    using System.Collections.Generic;
     using System.Linq;
-    using System.Threading.Tasks;
     using System.Net;
+    using System.Diagnostics;
 
     public class EspnHtmlScraper
     {
+        // The gametracker doc for a specific game, which can be shared for all players in the same game, saving time from loading the doc
+        private HtmlDocument gameTrackerDoc;
+
+        // The play by play doc for a specific game, which can be shared for all players in the same game, saving time from loading the doc
+        private HtmlDocument playByPlayDoc;
+
         // URL constants for parsing different stats
         private const string BOXSCORE_PAGE_URL = "https://www.espn.com/nfl/boxscore/_/gameId/";
         private const string PLAY_BY_PLAY_URL = "https://www.espn.com/nfl/playbyplay/_/gameId/";
@@ -26,8 +31,18 @@
         private const int DEFENSIVE_TD_POINTS = 6;
         private const int DEFENSIVE_INT_POINTS = 2;
 
-        public EspnHtmlScraper()
+        /// <summary>
+        /// Sets the gametracker and play by play HTML documents which will be used to gather stats for every player playing
+        /// in the same game.
+        /// </summary>
+        /// <param name="gameId">The ID of the ESPN game we are getting stats from</param>
+        public EspnHtmlScraper(string espnGameId)
         {
+            string gameTrackerUrl = BOXSCORE_PAGE_URL + espnGameId;
+            gameTrackerDoc = new HtmlWeb().Load(gameTrackerUrl);
+
+            string playByPlayUrl = PLAY_BY_PLAY_URL + espnGameId;
+            playByPlayDoc = new HtmlWeb().Load(playByPlayUrl);
         }
 
         /// <summary>
@@ -42,54 +57,45 @@
         {
             double fantasyPoints = 0;
 
-            string playByPlayUrl = PLAY_BY_PLAY_URL + gameId.ToString();
+            // we are looking for all <span class="post-play"> nodes which have "Two-Point" in the inner text such as:
+            // <span class="post-play">
+            //   (0:27 - 3rd) Tommy Sweeney Pass From Josh Allen for 1 Yard (Pass formation) TWO-POINT CONVERSION ATTEMPT. D.Knox pass to J.Allen is complete. ATTEMPT SUCCEEDS.
+            // </span>
+            var twoPointConversionNodes = playByPlayDoc.DocumentNode.Descendants("span")
+                    .Where(node => node.InnerText.ToLower().Contains("two-point"));
 
-            using (WebClient client = new WebClient())
+            foreach (var twoPointConversionNode in twoPointConversionNodes)
             {
-                string html = client.DownloadString(playByPlayUrl);
-                HtmlDocument doc = new HtmlDocument();
-                doc.LoadHtml(html);
-
-                // we are looking for all <span class="post-play"> nodes which have "Two-Point" in the inner text such as:
-                // <span class="post-play">
-                //   (0:27 - 3rd) Tommy Sweeney Pass From Josh Allen for 1 Yard (Pass formation) TWO-POINT CONVERSION ATTEMPT. D.Knox pass to J.Allen is complete. ATTEMPT SUCCEEDS.
-                // </span>
-                var twoPointConversionNodes = doc.DocumentNode.Descendants("span")
-                        .Where(node => node.InnerText.ToLower().Contains("two-point"));
-
-                foreach (var twoPointConversionNode in twoPointConversionNodes)
+                // if the two-point conversion didn't fail, check if the player's name was invovled (pass
+                // or reception, it's 2 points either way)
+                if (!twoPointConversionNode.InnerText.ToLower().Contains("failed") && twoPointConversionNode.InnerText.ToLower().Contains(playerName.ToLower()))
                 {
-                    // if the two-point conversion didn't fail, check if the player's name was invovled (pass
-                    // or reception, it's 2 points either way)
-                    if (!twoPointConversionNode.InnerText.ToLower().Contains("failed") && twoPointConversionNode.InnerText.ToLower().Contains(playerName.ToLower()))
-                    {
-                        fantasyPoints += 2;
-                    }
+                    fantasyPoints += 2;
                 }
+            }
 
-                // we are looking for all <span class="post-play"> nodes
-                /*var postPlayNodes = doc.DocumentNode.SelectNodes("//span[@class='post-play']");
+            // we are looking for all <span class="post-play"> nodes
+            /*var postPlayNodes = doc.DocumentNode.SelectNodes("//span[@class='post-play']");
 
-                // if the game hasn't started, there will be no data, so check for null
-                if (postPlayNodes != null)
+            // if the game hasn't started, there will be no data, so check for null
+            if (postPlayNodes != null)
+            {
+                foreach (var postPlayNode in postPlayNodes)
                 {
-                    foreach (var postPlayNode in postPlayNodes)
-                    {
-                        // search for an occurence of a two-point conversion
-                        bool twoPointConversionOccurred = postPlayNode.InnerText.ToLower().Contains("two-point");
+                    // search for an occurence of a two-point conversion
+                    bool twoPointConversionOccurred = postPlayNode.InnerText.ToLower().Contains("two-point");
 
-                        if (twoPointConversionOccurred)
+                    if (twoPointConversionOccurred)
+                    {
+                        // if the two-point conversion didn't fail, check if the player's name was invovled (pass
+                        // or reception, it's 2 points either way)
+                        if (!postPlayNode.InnerText.ToLower().Contains("failed") && postPlayNode.InnerText.ToLower().Contains(playerName.ToLower()))
                         {
-                            // if the two-point conversion didn't fail, check if the player's name was invovled (pass
-                            // or reception, it's 2 points either way)
-                            if (!postPlayNode.InnerText.ToLower().Contains("failed") && postPlayNode.InnerText.ToLower().Contains(playerName.ToLower()))
-                            {
-                                fantasyPoints += 2;
-                            }
+                            fantasyPoints += 2;
                         }
                     }
-                }*/
-            }
+                }
+            }*/
 
             return fantasyPoints;
         }
@@ -105,82 +111,73 @@
         {
             int fieldGoalPoints = 0;
 
-            string playByPlayUrl = PLAY_BY_PLAY_URL + gameId.ToString();
+            // we are looking for all <span class="post-play"> nodes which have "Field Goal" in the inner text such as:
+            // <span class="post-play">
+            //   (6:07 - 1st) Tyler Bass 24 Yd Field Goal
+            // </span>
+            var fieldGoalNodes = playByPlayDoc.DocumentNode.Descendants("span")
+                    .Where(node => node.InnerText.ToLower().Contains("field goal"));
 
-            using (WebClient client = new WebClient())
+            foreach (var fieldGoalNode in fieldGoalNodes)
             {
-                string html = client.DownloadString(playByPlayUrl);
-                HtmlDocument doc = new HtmlDocument();
-                doc.LoadHtml(html);
-
-                // we are looking for all <span class="post-play"> nodes which have "Field Goal" in the inner text such as:
-                // <span class="post-play">
-                //   (6:07 - 1st) Tyler Bass 24 Yd Field Goal
-                // </span>
-                var fieldGoalNodes = doc.DocumentNode.Descendants("span")
-                        .Where(node => node.InnerText.ToLower().Contains("field goal"));
-
-                foreach (var fieldGoalNode in fieldGoalNodes)
+                // if the field goal was good, check if the player's name was invovled (pass
+                // or reception, it's 2 points either way)
+                if (!fieldGoalNode.InnerText.ToLower().Contains("no good") && fieldGoalNode.InnerText.ToLower().Contains(playerName.ToLower()))
                 {
-                    // if the field goal was good, check if the player's name was invovled (pass
-                    // or reception, it's 2 points either way)
-                    if (!fieldGoalNode.InnerText.ToLower().Contains("no good") && fieldGoalNode.InnerText.ToLower().Contains(playerName.ToLower()))
-                    {
-                        // this player successfully kicked a FG, so we need to parse out the length.
-                        // it will be in this format: (5:02 - 3rd) Justin Tucker 39 Yd Field Goal,
-                        // so we will look for the player name and grab the number between the next two spaces
-                        int playerNameIndex = fieldGoalNode.InnerText.ToLower().IndexOf(playerName.ToLower());
+                    // this player successfully kicked a FG, so we need to parse out the length.
+                    // it will be in this format: (5:02 - 3rd) Justin Tucker 39 Yd Field Goal,
+                    // so we will look for the player name and grab the number between the next two spaces
+                    int playerNameIndex = fieldGoalNode.InnerText.ToLower().IndexOf(playerName.ToLower());
 
-                        int indexOfSpaceAfterPlayerName = fieldGoalNode.InnerText.IndexOf(" ", playerNameIndex + playerName.Length);
-                        int indexOfSpaceAfterFgDisatance = fieldGoalNode.InnerText.IndexOf(" ", indexOfSpaceAfterPlayerName + 1);
-                        int fgDistance = int.Parse(fieldGoalNode.InnerText.Substring(indexOfSpaceAfterPlayerName, (indexOfSpaceAfterFgDisatance - indexOfSpaceAfterPlayerName)));
+                    int indexOfSpaceAfterPlayerName = fieldGoalNode.InnerText.IndexOf(" ", playerNameIndex + playerName.Length);
+                    int indexOfSpaceAfterFgDisatance = fieldGoalNode.InnerText.IndexOf(" ", indexOfSpaceAfterPlayerName + 1);
+                    int fgDistance = int.Parse(fieldGoalNode.InnerText.Substring(indexOfSpaceAfterPlayerName, (indexOfSpaceAfterFgDisatance - indexOfSpaceAfterPlayerName)));
 
-                        if (fgDistance < 40)
-                            fieldGoalPoints += 3;
-                        else if (fgDistance < 50)
-                            fieldGoalPoints += 4;
-                        else if (fgDistance >= 50)
-                            fieldGoalPoints += 5;
-                    }
+                    if (fgDistance < 40)
+                        fieldGoalPoints += 3;
+                    else if (fgDistance < 50)
+                        fieldGoalPoints += 4;
+                    else if (fgDistance >= 50)
+                        fieldGoalPoints += 5;
                 }
+            }
 
-                // we are looking for all <span class="post-play"> nodes
-                /*var postPlayNodes = doc.DocumentNode.SelectNodes("//span[@class='post-play']");
+            // we are looking for all <span class="post-play"> nodes
+            /*var postPlayNodes = doc.DocumentNode.SelectNodes("//span[@class='post-play']");
 
-                // if the game hasn't started, there will be no data, so check for null
-                if (postPlayNodes != null)
+            // if the game hasn't started, there will be no data, so check for null
+            if (postPlayNodes != null)
+            {
+                foreach (var postPlayNode in postPlayNodes)
                 {
-                    foreach (var postPlayNode in postPlayNodes)
+                    // search for an occurence of a two-point conversion
+                    bool fieldGoalOccurred = postPlayNode.InnerText.ToLower().Contains("field goal");
+
+                    if (fieldGoalOccurred)
                     {
-                        // search for an occurence of a two-point conversion
-                        bool fieldGoalOccurred = postPlayNode.InnerText.ToLower().Contains("field goal");
-
-                        if (fieldGoalOccurred)
+                        // if the field goal occurred, it will list the length field goal; if it is no good, the words "No Good" will
+                        // be present, so we need to check for that.
+                        if (!postPlayNode.InnerText.ToLower().Contains("no good") && postPlayNode.InnerText.ToLower().Contains(playerName.ToLower()))
                         {
-                            // if the field goal occurred, it will list the length field goal; if it is no good, the words "No Good" will
-                            // be present, so we need to check for that.
-                            if (!postPlayNode.InnerText.ToLower().Contains("no good") && postPlayNode.InnerText.ToLower().Contains(playerName.ToLower()))
-                            {
-                                // this player successfully kicked a FG, so we need to parse out the length.
-                                // it will be in this format: (5:02 - 3rd) Justin Tucker 39 Yd Field Goal,
-                                // so we will look for the player name and grab the number between the next two spaces
-                                int playerNameIndex = postPlayNode.InnerText.ToLower().IndexOf(playerName.ToLower());
+                            // this player successfully kicked a FG, so we need to parse out the length.
+                            // it will be in this format: (5:02 - 3rd) Justin Tucker 39 Yd Field Goal,
+                            // so we will look for the player name and grab the number between the next two spaces
+                            int playerNameIndex = postPlayNode.InnerText.ToLower().IndexOf(playerName.ToLower());
 
-                                int indexOfSpaceAfterPlayerName = postPlayNode.InnerText.IndexOf(" ", playerNameIndex + playerName.Length);
-                                int indexOfSpaceAfterFgDisatance = postPlayNode.InnerText.IndexOf(" ", indexOfSpaceAfterPlayerName + 1);
-                                int fgDistance = int.Parse(postPlayNode.InnerText.Substring(indexOfSpaceAfterPlayerName, (indexOfSpaceAfterFgDisatance - indexOfSpaceAfterPlayerName)));
+                            int indexOfSpaceAfterPlayerName = postPlayNode.InnerText.IndexOf(" ", playerNameIndex + playerName.Length);
+                            int indexOfSpaceAfterFgDisatance = postPlayNode.InnerText.IndexOf(" ", indexOfSpaceAfterPlayerName + 1);
+                            int fgDistance = int.Parse(postPlayNode.InnerText.Substring(indexOfSpaceAfterPlayerName, (indexOfSpaceAfterFgDisatance - indexOfSpaceAfterPlayerName)));
 
-                                if (fgDistance < 40)
-                                    fieldGoalPoints += 3;
-                                else if (fgDistance < 50)
-                                    fieldGoalPoints += 4;
-                                else if (fgDistance >= 50)
-                                    fieldGoalPoints += 5;
-                            }
+                            if (fgDistance < 40)
+                                fieldGoalPoints += 3;
+                            else if (fgDistance < 50)
+                                fieldGoalPoints += 4;
+                            else if (fgDistance >= 50)
+                                fieldGoalPoints += 5;
                         }
                     }
-                }*/
-            }
+                }
+            }*/
 
             return fieldGoalPoints;
         }
@@ -198,107 +195,107 @@
         {
             double fantasyPoints = 0;
 
-            string gameTrackerUrl = BOXSCORE_PAGE_URL + gameId;
-
-            using (WebClient client = new WebClient())
+            // TODO: CHECK IF GAME IS OVER AND STORE THE DOC IN CACHE
+            // if a game has ended, we will find this node:
+            // < span class="game-time status-detail">Final</span>
+            var statusDetailNode = gameTrackerDoc.DocumentNode.SelectSingleNode("//span[@class='game-time status-detail']");
+            if (statusDetailNode.InnerText.ToLower().Equals("final"))
             {
-                string html = client.DownloadString(gameTrackerUrl);
-                HtmlDocument doc = new HtmlDocument();
-                doc.LoadHtml(html);
+                // add to cache with something saying that the game is over
+            }
 
-                // if the player is home, their stats will be in column two; away is column one
-                string column_identifier = "";
-                if (homeOrAway.Equals("home"))
-                {
-                    column_identifier = "column-two";
-                }
-                else if (homeOrAway.Equals("away"))
-                {
-                    column_identifier = "column-one";
-                }
+            // if the player is home, their stats will be in column two; away is column one
+            string column_identifier = "";
+            if (homeOrAway.Equals("home"))
+            {
+                column_identifier = "column-two";
+            }
+            else if (homeOrAway.Equals("away"))
+            {
+                column_identifier = "column-one";
+            }
 
-                // get all of the div nodes which contain the various team stats for the given player
-                // e.g. - this is the <div class="col column-two gamepackage-home-wrap"> node, which will have something like Baltimore Passing under it
-                // including Passing, Rushing, Receiving, Fumbles, Interception, Kicking, and others which we don't care about for fantasy points (kick
-                // returns, punt returns, etc)
-                var gamePackageNodes = doc.DocumentNode.SelectNodes("//div[@class='col " + column_identifier + " gamepackage-" + homeOrAway + "-wrap']");
+            // get all of the div nodes which contain the various team stats for the given player
+            // e.g. - this is the <div class="col column-two gamepackage-home-wrap"> node, which will have something like Baltimore Passing under it
+            // including Passing, Rushing, Receiving, Fumbles, Interception, Kicking, and others which we don't care about for fantasy points (kick
+            // returns, punt returns, etc)
+            var gamePackageNodes = gameTrackerDoc.DocumentNode.SelectNodes("//div[@class='col " + column_identifier + " gamepackage-" + homeOrAway + "-wrap']");
 
-                // if gamePackageNodes is null, this means that the game hasn't started yet, so we'll end
-                // and just return 0 fantasy points
-                if (gamePackageNodes != null)
+            // if gamePackageNodes is null, this means that the game hasn't started yet, so we'll end
+            // and just return 0 fantasy points
+            if (gamePackageNodes != null)
+            {
+                foreach (var gamePackageNode in gamePackageNodes)
                 {
-                    foreach (var gamePackageNode in gamePackageNodes)
+                    // now we need to select the <div class="team-name"> tag which has the <team> <stat> text
+                    // such as "Baltimore Passing" 
+                    var teamNameNode = gamePackageNode.SelectSingleNode(".//div[@class='team-name']");
+
+                    // find the last space in the team name so we can grab the stat
+                    // e.g. - "Lost Angeles Passing" or "Carolina Passing" should return "Passing"
+                    string teamNameText = teamNameNode.InnerText;
+                    int lastSpaceIndex = teamNameText.LastIndexOf(" ");
+                    string stat = teamNameText.Substring(lastSpaceIndex + 1);
+
+                    // now we need to find the table row under the "mod-data" table, which contains the stats. In this
+                    // table, there are two rows of data under the <tbody> for each player. The first row will contain <td>s of all stats,
+                    // with the first td being the player id which we will need to check so we are pulling stats for the
+                    // right player.
+                    var statsNodes = gamePackageNode.SelectNodes(".//table[@class='mod-data']/tbody/tr");
+
+                    foreach (var statsNode in statsNodes)
                     {
-                        // now we need to select the <div class="team-name"> tag which has the <team> <stat> text
-                        // such as "Baltimore Passing" 
-                        var teamNameNode = gamePackageNode.SelectSingleNode(".//div[@class='team-name']");
+                        // the stats node is a <tr> with <td>'s containing the stats we are looking for, which will be different
+                        // for each type of stat (passing, rushing, etc), so we will hand this node off to the helper function
+                        // after extracting the player id in a link tag
+                        var playerIdNode = statsNode.SelectSingleNode(".//a");
 
-                        // find the last space in the team name so we can grab the stat
-                        // e.g. - "Lost Angeles Passing" or "Carolina Passing" should return "Passing"
-                        string teamNameText = teamNameNode.InnerText;
-                        int lastSpaceIndex = teamNameText.LastIndexOf(" ");
-                        string stat = teamNameText.Substring(lastSpaceIndex + 1);
-
-                        // now we need to find the table row under the "mod-data" table, which contains the stats. In this
-                        // table, there are two rows of data under the <tbody> for each player. The first row will contain <td>s of all stats,
-                        // with the first td being the player id which we will need to check so we are pulling stats for the
-                        // right player.
-                        var statsNodes = gamePackageNode.SelectNodes(".//table[@class='mod-data']/tbody/tr");
-
-                        foreach (var statsNode in statsNodes)
+                        // if the playerId coming into this function is "", that means we are searching for team defense
+                        // stats, so we will fall into the else to do that. Otherwise, if there is a playerID coming into this
+                        // function and there isn't a player for this stat (e.g. this player has no interceptions), there will not be
+                        // a player ID Node, so we will just skip this stat
+                        if ((playerIdNode != null) && (!playerId.Equals("")))
                         {
-                            // the stats node is a <tr> with <td>'s containing the stats we are looking for, which will be different
-                            // for each type of stat (passing, rushing, etc), so we will hand this node off to the helper function
-                            // after extracting the player id in a link tag
-                            var playerIdNode = statsNode.SelectSingleNode(".//a");
+                            string playerUid = playerIdNode.Attributes["data-player-uid"].Value;
 
-                            // if the playerId coming into this function is "", that means we are searching for team defense
-                            // stats, so we will fall into the else to do that. Otherwise, if there is a playerID coming into this
-                            // function and there isn't a player for this stat (e.g. this player has no interceptions), there will not be
-                            // a player ID Node, so we will just skip this stat
-                            if ((playerIdNode != null) && (!playerId.Equals("")))
+                            // the beginning part of the ID has a GUID, so we will remove that and just return the player id
+                            int index = playerUid.IndexOf(playerId);
+
+                            if (index != -1)
                             {
-                                string playerUid = playerIdNode.Attributes["data-player-uid"].Value;
+                                string extractedPlayerId = playerUid.Substring(index);
 
-                                // the beginning part of the ID has a GUID, so we will remove that and just return the player id
-                                int index = playerUid.IndexOf(playerId);
-
-                                if (index != -1)
+                                if (extractedPlayerId.Equals(playerId))
                                 {
-                                    string extractedPlayerId = playerUid.Substring(index);
-
-                                    if (extractedPlayerId.Equals(playerId))
-                                    {
-                                        if (stat.Equals("Passing"))
-                                            fantasyPoints += handlePassingStats(statsNode);
-                                        else if (stat.Equals("Rushing"))
-                                            fantasyPoints += handleRbStats(statsNode);
-                                        else if (stat.Equals("Receiving"))
-                                            fantasyPoints += handleWrStats(statsNode);
-                                        else if (stat.Equals("Fumbles"))
-                                            fantasyPoints += handleFumbleStats(statsNode);
-                                        else if (stat.Equals("Kicking"))
-                                            fantasyPoints += handleKickingStats(statsNode);
-                                    }
+                                    if (stat.Equals("Passing"))
+                                        fantasyPoints += handlePassingStats(statsNode);
+                                    else if (stat.Equals("Rushing"))
+                                        fantasyPoints += handleRbStats(statsNode);
+                                    else if (stat.Equals("Receiving"))
+                                        fantasyPoints += handleWrStats(statsNode);
+                                    else if (stat.Equals("Fumbles"))
+                                        fantasyPoints += handleFumbleStats(statsNode);
+                                    else if (stat.Equals("Kicking"))
+                                        fantasyPoints += handleKickingStats(statsNode);
                                 }
                             }
-                            else if ((playerIdNode != null) && (playerId.Equals("")))
-                            {
-                                if (stat.Equals("Defensive"))
-                                    fantasyPoints += handleDefensiveStats(statsNode);
-                                else if (stat.Equals("Interceptions"))
-                                    fantasyPoints += handleInterceptionStats(statsNode);
-                                else if (stat.Equals("Returns"))
-                                    fantasyPoints += handleReturnStats(statsNode);
-                            }
+                        }
+                        else if ((playerIdNode != null) && (playerId.Equals("")))
+                        {
+                            if (stat.Equals("Defensive"))
+                                fantasyPoints += handleDefensiveStats(statsNode);
+                            else if (stat.Equals("Interceptions"))
+                                fantasyPoints += handleInterceptionStats(statsNode);
+                            else if (stat.Equals("Returns"))
+                                fantasyPoints += handleReturnStats(statsNode);
                         }
                     }
                 }
-
-                // if we are scoring for team defense (playerId == ""), we need to check that here
-                if (playerId.Equals(""))
-                    fantasyPoints += handleDefenseTeamPoints(doc, homeOrAway, gameId, opponentAbbreviation);
             }
+
+            // if we are scoring for team defense (playerId == ""), we need to check that here
+            if (playerId.Equals(""))
+                fantasyPoints += handleDefenseTeamPoints(gameTrackerDoc, homeOrAway, gameId, opponentAbbreviation);
 
             return Math.Round(fantasyPoints, 2);
         }
@@ -448,50 +445,41 @@
         {
             int twoPointConversionPoints = 0;
 
-            string playByPlayUrl = PLAY_BY_PLAY_URL + gameId.ToString();
+            // We are looking for the <div id="gamepackage-scoring-summary">/div/table table, which will have all rows with scoring drives.
+            // The scoring drives row will have the first <td> being <td class="logo">, where we will need to parse the logo to see
+            // if it is the first three letters of the team.png (e.g., bal.png for Baltimore).
+            var postPlayNodes = playByPlayDoc.DocumentNode.SelectNodes("//div[@class='scoring-summary']/table/tbody/tr");
 
-            using (WebClient client = new WebClient())
+            // if the game hasn't started, there will be no data, so check for null
+            if (postPlayNodes != null)
             {
-                string html = client.DownloadString(playByPlayUrl);
-                HtmlDocument doc = new HtmlDocument();
-                doc.LoadHtml(html);
-
-                // We are looking for the <div id="gamepackage-scoring-summary">/div/table table, which will have all rows with scoring drives.
-                // The scoring drives row will have the first <td> being <td class="logo">, where we will need to parse the logo to see
-                // if it is the first three letters of the team.png (e.g., bal.png for Baltimore).
-                var postPlayNodes = doc.DocumentNode.SelectNodes("//div[@class='scoring-summary']/table/tbody/tr");
-
-                // if the game hasn't started, there will be no data, so check for null
-                if (postPlayNodes != null)
+                foreach (var postPlayNode in postPlayNodes)
                 {
-                    foreach (var postPlayNode in postPlayNodes)
+                    // The rows without attributes in the <tr> contain the game-detail drives
+                    if (postPlayNode.Attributes.Count == 0)
                     {
-                        // The rows without attributes in the <tr> contain the game-detail drives
-                        if (postPlayNode.Attributes.Count == 0)
+                        var imgNode = postPlayNode.SelectSingleNode(".//td/img");
+
+                        string logoName = imgNode.Attributes[1].Value;
+
+                        // we found the opponent drive, so now let's check if it's a 2-pt conversion
+                        if (logoName.Contains(opponentAbbreviation + ".png"))
                         {
-                            var imgNode = postPlayNode.SelectSingleNode(".//td/img");
+                            // the <div class="headline"> node will has the scoring play which we will check
+                            var headlineNode = postPlayNode.SelectSingleNode(".//td/div/div/div[@class='headline']");
 
-                            string logoName = imgNode.Attributes[1].Value;
-
-                            // we found the opponent drive, so now let's check if it's a 2-pt conversion
-                            if (logoName.Contains(opponentAbbreviation + ".png"))
+                            if (headlineNode.InnerText.ToLower().Contains("two-point") &&
+                                !headlineNode.InnerText.ToLower().Contains("failed"))
                             {
-                                // the <div class="headline"> node will has the scoring play which we will check
-                                var headlineNode = postPlayNode.SelectSingleNode(".//td/div/div/div[@class='headline']");
+                                twoPointConversionPoints += 2;
 
-                                if (headlineNode.InnerText.ToLower().Contains("two-point") &&
-                                    !headlineNode.InnerText.ToLower().Contains("failed"))
-                                {
-                                    twoPointConversionPoints += 2;
-
-                                }
                             }
                         }
                     }
                 }
-
-                return twoPointConversionPoints;
             }
+
+            return twoPointConversionPoints;
         }
 
         /// <summary>

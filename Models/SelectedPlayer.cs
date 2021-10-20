@@ -32,14 +32,17 @@
         public string OpponentAbbreviation { get; set; }
     }
 
+    /// <summary>
+    /// Positions for fantasy players. The numbers are used to sort the the players for display.
+    /// </summary>
     public enum Position
     {
-        QB,
-        WR,
-        RB,
-        TE,
-        FLEX,
-        K,
-        DEF
+        QB = 0,
+        WR = 1,
+        RB = 2,
+        FLEX = 3,
+        TE = 4,
+        K = 5,
+        DEF = 6
     }
 }

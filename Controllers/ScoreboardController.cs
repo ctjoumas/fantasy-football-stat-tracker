@@ -252,6 +252,10 @@
                     }
                 }
 
+                // sort the teams
+                teamOnePlayers = teamOnePlayers.OrderBy(x => (int)(x.Position)).ToList();
+                teamTwoPlayers = teamTwoPlayers.OrderBy(x => (int)(x.Position)).ToList();
+
                 Team team = new Team
                 {
                     Owner = "Liz",

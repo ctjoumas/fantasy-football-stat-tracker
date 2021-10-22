@@ -7,6 +7,7 @@
     using System.Linq;
     using System.Net.Http;
     using System.Net.Http.Headers;
+    using System.Threading;
     using System.Threading.Tasks;
     using System.Xml.Linq;
     using System.Xml.Serialization;
@@ -17,6 +18,10 @@
     public class ScoreboardController : Controller
     {
         private static HttpClient client = new HttpClient();
+
+        // teams total points, which is global so each thread which parses player stats can update
+        private double teamOneTotalPoints = 0;
+        private double teamTwoTotalPoints = 0;
 
         public async Task<IActionResult> Index()
         {
@@ -220,37 +225,35 @@
 
                 addPlayerToHashtable(testPlayers, espnGameId, player);
 
-
-                // keep track of the total points from players on each team
-                double teamOneTotalPoints = 0;
-                double teamTwoTotalPoints = 0;
-
+                // each thread will need a done event signifying when the thread has completed, so create a list of
+                // done events for each thread (for each espn game id)
+                var doneEvents = new ManualResetEvent[testPlayers.Keys.Count];
+                
+                // counter for the doneEvents array
+                int i = 0;
+                
                 // loop through each key (espn game id) and parse the points for each player in that game,
                 // adding each SelectedPlayer in the hashtable to the approprate list of teams (team one or team two)
                 foreach (string key in testPlayers.Keys)
                 {
-                    List<SelectedPlayer> selectedPlayers = (List<SelectedPlayer>) testPlayers[key];
+                    // create the done event for this thread
+                    doneEvents[i] = new ManualResetEvent(false);
 
-                    EspnHtmlScraper scraper = new EspnHtmlScraper(key);
+                    // setup the state parameters which are passed into the method being executed in the thread
+                    State stateInfo = new State();
+                    stateInfo.EspnGameId = key;
+                    stateInfo.players = testPlayers;
+                    stateInfo.TeamOnePlayers = teamOnePlayers;
+                    stateInfo.TeamTwoPlayers = teamTwoPlayers;
+                    stateInfo.DoneEvent = doneEvents[i];
 
-                    // calculate points for each of these players
-                    foreach (SelectedPlayer p in selectedPlayers)
-                    {
-                        p.Points = calculateLiveFantasyPoints(scraper, p.EspnPlayerId, p.Position, key, p.HomeOrAway, p.RawPlayerName, p.OpponentAbbreviation);
+                    ThreadPool.QueueUserWorkItem(scrapeStatsFromGame, stateInfo);
 
-                        // add this player to the appropate player list
-                        if (p.Owner.Equals("Liz"))
-                        {
-                            teamOneTotalPoints += p.Points;
-                            teamOnePlayers.Add(p);
-                        }
-                        else if (p.Owner.Equals("Chris"))
-                        {
-                            teamTwoTotalPoints += p.Points;
-                            teamTwoPlayers.Add(p);
-                        }
-                    }
+                    i++;
                 }
+
+                // wait for all threads to have reported that they have completed their work
+                WaitHandle.WaitAll(doneEvents);
 
                 // sort the teams
                 teamOnePlayers = teamOnePlayers.OrderBy(x => (int)(x.Position)).ToList();
@@ -281,6 +284,48 @@
                 // redirect to the home controller's index action so we can get a new token
                 return RedirectToAction("Index", "Home");
             }
+        }
+
+        /// <summary>
+        /// Scrapes stats for each player playing in a particular game. This is called in a thread so when the work
+        /// is done, the thread will report that it has completed by calling the signalThread method
+        /// </summary>
+        /// <param name="scraperParameters"></param>
+        private void scrapeStatsFromGame(Object state)
+        {
+            State stateInfo = (State)state;
+
+            List<SelectedPlayer> selectedPlayers = (List<SelectedPlayer>)stateInfo.players[stateInfo.EspnGameId];
+
+            EspnHtmlScraper scraper = new EspnHtmlScraper(stateInfo.EspnGameId);
+
+            // calculate points for each of these players
+            foreach (SelectedPlayer p in selectedPlayers)
+            {
+                p.Points += scraper.parseGameTrackerPage(stateInfo.EspnGameId, p.EspnPlayerId, p.HomeOrAway, p.OpponentAbbreviation);
+                p.Points += scraper.parseTwoPointConversionsForPlayer(stateInfo.EspnGameId, p.RawPlayerName);
+
+                // calculate kicker FGs if this player is a kicker
+                if (p.Position == Position.K)
+                {
+                    p.Points += scraper.parseFieldGoals(stateInfo.EspnGameId, p.RawPlayerName);
+                }
+
+                // add this player to the appropate player list
+                if (p.Owner.Equals("Liz"))
+                {
+                    teamOneTotalPoints += p.Points;
+                    stateInfo.TeamOnePlayers.Add(p);
+                }
+                else if (p.Owner.Equals("Chris"))
+                {
+                    teamTwoTotalPoints += p.Points;
+                    stateInfo.TeamTwoPlayers.Add(p);
+                }
+            }
+
+            // all of the work is done, so signal the thread that it's complete so the ThreadPool will be notified
+            stateInfo.DoneEvent.Set();
         }
 
         /// <summary>
@@ -380,29 +425,16 @@
             return selectedPlayer;
         }
 
-        /// <summary>
-        /// Helper function to calculate the live fantasy points for a specific player
-        /// </summary>
-        /// <param name="espnPlayerId">Player ID on ESPN so we can parse stats for this player on ESPNs pages</param>
-        /// <param name="espnGameId">Game ID on ESPN so we can parse the correct game to get stats for this player</param>
-        /// <param name="homeOrAway">"home" or "away" game, which is needed to find the correct stats on ESPN for the player</param>
-        /// <param name="playerName">Player's name which is only used to search for 2-point conversions in the ESPN play by play page</param>
-        /// <param name="opponentAbbreviation">If this palyer is a defense, this parameter is the abbreviation of their opponent</param>
-        /// <returns></returns>
-        private double calculateLiveFantasyPoints(EspnHtmlScraper scraper, string espnPlayerId, Position position, string espnGameId, string homeOrAway, string playerName, string opponentAbbreviation)
+        // Maintain state to pass to the scrapeStatsFromGame method
+        public class State
         {
-            double fantasyPoints = 0;
+            public string EspnGameId { get; set; }
+            public Hashtable players { get; set; }
+            public List<SelectedPlayer> TeamOnePlayers { get; set; }
+            public List<SelectedPlayer> TeamTwoPlayers { get; set; }
+            List<Team> Teams { get; set; }
 
-            fantasyPoints += scraper.parseGameTrackerPage(espnGameId, espnPlayerId, homeOrAway, opponentAbbreviation);
-            fantasyPoints += scraper.parseTwoPointConversionsForPlayer(espnGameId, playerName);
-
-            // calculate kicker FGs if this player is a kicker
-            if (position == Position.K)
-            {
-                fantasyPoints += scraper.parseFieldGoals(espnGameId, playerName);
-            }
-
-            return fantasyPoints;
+            public ManualResetEvent DoneEvent { get; set; }
         }
     }
 }

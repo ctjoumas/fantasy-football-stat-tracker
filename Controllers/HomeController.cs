@@ -64,8 +64,6 @@
             return RedirectToAction("Index", "Scoreboard");
         }
 
-      
-
         /// <summary>
         /// This will request the Access Token from yahoo making an HTTP POST request.
         /// This method should be moved somewhere else; just testing here.
@@ -124,7 +122,7 @@
                 AuthModel.RefreshToken = collection["refresh_token"];
             }
         }
-        
+
         public IActionResult Privacy()
         {
             return View();

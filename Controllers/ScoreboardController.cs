@@ -19,6 +19,10 @@
     {
         private static HttpClient client = new HttpClient();
 
+        // teams total points, which is global so each thread which parses player stats can update
+        private double teamOneTotalPoints = 0;
+        private double teamTwoTotalPoints = 0;
+
         public async Task<IActionResult> Index()
         {
             // we need to first check to make sure the token isn't null (if the site hasn't been refreshed in a while and

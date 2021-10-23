@@ -5,6 +5,8 @@
     using System.Linq;
     using System.Net;
     using System.Diagnostics;
+    using System.IO;
+    using System.Threading;
 
     public class EspnHtmlScraper
     {

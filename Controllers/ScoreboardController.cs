@@ -71,7 +71,6 @@
                 SelectedPlayer player;
 
                 string owner = "Liz";
-                List<SelectedPlayer> teamOnePlayers = new List<SelectedPlayer>();
 
                 string espnGameId = "401326422";
                 string espnPlayerId = "3918298";
@@ -138,17 +137,21 @@
 
                 addPlayerToHashtable(testPlayers, espnGameId, player);
 
-                espnGameId = "401326422";
+                /*espnGameId = "401326422";
                 espnPlayerId = "";
                 homeOrAway = "away";
                 playerName = "buffalo";
-                opponentAbbreviation = "ten";
+                opponentAbbreviation = "ten";*/
+                espnGameId = "401326423";
+                espnPlayerId = "";
+                homeOrAway = "away";
+                playerName = "denver";
+                opponentAbbreviation = "cle";
                 player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerName + "/stats", Position.DEF, espnPlayerId, espnGameId, homeOrAway, playerName, opponentAbbreviation, owner);
 
                 addPlayerToHashtable(testPlayers, espnGameId, player);
 
                 owner = "Chris";
-                List<SelectedPlayer> teamTwoPlayers = new List<SelectedPlayer>();
 
                 espnGameId = "401326417";
                 espnPlayerId = "3139477";
@@ -228,10 +231,10 @@
                 // each thread will need a done event signifying when the thread has completed, so create a list of
                 // done events for each thread (for each espn game id)
                 var doneEvents = new ManualResetEvent[testPlayers.Keys.Count];
-                
+
                 // counter for the doneEvents array
                 int i = 0;
-                
+
                 // loop through each key (espn game id) and parse the points for each player in that game,
                 // adding each SelectedPlayer in the hashtable to the approprate list of teams (team one or team two)
                 foreach (string key in testPlayers.Keys)
@@ -243,8 +246,6 @@
                     State stateInfo = new State();
                     stateInfo.EspnGameId = key;
                     stateInfo.players = testPlayers;
-                    stateInfo.TeamOnePlayers = teamOnePlayers;
-                    stateInfo.TeamTwoPlayers = teamTwoPlayers;
                     stateInfo.DoneEvent = doneEvents[i];
 
                     ThreadPool.QueueUserWorkItem(scrapeStatsFromGame, stateInfo);
@@ -255,23 +256,40 @@
                 // wait for all threads to have reported that they have completed their work
                 WaitHandle.WaitAll(doneEvents);
 
-                // sort the teams
+                // The values of each hashtable are lists of List<SelectedPlayer> so we need to get this list of lists and flatten
+                // the list
+                List<List<SelectedPlayer>> listOfPlayerLists = testPlayers.Values.OfType<List<SelectedPlayer>>().ToList();
+                List<SelectedPlayer> players = listOfPlayerLists.SelectMany(x => x).ToList();
+
+                // Pull out the players for team one and sort by position
+                List<SelectedPlayer> teamOnePlayers = players.Where(x => x.Owner.Equals("Liz")).ToList();
                 teamOnePlayers = teamOnePlayers.OrderBy(x => (int)(x.Position)).ToList();
-                teamTwoPlayers = teamTwoPlayers.OrderBy(x => (int)(x.Position)).ToList();
+
+                // Total up the scores from this team
+                List<double> pointsList = teamOnePlayers.Select(x => x.Points).ToList();
+                double points = pointsList.Sum();
 
                 Team team = new Team
                 {
                     Owner = "Liz",
-                    TotalFantasyPoints = Math.Round(teamOneTotalPoints, 2),
+                    TotalFantasyPoints = Math.Round(points, 2),
                     Players = teamOnePlayers
                 };
 
                 teams.Add(team);
 
+                // Pull out the players for team two and sort by position
+                List<SelectedPlayer> teamTwoPlayers = players.Where(x => x.Owner.Equals("Chris")).ToList();
+                teamTwoPlayers = teamTwoPlayers.OrderBy(x => (int)(x.Position)).ToList();
+
+                // Total up the scores from this team
+                pointsList = teamTwoPlayers.Select(x => x.Points).ToList();
+                points = pointsList.Sum();
+
                 team = new Team
                 {
                     Owner = "Chris",
-                    TotalFantasyPoints = Math.Round(teamTwoTotalPoints, 2),
+                    TotalFantasyPoints = Math.Round(points, 2),
                     Players = teamTwoPlayers
                 };
 
@@ -310,17 +328,10 @@
                 {
                     p.Points += scraper.parseFieldGoals(stateInfo.EspnGameId, p.RawPlayerName);
                 }
+                // get any blocked punts or field goals (NOTE: ASSUMING "BLOCKED" WILL APPEAR, SO NEED FURTHER TESTING
+                else if (p.Position == Position.DEF)
+                {
 
-                // add this player to the appropate player list
-                if (p.Owner.Equals("Liz"))
-                {
-                    teamOneTotalPoints += p.Points;
-                    stateInfo.TeamOnePlayers.Add(p);
-                }
-                else if (p.Owner.Equals("Chris"))
-                {
-                    teamTwoTotalPoints += p.Points;
-                    stateInfo.TeamTwoPlayers.Add(p);
                 }
             }
 
@@ -429,9 +440,9 @@
         public class State
         {
             public string EspnGameId { get; set; }
+
             public Hashtable players { get; set; }
-            public List<SelectedPlayer> TeamOnePlayers { get; set; }
-            public List<SelectedPlayer> TeamTwoPlayers { get; set; }
+
             List<Team> Teams { get; set; }
 
             public ManualResetEvent DoneEvent { get; set; }

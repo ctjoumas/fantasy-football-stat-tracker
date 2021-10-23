@@ -7,6 +7,7 @@
     using System.Linq;
     using System.Net.Http;
     using System.Net.Http.Headers;
+    using System.Threading;
     using System.Threading.Tasks;
     using System.Xml.Linq;
     using System.Xml.Serialization;
@@ -66,7 +67,6 @@
                 SelectedPlayer player;
 
                 string owner = "Liz";
-                List<SelectedPlayer> teamOnePlayers = new List<SelectedPlayer>();
 
                 string espnGameId = "401326422";
                 string espnPlayerId = "3918298";
@@ -133,17 +133,21 @@
 
                 addPlayerToHashtable(testPlayers, espnGameId, player);
 
-                espnGameId = "401326422";
+                /*espnGameId = "401326422";
                 espnPlayerId = "";
                 homeOrAway = "away";
                 playerName = "buffalo";
-                opponentAbbreviation = "ten";
+                opponentAbbreviation = "ten";*/
+                espnGameId = "401326423";
+                espnPlayerId = "";
+                homeOrAway = "away";
+                playerName = "denver";
+                opponentAbbreviation = "cle";
                 player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerName + "/stats", Position.DEF, espnPlayerId, espnGameId, homeOrAway, playerName, opponentAbbreviation, owner);
 
                 addPlayerToHashtable(testPlayers, espnGameId, player);
 
                 owner = "Chris";
-                List<SelectedPlayer> teamTwoPlayers = new List<SelectedPlayer>();
 
                 espnGameId = "401326417";
                 espnPlayerId = "3139477";
@@ -220,55 +224,68 @@
 
                 addPlayerToHashtable(testPlayers, espnGameId, player);
 
+                // each thread will need a done event signifying when the thread has completed, so create a list of
+                // done events for each thread (for each espn game id)
+                var doneEvents = new ManualResetEvent[testPlayers.Keys.Count];
 
-                // keep track of the total points from players on each team
-                double teamOneTotalPoints = 0;
-                double teamTwoTotalPoints = 0;
+                // counter for the doneEvents array
+                int i = 0;
 
                 // loop through each key (espn game id) and parse the points for each player in that game,
                 // adding each SelectedPlayer in the hashtable to the approprate list of teams (team one or team two)
                 foreach (string key in testPlayers.Keys)
                 {
-                    List<SelectedPlayer> selectedPlayers = (List<SelectedPlayer>) testPlayers[key];
+                    // create the done event for this thread
+                    doneEvents[i] = new ManualResetEvent(false);
 
-                    EspnHtmlScraper scraper = new EspnHtmlScraper(key);
+                    // setup the state parameters which are passed into the method being executed in the thread
+                    State stateInfo = new State();
+                    stateInfo.EspnGameId = key;
+                    stateInfo.players = testPlayers;
+                    stateInfo.DoneEvent = doneEvents[i];
 
-                    // calculate points for each of these players
-                    foreach (SelectedPlayer p in selectedPlayers)
-                    {
-                        p.Points = calculateLiveFantasyPoints(scraper, p.EspnPlayerId, p.Position, key, p.HomeOrAway, p.RawPlayerName, p.OpponentAbbreviation);
+                    ThreadPool.QueueUserWorkItem(scrapeStatsFromGame, stateInfo);
 
-                        // add this player to the appropate player list
-                        if (p.Owner.Equals("Liz"))
-                        {
-                            teamOneTotalPoints += p.Points;
-                            teamOnePlayers.Add(p);
-                        }
-                        else if (p.Owner.Equals("Chris"))
-                        {
-                            teamTwoTotalPoints += p.Points;
-                            teamTwoPlayers.Add(p);
-                        }
-                    }
+                    i++;
                 }
 
-                // sort the teams
+                // wait for all threads to have reported that they have completed their work
+                WaitHandle.WaitAll(doneEvents);
+
+                // The values of each hashtable are lists of List<SelectedPlayer> so we need to get this list of lists and flatten
+                // the list
+                List<List<SelectedPlayer>> listOfPlayerLists = testPlayers.Values.OfType<List<SelectedPlayer>>().ToList();
+                List<SelectedPlayer> players = listOfPlayerLists.SelectMany(x => x).ToList();
+
+                // Pull out the players for team one and sort by position
+                List<SelectedPlayer> teamOnePlayers = players.Where(x => x.Owner.Equals("Liz")).ToList();
                 teamOnePlayers = teamOnePlayers.OrderBy(x => (int)(x.Position)).ToList();
-                teamTwoPlayers = teamTwoPlayers.OrderBy(x => (int)(x.Position)).ToList();
+
+                // Total up the scores from this team
+                List<double> pointsList = teamOnePlayers.Select(x => x.Points).ToList();
+                double points = pointsList.Sum();
 
                 Team team = new Team
                 {
                     Owner = "Liz",
-                    TotalFantasyPoints = Math.Round(teamOneTotalPoints, 2),
+                    TotalFantasyPoints = Math.Round(points, 2),
                     Players = teamOnePlayers
                 };
 
                 teams.Add(team);
 
+                // Pull out the players for team two and sort by position
+                List<SelectedPlayer> teamTwoPlayers = players.Where(x => x.Owner.Equals("Chris")).ToList();
+                teamTwoPlayers = teamTwoPlayers.OrderBy(x => (int)(x.Position)).ToList();
+
+                // Total up the scores from this team
+                pointsList = teamTwoPlayers.Select(x => x.Points).ToList();
+                points = pointsList.Sum();
+
                 team = new Team
                 {
                     Owner = "Chris",
-                    TotalFantasyPoints = Math.Round(teamTwoTotalPoints, 2),
+                    TotalFantasyPoints = Math.Round(points, 2),
                     Players = teamTwoPlayers
                 };
 
@@ -281,6 +298,41 @@
                 // redirect to the home controller's index action so we can get a new token
                 return RedirectToAction("Index", "Home");
             }
+        }
+
+        /// <summary>
+        /// Scrapes stats for each player playing in a particular game. This is called in a thread so when the work
+        /// is done, the thread will report that it has completed by calling the signalThread method
+        /// </summary>
+        /// <param name="scraperParameters"></param>
+        private void scrapeStatsFromGame(Object state)
+        {
+            State stateInfo = (State)state;
+
+            List<SelectedPlayer> selectedPlayers = (List<SelectedPlayer>)stateInfo.players[stateInfo.EspnGameId];
+
+            EspnHtmlScraper scraper = new EspnHtmlScraper(stateInfo.EspnGameId);
+
+            // calculate points for each of these players
+            foreach (SelectedPlayer p in selectedPlayers)
+            {
+                p.Points += scraper.parseGameTrackerPage(stateInfo.EspnGameId, p.EspnPlayerId, p.HomeOrAway, p.OpponentAbbreviation);
+                p.Points += scraper.parseTwoPointConversionsForPlayer(stateInfo.EspnGameId, p.RawPlayerName);
+
+                // calculate kicker FGs if this player is a kicker
+                if (p.Position == Position.K)
+                {
+                    p.Points += scraper.parseFieldGoals(stateInfo.EspnGameId, p.RawPlayerName);
+                }
+                // get any blocked punts or field goals (NOTE: ASSUMING "BLOCKED" WILL APPEAR, SO NEED FURTHER TESTING
+                else if (p.Position == Position.DEF)
+                {
+
+                }
+            }
+
+            // all of the work is done, so signal the thread that it's complete so the ThreadPool will be notified
+            stateInfo.DoneEvent.Set();
         }
 
         /// <summary>
@@ -380,29 +432,16 @@
             return selectedPlayer;
         }
 
-        /// <summary>
-        /// Helper function to calculate the live fantasy points for a specific player
-        /// </summary>
-        /// <param name="espnPlayerId">Player ID on ESPN so we can parse stats for this player on ESPNs pages</param>
-        /// <param name="espnGameId">Game ID on ESPN so we can parse the correct game to get stats for this player</param>
-        /// <param name="homeOrAway">"home" or "away" game, which is needed to find the correct stats on ESPN for the player</param>
-        /// <param name="playerName">Player's name which is only used to search for 2-point conversions in the ESPN play by play page</param>
-        /// <param name="opponentAbbreviation">If this palyer is a defense, this parameter is the abbreviation of their opponent</param>
-        /// <returns></returns>
-        private double calculateLiveFantasyPoints(EspnHtmlScraper scraper, string espnPlayerId, Position position, string espnGameId, string homeOrAway, string playerName, string opponentAbbreviation)
+        // Maintain state to pass to the scrapeStatsFromGame method
+        public class State
         {
-            double fantasyPoints = 0;
+            public string EspnGameId { get; set; }
 
-            fantasyPoints += scraper.parseGameTrackerPage(espnGameId, espnPlayerId, homeOrAway, opponentAbbreviation);
-            fantasyPoints += scraper.parseTwoPointConversionsForPlayer(espnGameId, playerName);
+            public Hashtable players { get; set; }
 
-            // calculate kicker FGs if this player is a kicker
-            if (position == Position.K)
-            {
-                fantasyPoints += scraper.parseFieldGoals(espnGameId, playerName);
-            }
+            List<Team> Teams { get; set; }
 
-            return fantasyPoints;
+            public ManualResetEvent DoneEvent { get; set; }
         }
     }
 }

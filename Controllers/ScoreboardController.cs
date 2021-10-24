@@ -19,10 +19,6 @@
     {
         private static HttpClient client = new HttpClient();
 
-        // teams total points, which is global so each thread which parses player stats can update
-        private double teamOneTotalPoints = 0;
-        private double teamTwoTotalPoints = 0;
-
         public async Task<IActionResult> Index()
         {
             // we need to first check to make sure the token isn't null (if the site hasn't been refreshed in a while and
@@ -72,64 +68,64 @@
 
                 string owner = "Liz";
 
-                string espnGameId = "401326422";
-                string espnPlayerId = "3918298";
-                string homeOrAway = "away";
-                string playerName = "josh allen";
+                string espnGameId = "401326432";
+                string espnPlayerId = "3917315";
+                string homeOrAway = "home";
+                string playerName = "kyler murray";
                 string opponentAbbreviation = "";
                 player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerName + "/stats", Position.QB, espnPlayerId, espnGameId, homeOrAway, playerName, opponentAbbreviation, owner);
 
                 addPlayerToHashtable(testPlayers, espnGameId, player);
 
-                espnGameId = "401326411";
-                espnPlayerId = "3068267";
-                homeOrAway = "away";
-                playerName = "austin ekeler";
+                espnGameId = "401326429";
+                espnPlayerId = "3043078";
+                homeOrAway = "home";
+                playerName = "derrick henry";
                 player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerName + "/stats", Position.RB, espnPlayerId, espnGameId, homeOrAway, playerName, opponentAbbreviation, owner);
 
                 addPlayerToHashtable(testPlayers, espnGameId, player);
 
-                espnGameId = "401326420";
-                espnPlayerId = "3051392";
+                espnGameId = "401326434";
+                espnPlayerId = "4242335";
                 homeOrAway = "away";
-                playerName = "ezekiel elliott";
+                playerName = "jonathan taylor";
                 player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerName + "/stats", Position.RB, espnPlayerId, espnGameId, homeOrAway, playerName, opponentAbbreviation, owner);
 
                 addPlayerToHashtable(testPlayers, espnGameId, player);
 
-                espnGameId = "401326422";
-                espnPlayerId = "2976212";
+                espnGameId = "401326425";
+                espnPlayerId = "16800";
+                homeOrAway = "home";
+                playerName = "davante adams";
+                player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerName + "/stats", Position.WR, espnPlayerId, espnGameId, homeOrAway, playerName, opponentAbbreviation, owner);
+
+                addPlayerToHashtable(testPlayers, espnGameId, player);
+
+                espnGameId = "401326424";
+                espnPlayerId = "4362628";
                 homeOrAway = "away";
-                playerName = "stefon diggs";
+                playerName = "arr chase";
                 player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerName + "/stats", Position.WR, espnPlayerId, espnGameId, homeOrAway, playerName, opponentAbbreviation, owner);
 
                 addPlayerToHashtable(testPlayers, espnGameId, player);
 
-                espnGameId = "401326412";
-                espnPlayerId = "3915416";
-                homeOrAway = "home";
-                playerName = "dj moore";
-                player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerName + "/stats", Position.WR, espnPlayerId, espnGameId, homeOrAway, playerName, opponentAbbreviation, owner);
-
-                addPlayerToHashtable(testPlayers, espnGameId, player);
-
-                espnGameId = "401326418";
-                espnPlayerId = "3059915";
-                homeOrAway = "home";
-                playerName = "kareem hunt";
+                espnGameId = "401326435";
+                espnPlayerId = "3054850";
+                homeOrAway = "away";
+                playerName = "alvin kamara";
                 player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerName + "/stats", Position.FLEX, espnPlayerId, espnGameId, homeOrAway, playerName, opponentAbbreviation, owner);
 
                 addPlayerToHashtable(testPlayers, espnGameId, player);
 
-                espnGameId = "401326411";
-                espnPlayerId = "3116365";
-                homeOrAway = "home";
-                playerName = "mark andrews";
+                espnGameId = "401326429";
+                espnPlayerId = "15847";
+                homeOrAway = "away";
+                playerName = "travis kelce";
                 player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerName + "/stats", Position.TE, espnPlayerId, espnGameId, homeOrAway, playerName, opponentAbbreviation, owner);
 
                 addPlayerToHashtable(testPlayers, espnGameId, player);
 
-                espnGameId = "401326411";
+                espnGameId = "401326424";
                 espnPlayerId = "15683";
                 homeOrAway = "home";
                 playerName = "justin tucker";
@@ -142,18 +138,18 @@
                 homeOrAway = "away";
                 playerName = "buffalo";
                 opponentAbbreviation = "ten";*/
-                espnGameId = "401326423";
+                espnGameId = "401326432";
                 espnPlayerId = "";
-                homeOrAway = "away";
-                playerName = "denver";
-                opponentAbbreviation = "cle";
+                homeOrAway = "home";
+                playerName = "arizona";
+                opponentAbbreviation = "hou";
                 player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerName + "/stats", Position.DEF, espnPlayerId, espnGameId, homeOrAway, playerName, opponentAbbreviation, owner);
 
                 addPlayerToHashtable(testPlayers, espnGameId, player);
 
                 owner = "Chris";
 
-                espnGameId = "401326417";
+                espnGameId = "401326429";
                 espnPlayerId = "3139477";
                 homeOrAway = "away";
                 playerName = "patrick mahomes";
@@ -161,31 +157,23 @@
 
                 addPlayerToHashtable(testPlayers, espnGameId, player);
 
-                espnGameId = "401326422";
-                espnPlayerId = "3043078";
+                espnGameId = "401326425";
+                espnPlayerId = "3042519";
                 homeOrAway = "home";
-                playerName = "derrick henry";
+                playerName = "aaron jones";
                 player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerName + "/stats", Position.RB, espnPlayerId, espnGameId, homeOrAway, playerName, opponentAbbreviation, owner);
 
                 addPlayerToHashtable(testPlayers, espnGameId, player);
 
-                espnGameId = "401326415";
-                espnPlayerId = "4242335";
+                espnGameId = "401326430";
+                espnPlayerId = "4039359";
                 homeOrAway = "home";
-                playerName = "jonathan taylor";
+                playerName = "darrell henderson";
                 player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerName + "/stats", Position.RB, espnPlayerId, espnGameId, homeOrAway, playerName, opponentAbbreviation, owner);
 
                 addPlayerToHashtable(testPlayers, espnGameId, player);
 
                 espnGameId = "401326413";
-                espnPlayerId = "16800";
-                homeOrAway = "away";
-                playerName = "davante adams";
-                player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerName + "/stats", Position.WR, espnPlayerId, espnGameId, homeOrAway, playerName, opponentAbbreviation, owner);
-
-                addPlayerToHashtable(testPlayers, espnGameId, player);
-
-                espnGameId = "401326417";
                 espnPlayerId = "3116406";
                 homeOrAway = "away";
                 playerName = "tyreek hill";
@@ -193,35 +181,43 @@
 
                 addPlayerToHashtable(testPlayers, espnGameId, player);
 
-                espnGameId = "401326421";
-                espnPlayerId = "4241457";
+                espnGameId = "401326429";
+                espnPlayerId = "4047646";
                 homeOrAway = "home";
-                playerName = "najee harris";
+                playerName = "a.j. brown";
+                player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerName + "/stats", Position.WR, espnPlayerId, espnGameId, homeOrAway, playerName, opponentAbbreviation, owner);
+
+                addPlayerToHashtable(testPlayers, espnGameId, player);
+
+                espnGameId = "401326430";
+                espnPlayerId = "2977187";
+                homeOrAway = "home";
+                playerName = "cooper kupp";
                 player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerName + "/stats", Position.FLEX, espnPlayerId, espnGameId, homeOrAway, playerName, opponentAbbreviation, owner);
 
                 addPlayerToHashtable(testPlayers, espnGameId, player);
 
-                espnGameId = "401326417";
-                espnPlayerId = "15847";
-                homeOrAway = "away";
-                playerName = "travis kelce";
+                espnGameId = "401326424";
+                espnPlayerId = "3116365";
+                homeOrAway = "home";
+                playerName = "mark andrews";
                 player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerName + "/stats", Position.TE, espnPlayerId, espnGameId, homeOrAway, playerName, opponentAbbreviation, owner);
 
                 addPlayerToHashtable(testPlayers, espnGameId, player);
 
-                espnGameId = "401326422";
-                espnPlayerId = "3917232";
-                homeOrAway = "away";
-                playerName = "tyler bass";
+                espnGameId = "401326432";
+                espnPlayerId = "11122";
+                homeOrAway = "home";
+                playerName = "matt prater";
                 player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerName + "/stats", Position.K, espnPlayerId, espnGameId, homeOrAway, playerName, opponentAbbreviation, owner);
 
                 addPlayerToHashtable(testPlayers, espnGameId, player);
 
-                espnGameId = "401326416";
+                espnGameId = "401326430";
                 espnPlayerId = "";
-                homeOrAway = "away";
+                homeOrAway = "home";
                 playerName = "los angeles rams";
-                opponentAbbreviation = "nyg";
+                opponentAbbreviation = "det";
                 // Rams and Chargers are both called "Los Angeles" in yahoo, so we can only send in "los angeles" to the query. But, it will pull back
                 // both teams in the API search, so we will need to search the data coming back for each and select the right one based on "rams", in this case
                 player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerName.Substring(0, playerName.LastIndexOf(" ")) + "/stats", Position.DEF, espnPlayerId, espnGameId, homeOrAway, playerName, opponentAbbreviation, owner);

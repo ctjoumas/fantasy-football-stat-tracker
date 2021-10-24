@@ -201,7 +201,7 @@
             // if a game has ended, we will find this node:
             // < span class="game-time status-detail">Final</span>
             var statusDetailNode = gameTrackerDoc.DocumentNode.SelectSingleNode("//span[@class='game-time status-detail']");
-            if (statusDetailNode.InnerText.ToLower().Equals("final"))
+            if ((statusDetailNode != null) && statusDetailNode.InnerText.ToLower().Equals("final"))
             {
                 // add to cache with something saying that the game is over
             }

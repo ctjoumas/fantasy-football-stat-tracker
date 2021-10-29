@@ -22,6 +22,8 @@
 
         public string EspnGameId { get; set; }
 
+        public DateTime GameTime { get; set; }
+
         public string EspnPlayerId { get; set; }
 
         public string HomeOrAway { get; set; }

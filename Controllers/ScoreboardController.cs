@@ -120,19 +120,6 @@
                             string homeOrAway = reader.GetValue(reader.GetOrdinal("HomeOrAway")).ToString();
                             string opponentAbbreviation = reader.GetValue(reader.GetOrdinal("OpponentAbbreviation")).ToString();
                             DateTime gameDate = DateTime.Parse((reader.GetValue(reader.GetOrdinal("GameDate")).ToString()));
-                            /*TimeSpan difference = gameDate.Subtract(DateTime.Now);
-                            if (difference.TotalDays > 0)
-                            {
-                                Console.WriteLine("game hasn't started, so we won't parse it");
-                            }*/
-
-                            /***************************************************************************/
-                            // testing calculating difference between now and game time ( THIS WILL GO IN THE WEB APP WHEN THIS IS READ FROM DB)
-                            /*TimeSpan difference = gameDate.Subtract(DateTime.Now);
-                            if (difference.TotalDays > 0)
-                            {
-                                Console.WriteLine("game hasn't started, so we won't parse it");
-                            }*/
 
                             // we need to save the full player name into a search string so we don't modify the full name. This is mostly
                             // due to a defense such as "los angeles rams" and "los angeles chargers" only able to be searched by "los angeles",
@@ -396,26 +383,32 @@
 
             List<SelectedPlayer> selectedPlayers = (List<SelectedPlayer>)stateInfo.players[stateInfo.EspnGameId];
 
-            // TODO: Check the date time of the game (it is the same for all players in this list since they belong to the same
-            // game) and if it hasn't started, just set the points equal to 0 and don't load the document.
-
-            EspnHtmlScraper scraper = new EspnHtmlScraper(stateInfo.EspnGameId);
-
-            // calculate points for each of these players
-            foreach (SelectedPlayer p in selectedPlayers)
+            // Check the date time of the game for the first player (it is the same for all players in this list
+            // since they belong to the same game) and if it hasn't started, just set the points equal to 0
+            // and don't load the document.
+            SelectedPlayer player = selectedPlayers[0];
+            TimeSpan difference = player.GameTime.Subtract(DateTime.Now);
+            
+            if (difference.TotalDays < 0)
             {
-                p.Points += scraper.parseGameTrackerPage(stateInfo.EspnGameId, p.EspnPlayerId, p.HomeOrAway, p.OpponentAbbreviation);
-                p.Points += scraper.parseTwoPointConversionsForPlayer(stateInfo.EspnGameId, p.RawPlayerName);
+                EspnHtmlScraper scraper = new EspnHtmlScraper(stateInfo.EspnGameId);
 
-                // calculate kicker FGs if this player is a kicker
-                if (p.Position == Position.K)
+                // calculate points for each of these players
+                foreach (SelectedPlayer p in selectedPlayers)
                 {
-                    p.Points += scraper.parseFieldGoals(stateInfo.EspnGameId, p.RawPlayerName);
-                }
-                // get any blocked punts or field goals (NOTE: ASSUMING "BLOCKED" WILL APPEAR, SO NEED FURTHER TESTING
-                else if (p.Position == Position.DEF)
-                {
+                    p.Points += scraper.parseGameTrackerPage(stateInfo.EspnGameId, p.EspnPlayerId, p.HomeOrAway, p.OpponentAbbreviation);
+                    p.Points += scraper.parseTwoPointConversionsForPlayer(stateInfo.EspnGameId, p.RawPlayerName);
 
+                    // calculate kicker FGs if this player is a kicker
+                    if (p.Position == Position.K)
+                    {
+                        p.Points += scraper.parseFieldGoals(stateInfo.EspnGameId, p.RawPlayerName);
+                    }
+                    // get any blocked punts or field goals (NOTE: ASSUMING "BLOCKED" WILL APPEAR, SO NEED FURTHER TESTING
+                    else if (p.Position == Position.DEF)
+                    {
+
+                    }
                 }
             }
 
@@ -517,6 +510,7 @@
             selectedPlayer.RawPlayerName = playerName;
             selectedPlayer.HomeOrAway = homeOrAway;
             selectedPlayer.Owner = owner;
+            selectedPlayer.Points = 0;
 
 
             return selectedPlayer;

@@ -252,11 +252,11 @@
                         // after extracting the player id in a link tag
                         var playerIdNode = statsNode.SelectSingleNode(".//a");
 
-                        // if the playerId coming into this function is "", that means we are searching for team defense
-                        // stats, so we will fall into the else to do that. Otherwise, if there is a playerID coming into this
-                        // function and there isn't a player for this stat (e.g. this player has no interceptions), there will not be
-                        // a player ID Node, so we will just skip this stat
-                        if ((playerIdNode != null) && (!playerId.Equals("")))
+                        // if the playerId coming into this function is "0", as stored in the database, that means we are searching for
+                        // team defense stats, so we will fall into the else to do that. Otherwise, if there is a playerID coming into
+                        // this function and there isn't a player for this stat (e.g. this player has no interceptions), there will not
+                        // be a player ID Node, so we will just skip this stat
+                        if ((playerIdNode != null) && (!playerId.Equals("0")))
                         {
                             string playerUid = playerIdNode.Attributes["data-player-uid"].Value;
 
@@ -282,7 +282,7 @@
                                 }
                             }
                         }
-                        else if ((playerIdNode != null) && (playerId.Equals("")))
+                        else if ((playerIdNode != null) && (playerId.Equals("0")))
                         {
                             if (stat.Equals("Defensive"))
                                 fantasyPoints += handleDefensiveStats(statsNode);
@@ -295,9 +295,9 @@
                 }
             }
 
-            // if we are scoring for team defense (playerId == ""), we need to check how many points were scored
+            // if we are scoring for team defense (playerId == "0"), we need to check how many points were scored
             // against them as well as whether they blocked any kicks or field goals
-            if (playerId.Equals(""))
+            if (playerId.Equals("0"))
             {
                 fantasyPoints += handleDefenseTeamPoints(gameTrackerDoc, homeOrAway, gameId, opponentAbbreviation);
                 fantasyPoints += handleBlockedKicksAndPunts(gameId, opponentAbbreviation);

@@ -71,23 +71,27 @@
                     while (reader.Read())
                     {
                         string owner = reader.GetValue(reader.GetOrdinal("Owner")).ToString();
-                        int week = (int) reader.GetValue(reader.GetOrdinal("Week"));
+                        int week = (int)reader.GetValue(reader.GetOrdinal("Week"));
                         string playerName = reader.GetValue(reader.GetOrdinal("PlayerName")).ToString();
                         string position = reader.GetValue(reader.GetOrdinal("Position")).ToString().Trim();
+                        bool gameEnded = (bool)reader.GetValue(reader.GetOrdinal("GameEnded"));
+                        double finalPoints = (double)reader.GetValue(reader.GetOrdinal("FinalPoints"));
 
                         // if this is "K", change it to "PK", which is what is stored in the Players table from ESPN's roster pages
                         if (position.ToLower().Equals("k"))
                         {
                             position = "PK";
                         }
-                        
+
                         // add this player to the current roster
                         rosterPlayers.Add(new RosterPlayer()
                         {
                             Owner = owner,
                             Week = week,
                             PlayerName = playerName,
-                            Position = position
+                            Position = position,
+                            GameEnded = gameEnded,
+                            FinalPoints = finalPoints
                         });
                     }
                 }
@@ -161,7 +165,7 @@
                                             rosterTwoRbCount++;
                                         }
                                     }
-                                    
+
                                     break;
 
                                 case "WR":
@@ -226,7 +230,7 @@
                                     // if this is a defense, we need to strip off the last part of the team name (so buffalo instead of buffalo bills)
                                     int lastSpaceIndex = playerNameSearchString.LastIndexOf(" ");
                                     playerNameSearchString = playerNameSearchString.Substring(0, lastSpaceIndex);
-                                    
+
                                     positionType = Position.DEF;
                                     break;
 
@@ -240,7 +244,7 @@
                             // then encode the result, which will change the %27 into %2527
                             playerNameSearchString = HttpUtility.UrlEncode(playerNameSearchString.Replace("'", HttpUtility.UrlEncode("'")));
 
-                            player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerNameSearchString + "/stats", positionType, espnPlayerId, espnGameId, gameDate, homeOrAway, rosterPlayer.PlayerName, opponentAbbreviation, rosterPlayer.Owner);
+                            player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerNameSearchString + "/stats", positionType, espnPlayerId, espnGameId, gameDate, homeOrAway, rosterPlayer.PlayerName, opponentAbbreviation, rosterPlayer.Owner, rosterPlayer.GameEnded, rosterPlayer.FinalPoints);
 
                             addPlayerToHashtable(testPlayers, espnGameId, player);
                         }
@@ -388,8 +392,13 @@
             // and don't load the document.
             SelectedPlayer player = selectedPlayers[0];
             TimeSpan difference = player.GameTime.Subtract(DateTime.Now);
-            
-            if (difference.TotalDays < 0)
+
+            // Also check if the first player's game has ended, which is set to true in the CurrentRoster table when the scraper
+            // determines that the game has ended.
+            bool gameEnded = player.GameEnded;
+
+            // if the game hasn't started or the game has ended, don't load the HtmlDoc to parse stats since we've already done that
+            if ((difference.TotalDays < 0) && (!gameEnded))
             {
                 EspnHtmlScraper scraper = new EspnHtmlScraper(stateInfo.EspnGameId);
 
@@ -409,11 +418,62 @@
                     {
 
                     }
+
+                    // check the scraper to see if the game has ended and update this player row
+                    if (scraper.GameEnded)
+                    {
+                        updateCurrentRosterWithFinalScore(p.Owner, p.RawPlayerName, p.Points);
+                    }
                 }
+
             }
 
             // all of the work is done, so signal the thread that it's complete so the ThreadPool will be notified
             stateInfo.DoneEvent.Set();
+        }
+
+        /// <summary>
+        /// Within the thread that updates the player points, if the scraper determins the game has ended, this
+        /// method is called to update the CurrentRoster table for this particular player setting GameEnded to true
+        /// and updating the FinalPoints field, so we can grab this the next time the app displays the scores rather
+        /// than scrap the gametracker page again.
+        /// </summary>
+        /// <param name="ownerName">The owner of the team</param>
+        /// <param name="playerName">The player whose points we are updating in the CurrentRoster table</param>
+        /// <param name="finalScore">The final score the player got in the game</param>
+        private void updateCurrentRosterWithFinalScore(string ownerName, string playerName, double finalScore)
+        {
+            var connectionStringBuilder = new SqlConnectionStringBuilder
+            {
+                DataSource = "tcp:playersandscheduledetails.database.windows.net,1433",
+                InitialCatalog = "PlayersAndSchedulesDetails",
+                TrustServerCertificate = false,
+                Encrypt = true
+            };
+
+            var sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
+
+            var tokenRequestContext = new TokenRequestContext(new[] { "https://database.windows.net//.default" });
+            var tokenRequestResult = new DefaultAzureCredential().GetToken(tokenRequestContext);
+
+            // THIS MAY TAKE A LONG TIME (NEED TO TEST FURTHER) - CAN THIS BE STORED SOMEWHERE SO ALL THREADS CAN USE IT?
+            sqlConnection.AccessToken = tokenRequestResult.Token;
+
+            // TODO: When the players are picked from the form, we should be using the player id to update the table
+            // update the specific player and add a double apostrophe to the name if there is one in the name (such as in Ja'Marr Chase)
+            string sql = "update CurrentRoster " +
+                         "SET GameEnded = 'true', FinalPoints = " + finalScore + " " +
+                         "where Owner = '" + ownerName + "' and PlayerName = '" + playerName.Replace("'", "''") + "'";
+
+
+            sqlConnection.Open();
+
+            using (SqlCommand command = new SqlCommand(sql, sqlConnection))
+            {
+                command.ExecuteNonQuery();
+            }
+
+            sqlConnection.Close();
         }
 
         /// <summary>
@@ -451,8 +511,10 @@
         /// <param name="homeOrAway">"home" or "away" game, which is needed to find the correct stats on ESPN for the player</param>
         /// <param name="playerName">Player's name which is only used to search for 2-point conversions in the ESPN play by play page</param>
         /// <param name="opponentAbbreviation">If this palyer is a defense, this parameter is the abbreviation of their opponent</param>
+        /// <param name="gameEnded">The db will have a GameEnded flag set whether the player's game has ended or not</param>
+        /// <param name="finalPoints">If this player's game has ended, they'll have final points, otherwise they'll have 0</param>
         /// <returns></returns>
-        private async Task<SelectedPlayer> CreatePlayer(string apiQuery, Position position, string espnPlayerId, string espnGameId, DateTime gameTime, string homeOrAway, string playerName, string opponentAbbreviation, string owner)
+        private async Task<SelectedPlayer> CreatePlayer(string apiQuery, Position position, string espnPlayerId, string espnGameId, DateTime gameTime, string homeOrAway, string playerName, string opponentAbbreviation, string owner, bool gameEnded, double finalPoints)
         {
             //HttpClient client = new HttpClient();
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", AuthModel.AccessToken);
@@ -510,8 +572,8 @@
             selectedPlayer.RawPlayerName = playerName;
             selectedPlayer.HomeOrAway = homeOrAway;
             selectedPlayer.Owner = owner;
-            selectedPlayer.Points = 0;
-
+            selectedPlayer.GameEnded = gameEnded;
+            selectedPlayer.Points = finalPoints;
 
             return selectedPlayer;
         }

@@ -33,6 +33,10 @@
         private const int DEFENSIVE_TD_POINTS = 6;
         private const int DEFENSIVE_INT_POINTS = 2;
 
+        // Stores whether the game has ended. If it has, the ScoreboardController will check after parsing and update
+        // the CurrentRoster table with "true" for game ended and final points for the player. This is initially set to false
+        public bool GameEnded { get; set; } = false;
+
         /// <summary>
         /// Sets the gametracker and play by play HTML documents which will be used to gather stats for every player playing
         /// in the same game.
@@ -199,13 +203,12 @@
         {
             double fantasyPoints = 0;
 
-            // TODO: CHECK IF GAME IS OVER AND STORE THE DOC IN CACHE
             // if a game has ended, we will find this node:
             // < span class="game-time status-detail">Final</span>
             var statusDetailNode = gameTrackerDoc.DocumentNode.SelectSingleNode("//span[@class='game-time status-detail']");
-            if ((statusDetailNode != null) && statusDetailNode.InnerText.ToLower().Equals("final"))
+            if ((statusDetailNode != null) && (statusDetailNode.InnerText.ToLower().Equals("final") || statusDetailNode.InnerText.ToLower().Equals("final/ot")))
             {
-                // add to cache with something saying that the game is over
+                GameEnded = true;
             }
 
             // if the player is home, their stats will be in column two; away is column one

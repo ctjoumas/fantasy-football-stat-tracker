@@ -32,6 +32,8 @@
         public string RawPlayerName { get; set; }
 
         public string OpponentAbbreviation { get; set; }
+
+        public bool GameEnded { get; set; }
     }
 
     /// <summary>

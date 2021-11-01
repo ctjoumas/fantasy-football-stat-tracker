@@ -14,5 +14,7 @@
         public int Week { get; set; }
         public string PlayerName { get; set; }
         public string Position { get; set; }
+        public bool GameEnded { get; set; }
+        public double FinalPoints { get; set; }
     }
 }

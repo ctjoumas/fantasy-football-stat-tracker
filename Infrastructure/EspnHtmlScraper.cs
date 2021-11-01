@@ -68,9 +68,11 @@
 
             foreach (var twoPointConversionNode in twoPointConversionNodes)
             {
-                // if the two-point conversion didn't fail, check if the player's name was invovled (pass
-                // or reception, it's 2 points either way)
-                if (!twoPointConversionNode.InnerText.ToLower().Contains("failed") && twoPointConversionNode.InnerText.ToLower().Contains(playerName.ToLower()))
+                // if the two-point conversion didn't fail (which will appear with text "fails or failed"), check if
+                // the player's name was invovled (pass or reception, it's 2 points either way)
+                if (!twoPointConversionNode.InnerText.ToLower().Contains("failed") &&
+                    !twoPointConversionNode.InnerText.ToLower().Contains("fails") &&
+                    twoPointConversionNode.InnerText.ToLower().Contains(playerName.ToLower()))
                 {
                     fantasyPoints += 2;
                 }

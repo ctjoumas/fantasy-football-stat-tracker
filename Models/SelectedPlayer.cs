@@ -33,7 +33,10 @@
 
         public string OpponentAbbreviation { get; set; }
 
-        public bool GameEnded { get; set; }
+        // this is different than ended since even if a game isn't ended, it could not be started, so this flag is needed
+        public bool GameInProgress { get; set; } = false;
+
+        public bool GameEnded { get; set; } = false;
     }
 
     /// <summary>

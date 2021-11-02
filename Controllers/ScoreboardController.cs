@@ -405,6 +405,9 @@
                 // calculate points for each of these players
                 foreach (SelectedPlayer p in selectedPlayers)
                 {
+                    // set flag to true to indicate this player's game is in progress
+                    p.GameInProgress = true;
+
                     p.Points += scraper.parseGameTrackerPage(stateInfo.EspnGameId, p.EspnPlayerId, p.HomeOrAway, p.OpponentAbbreviation);
                     p.Points += scraper.parseTwoPointConversionsForPlayer(stateInfo.EspnGameId, p.RawPlayerName);
 
@@ -422,6 +425,9 @@
                     // check the scraper to see if the game has ended and update this player row
                     if (scraper.GameEnded)
                     {
+                        // set the flag to false since this game is no longer in progress
+                        p.GameInProgress = false;
+
                         updateCurrentRosterWithFinalScore(p.Owner, p.RawPlayerName, p.Points);
                     }
                 }

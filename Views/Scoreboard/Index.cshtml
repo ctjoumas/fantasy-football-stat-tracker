@@ -29,15 +29,29 @@
                     <tbody>
                         @foreach (var player in team.Players)
                         {
-                            <tr height="85">
+                            <tr @{if (player.GameInProgress){<text>style="background-color:#F9F9CD"</text>}} height="85">
                                 <td>
                                     <img src ="@Html.DisplayFor(modelItem => player.Headshot)" alt=""headshot" />
                                 </td>
                                 <td>
-                                    @Html.DisplayFor(modelItem => player.Name)
+                                    @if (player.GameInProgress)
+                                    {
+                                        <b>@Html.DisplayFor(modelItem => player.Name)</b>
+                                    }
+                                    else
+                                    {
+                                        @Html.DisplayFor(modelItem => player.Name)
+                                    }
                                 </td>
                                 <td align="right">
-                                    @Html.DisplayFor(modelItem => player.Points)
+                                    @if (player.GameInProgress)
+                                    {
+                                        <b>@Html.DisplayFor(modelItem => player.Points)</b>
+                                    }
+                                    else
+                                    {
+                                        @Html.DisplayFor(modelItem => player.Points)
+                                    }
                                 </td>
                             </tr>
                         }

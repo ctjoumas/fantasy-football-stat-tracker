@@ -4,7 +4,7 @@
     ViewData["Title"] = "Scoreboard";
 }
 
-<table class="table" border="1">
+<table class="table" border="0" cellpadding="0" cellspacing="0">
     <tr>
         @{
             int i = 0;
@@ -18,47 +18,42 @@
                             @Html.DisplayFor(modelItem => team.Owner)
                         </td>
                     </tr>
-                    <tr height="45">
-                        <th>
-                            @Html.DisplayNameFor(model => model[0].Players[0].Name)
-                        </th>
-                        <th>
-                            @Html.DisplayNameFor(model => model[0].Players[0].Points)
-                        </th>
+                    <tr height="30">
+                        <td colspan="3"></td>
                     </tr>
-                    <tbody>
-                        @foreach (var player in team.Players)
-                        {
-                            <tr @{if (player.GameInProgress){<text>style="background-color:#F9F9CD"</text>}} height="85">
-                                <td>
-                                    <img src ="@Html.DisplayFor(modelItem => player.Headshot)" alt=""headshot" />
-                                </td>
-                                <td>
-                                    @if (player.GameInProgress)
-                                    {
-                                        <b>@Html.DisplayFor(modelItem => player.Name)</b>
-                                    }
-                                    else
-                                    {
-                                        @Html.DisplayFor(modelItem => player.Name)
-                                    }
-                                </td>
-                                <td align="right">
-                                    @if (player.GameInProgress)
-                                    {
-                                        <b>@Html.DisplayFor(modelItem => player.Points)</b>
-                                    }
-                                    else
-                                    {
-                                        @Html.DisplayFor(modelItem => player.Points)
-                                    }
-                                </td>
-                            </tr>
+                    
+                    @foreach (var player in team.Players)
+                    {
+                        <tr @{if (player.GameInProgress){<text>style="background-color:#F9F9CD"</text>}} height="85">
+                            <td style="vertical-align:middle">
+                                <img src ="@Html.DisplayFor(modelItem => player.Headshot)" alt=""headshot" />
+                            </td>
+                            <td style="vertical-align:middle">
+                                @if (player.GameInProgress)
+                                {
+                                    <b>@Html.DisplayFor(modelItem => player.Name)</b>
+                                }
+                                else
+                                {
+                                    @Html.DisplayFor(modelItem => player.Name)
+                                }
+                            </td>
+                            <td align="right" style="vertical-align:middle">
+                                @if (player.GameInProgress)
+                                {
+                                    <b>@Html.DisplayFor(modelItem => player.Points)</b>
+                                }
+                                else
+                                {
+                                    @Html.DisplayFor(modelItem => player.Points)
+                                }
+                            </td>
+                        </tr>
                         }
                         @{i++;}
-                    </tbody>
-                    <tr height="75">
-                        <td colspan="3" align="right">
+
+                    <tr height="50">
+                        <td colspan="3" align="right" style="vertical-align:middle">
                             @Html.DisplayFor(modelItem => team.TotalFantasyPoints)
                         </td>
                     </tr>
@@ -68,42 +63,42 @@
                 {
                     <td>
                         <table class="table" border="0" cellpadding="0" cellspacing="0">
-                        <tr height="50">
-                            <td style="background-color:#C6C6C6"></td>
-                        </tr>
-                        <tr height="45">
-                            <td style="background-color:#C6C6C6"></td>
-                        </tr>
-                        <tr height="85">
-                            <td style="background-color:#C6C6C6">QB</td>
-                        </tr>
-                        <tr height="85">
-                            <td style="background-color:#C6C6C6">RB</td>
-                        </tr>
-                        <tr height="85">
-                            <td style="background-color:#C6C6C6">RB</td>
-                        </tr>
-                        <tr height="85">
-                            <td style="background-color:#C6C6C6">WR</td>
-                        </tr>
-                        <tr height="85">
-                            <td style="background-color:#C6C6C6">WR</td>
-                        </tr>
-                        <tr height="85">
-                            <td style="background-color:#C6C6C6">FLEX</td>
-                        </tr>
-                        <tr height="85">
-                            <td style="background-color:#C6C6C6">TE</td>
-                        </tr>
-                        <tr height="85">
-                            <td style="background-color:#C6C6C6">K</td>
-                        </tr>
-                        <tr height="85">
-                            <td style="background-color:#C6C6C6">DEF</td>
-                        </tr>
-                        <tr height="85">
-                            <td style="background-color:#C6C6C6"></td>
-                        </tr>
+                            <tr height="50">
+                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6"></td>
+                            </tr>
+                            <tr height="30">
+                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6"></td>
+                            </tr>
+                            <tr height="85">
+                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6">QB</td>
+                            </tr>
+                            <tr height="85">
+                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6">RB</td>
+                            </tr>
+                            <tr height="85">
+                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6">RB</td>
+                            </tr>
+                            <tr height="85">
+                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6">WR</td>
+                            </tr>
+                            <tr height="85">
+                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6">WR</td>
+                            </tr>
+                            <tr height="85">
+                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6">FLEX</td>
+                            </tr>
+                            <tr height="85">
+                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6">TE</td>
+                            </tr>
+                            <tr height="85">
+                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6">K</td>
+                            </tr>
+                            <tr height="85">
+                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6">DEF</td>
+                            </tr>
+                            <tr height="50">
+                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6"></td>
+                            </tr>
                         </table>
                     </td>
                 }

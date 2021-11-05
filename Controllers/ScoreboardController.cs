@@ -76,12 +76,7 @@
                         string position = reader.GetValue(reader.GetOrdinal("Position")).ToString().Trim();
                         bool gameEnded = (bool)reader.GetValue(reader.GetOrdinal("GameEnded"));
                         double finalPoints = (double)reader.GetValue(reader.GetOrdinal("FinalPoints"));
-
-                        // if this is "K", change it to "PK", which is what is stored in the Players table from ESPN's roster pages
-                        if (position.ToLower().Equals("k"))
-                        {
-                            position = "PK";
-                        }
+                        string finalScoreString = reader.GetValue(reader.GetOrdinal("FinalPointsString")).ToString();
 
                         // add this player to the current roster
                         rosterPlayers.Add(new RosterPlayer()
@@ -89,9 +84,10 @@
                             Owner = owner,
                             Week = week,
                             PlayerName = playerName,
-                            Position = position,
+                            Position = (Position)Enum.Parse(typeof(Position), position),
                             GameEnded = gameEnded,
-                            FinalPoints = finalPoints
+                            FinalPoints = finalPoints,
+                            FinalScoreString = finalScoreString
                         });
                     }
                 }
@@ -106,12 +102,15 @@
             int rosterTwoTeCount = 0;
 
             // go through each player on the roster and create the player and add them to the hashtable
+            // TODO: once this is put in the UI where players are selected from a dropdown, we'll put the player ID in the CurrentRoster
+            // table and use that for searching below
             foreach (RosterPlayer rosterPlayer in rosterPlayers)
             {
-                sql = "SELECT ts.EspnGameId, p.EspnPlayerId, ts.HomeOrAway, p.PlayerName, ts.OpponentAbbreviation, p.Position, ts.GameDate " +
+                sql = "SELECT ts.EspnGameId, p.EspnPlayerId, ts.HomeOrAway, p.PlayerName, p.TeamAbbreviation, ts.OpponentAbbreviation, p.Position, ts.GameDate " +
                         "from Players p " +
                         "join TeamsSchedule ts on ts.TeamId = p.TeamId " +
-                        "where p.PlayerName = '" + rosterPlayer.PlayerName.Replace("'", "''") + "' and p.Position = '" + rosterPlayer.Position + "' and ts.Week = " + rosterPlayer.Week;
+                        //"where p.PlayerName = '" + rosterPlayer.PlayerName.Replace("'", "''") + "' and p.Position = '" + rosterPlayer.Position + "' and ts.Week = " + rosterPlayer.Week;
+                        "where p.PlayerName = '" + rosterPlayer.PlayerName.Replace("'", "''") + "' and ts.Week = " + rosterPlayer.Week;
 
                 using (SqlCommand command = new SqlCommand(sql, sqlConnection))
                 {
@@ -122,6 +121,7 @@
                             string espnGameId = ((int)reader.GetValue(reader.GetOrdinal("EspnGameId"))).ToString();
                             string espnPlayerId = ((int)reader.GetValue(reader.GetOrdinal("EspnPlayerId"))).ToString();
                             string homeOrAway = reader.GetValue(reader.GetOrdinal("HomeOrAway")).ToString();
+                            string teamAbbreviation = reader.GetValue(reader.GetOrdinal("TeamAbbreviation")).ToString();
                             string opponentAbbreviation = reader.GetValue(reader.GetOrdinal("OpponentAbbreviation")).ToString();
                             DateTime gameDate = DateTime.Parse((reader.GetValue(reader.GetOrdinal("GameDate")).ToString()));
 
@@ -136,11 +136,11 @@
 
                             switch (rosterPlayer.Position)
                             {
-                                case "QB":
+                                case Position.QB:
                                     positionType = Position.QB;
                                     break;
 
-                                case "RB":
+                                case Position.RB:
                                     if (rosterPlayer.Owner.Equals("Liz"))
                                     {
                                         if (rosterOneRbCount == 2)
@@ -168,7 +168,7 @@
 
                                     break;
 
-                                case "WR":
+                                case Position.WR:
                                     if (rosterPlayer.Owner.Equals("Liz"))
                                     {
                                         if (rosterOneWrCount == 2)
@@ -195,7 +195,7 @@
                                     }
                                     break;
 
-                                case "TE":
+                                case Position.TE:
                                     if (rosterPlayer.Owner.Equals("Liz"))
                                     {
                                         if (rosterOneTeCount == 1)
@@ -222,11 +222,11 @@
                                     }
                                     break;
 
-                                case "PK":
+                                case Position.K:
                                     positionType = Position.K;
                                     break;
 
-                                case "DEF":
+                                case Position.DEF:
                                     // if this is a defense, we need to strip off the last part of the team name (so buffalo instead of buffalo bills)
                                     int lastSpaceIndex = playerNameSearchString.LastIndexOf(" ");
                                     playerNameSearchString = playerNameSearchString.Substring(0, lastSpaceIndex);
@@ -244,7 +244,7 @@
                             // then encode the result, which will change the %27 into %2527
                             playerNameSearchString = HttpUtility.UrlEncode(playerNameSearchString.Replace("'", HttpUtility.UrlEncode("'")));
 
-                            player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerNameSearchString + "/stats", positionType, espnPlayerId, espnGameId, gameDate, homeOrAway, rosterPlayer.PlayerName, opponentAbbreviation, rosterPlayer.Owner, rosterPlayer.GameEnded, rosterPlayer.FinalPoints);
+                            player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerNameSearchString + "/stats", rosterPlayer.Position, positionType, espnPlayerId, espnGameId, gameDate, homeOrAway, rosterPlayer.PlayerName, teamAbbreviation, opponentAbbreviation, rosterPlayer.Owner, rosterPlayer.GameEnded, rosterPlayer.FinalPoints, rosterPlayer.FinalScoreString);
 
                             addPlayerToHashtable(testPlayers, espnGameId, player);
                         }
@@ -410,6 +410,7 @@
 
                     p.Points += scraper.parseGameTrackerPage(stateInfo.EspnGameId, p.EspnPlayerId, p.HomeOrAway, p.OpponentAbbreviation);
                     p.Points += scraper.parseTwoPointConversionsForPlayer(stateInfo.EspnGameId, p.RawPlayerName);
+                    p.TimeRemaining = scraper.parseTimeRemaining();
 
                     // calculate kicker FGs if this player is a kicker
                     if (p.Position == Position.K)
@@ -428,10 +429,18 @@
                         // set the flag to false since this game is no longer in progress
                         p.GameInProgress = false;
 
-                        updateCurrentRosterWithFinalScore(p.Owner, p.RawPlayerName, p.Points);
+                        // set flag to true that the game ended, used for the final score string (a game can be not start - therefore
+                        // not in progress - and also not ended, so we wouldn't want to display the final score in this case)
+                        p.GameEnded = true;
+
+                        // Get the final score string (such as "(W) 45 - 30") and store this in the database
+                        string finalScoreString = scraper.parseFinalScore(p.TeamAbbreviation, p.OpponentAbbreviation);
+
+                        p.FinalScoreString = finalScoreString;
+
+                        updateCurrentRosterWithFinalScore(p.Owner, p.RawPlayerName, p.Points, finalScoreString);
                     }
                 }
-
             }
 
             // all of the work is done, so signal the thread that it's complete so the ThreadPool will be notified
@@ -446,8 +455,9 @@
         /// </summary>
         /// <param name="ownerName">The owner of the team</param>
         /// <param name="playerName">The player whose points we are updating in the CurrentRoster table</param>
-        /// <param name="finalScore">The final score the player got in the game</param>
-        private void updateCurrentRosterWithFinalScore(string ownerName, string playerName, double finalScore)
+        /// <param name="playerFinalScore">The final score the player got in the game</param>
+        /// <param name="finalScoreString">The final score string for the player's team, which is displayed in the UI</param>
+        private void updateCurrentRosterWithFinalScore(string ownerName, string playerName, double playerFinalScore, string finalScoreString)
         {
             var connectionStringBuilder = new SqlConnectionStringBuilder
             {
@@ -467,8 +477,9 @@
 
             // TODO: When the players are picked from the form, we should be using the player id to update the table
             // update the specific player and add a double apostrophe to the name if there is one in the name (such as in Ja'Marr Chase)
+            // TODO: RENAME DB FinalPointsString to FinalScoreString
             string sql = "update CurrentRoster " +
-                         "SET GameEnded = 'true', FinalPoints = " + finalScore + " " +
+                         "SET GameEnded = 'true', FinalPoints = " + playerFinalScore + ", FinalPointsString = '" + finalScoreString + "' " +
                          "where Owner = '" + ownerName + "' and PlayerName = '" + playerName.Replace("'", "''") + "'";
 
 
@@ -510,17 +521,22 @@
         /// so that we can scrape the espn boxscore and playbyplay pages to get live stats.
         /// </summary>
         /// <param name="apiQuery">Yahoo API query for the player</param>
-        /// <param name="position">Position of the player (QB, RB, WR, TE, K, DEF)</param>
+        /// <param name="truePosition">The true position which will not be a WR/RB/TE changed to a FLEX. This is used so the
+        /// players true position can be displayed under their name in the FLEX row of the UI</param>
+        /// <param name="position">Position of the player (QB, RB, WR, TE, FLEX, K, DEF), which includes FLEX and is used so the players
+        /// can be sorted according to the Position enum and the FLEX player is displayed in the proper row in the UI</param>
         /// <param name="espnPlayerId">Player ID on ESPN so we can parse stats for this player on ESPNs pages</param>
         /// <param name="espnGameId">Game ID on ESPN so we can parse the correct game to get stats for this player</param>
         /// <param name="gameTime">Time the game is starting</param>
         /// <param name="homeOrAway">"home" or "away" game, which is needed to find the correct stats on ESPN for the player</param>
         /// <param name="playerName">Player's name which is only used to search for 2-point conversions in the ESPN play by play page</param>
+        /// <param name="teamAbbreviation">Player's team abbreviation</param>
         /// <param name="opponentAbbreviation">If this palyer is a defense, this parameter is the abbreviation of their opponent</param>
         /// <param name="gameEnded">The db will have a GameEnded flag set whether the player's game has ended or not</param>
         /// <param name="finalPoints">If this player's game has ended, they'll have final points, otherwise they'll have 0</param>
+        /// <param name="finalScoreString">If this player's game has ended, they'll have a final score string to display such as "(W) 45 - 30")</param>
         /// <returns></returns>
-        private async Task<SelectedPlayer> CreatePlayer(string apiQuery, Position position, string espnPlayerId, string espnGameId, DateTime gameTime, string homeOrAway, string playerName, string opponentAbbreviation, string owner, bool gameEnded, double finalPoints)
+        private async Task<SelectedPlayer> CreatePlayer(string apiQuery, Position truePosition, Position position, string espnPlayerId, string espnGameId, DateTime gameTime, string homeOrAway, string playerName, string teamAbbreviation, string opponentAbbreviation, string owner, bool gameEnded, double finalPoints, string finalScoreString)
         {
             //HttpClient client = new HttpClient();
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", AuthModel.AccessToken);
@@ -570,16 +586,19 @@
             SelectedPlayer selectedPlayer = new SelectedPlayer();
             selectedPlayer.Name = player.Name.First + " " + player.Name.Last;
             selectedPlayer.Headshot = player.Headshot.Url;
+            selectedPlayer.TruePosition = truePosition;
             selectedPlayer.Position = position;
             selectedPlayer.EspnGameId = espnGameId;
             selectedPlayer.GameTime = gameTime;
             selectedPlayer.EspnPlayerId = espnPlayerId;
+            selectedPlayer.TeamAbbreviation = teamAbbreviation;
             selectedPlayer.OpponentAbbreviation = opponentAbbreviation;
             selectedPlayer.RawPlayerName = playerName;
             selectedPlayer.HomeOrAway = homeOrAway;
             selectedPlayer.Owner = owner;
             selectedPlayer.GameEnded = gameEnded;
             selectedPlayer.Points = finalPoints;
+            selectedPlayer.FinalScoreString = finalScoreString;
 
             return selectedPlayer;
         }

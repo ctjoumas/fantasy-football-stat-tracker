@@ -52,6 +52,100 @@
         }
 
         /// <summary>
+        /// Parses the play by play node and gets the last node, which will have the time remaining and current quarter
+        /// of the last play, such as: (13:16 - 1st)  D.Johnson left tackle to DEN 4 for 10 yards (K.Jackson). In this case,
+        /// we will store "13:16 1Q". If it's on OT, it will be "13:16 OT".
+        /// </summary>
+        /// <returns></returns>
+        public string parseTimeRemaining()
+        {
+            string timeRemaining = "";
+
+            // we are looking for all <span class="post-play"> nodes
+            var postPlayNodes = playByPlayDoc.DocumentNode.SelectNodes("//span[@class='post-play']");
+
+            // get the last play by play node and parse out the time remaining and current quarter
+            var lastPostPlayNode = postPlayNodes[postPlayNodes.Count - 1];
+
+            // don't parse time remaining if the game has ended
+            if (!lastPostPlayNode.InnerText.ToLower().Equals("end game"))
+            {
+                int indexOfFirstParenthesis = lastPostPlayNode.InnerText.IndexOf("(");
+                int indexOfLastParenthesis = lastPostPlayNode.InnerText.IndexOf(")");
+
+                // this will leave us with something like "13:16 - 1st)
+                timeRemaining = lastPostPlayNode.InnerText.Substring(indexOfFirstParenthesis + 1, (indexOfLastParenthesis - indexOfFirstParenthesis - 1));
+                string[] timeRemainingElements = timeRemaining.Split("-");
+                timeRemaining = string.Join("", timeRemainingElements);
+            }
+
+            return timeRemaining;
+        }
+
+        /// <summary>
+        /// Gets the final score string (such as "(W) 45 - 30") and store this in the database
+        /// </summary>
+        /// <param name="teamAbbreviation"></param>
+        /// <param name="opponentAbbreviation"></param>
+        /// <returns></returns>
+        public string parseFinalScore(string teamAbbreviation, string opponentAbbreviation)
+        {
+            string finalScoreString = "";
+
+            // get the final score nodes, which are under the <div class="game-status"> node. This will return TR nodes which will look like:
+            // <tr>
+            //   <td class="team-name">NYJ</td>
+            //   <td>7</td>
+            //   <td>3</td>
+            //   <td>6</td>
+            //   <td>14</td>
+            //   <td class="final-score">30</td>
+            // </tr>
+            // <tr>
+            //   <td class="team-name">IND</td>
+            //   <td>7</td>
+            //   <td>21</td>
+            //   <td>14</td>
+            //   <td>3</td>
+            //   <td class="final-score">45</td>
+            // </tr>
+            var finalScoreTrNodes = playByPlayDoc.DocumentNode.SelectNodes("//div[@class='game-status']/div/table/tbody/tr");
+
+            int playerTeamScore = 0;
+            int opponentTeamScore = 0;
+
+            // go through each node and find the opponent team's score and this player's team's score
+            foreach (var finalScoreTrNode in finalScoreTrNodes)
+            {
+                // the first and last child node is what we are interested in (the "team-name" and "final-score" nodes)
+                string teamName = finalScoreTrNode.FirstChild.InnerText;//.Attributes[0].Value;
+
+                // check if it's this players team or the opponent team
+                if (teamName.ToLower().Equals(teamAbbreviation.ToLower()))
+                {
+                    // pull out the player's teams score
+                    playerTeamScore = int.Parse(finalScoreTrNode.LastChild.InnerText);
+                }
+                else
+                {
+                    // pull out the opponent score
+                    opponentTeamScore = int.Parse(finalScoreTrNode.LastChild.InnerText);
+                }
+            }
+
+            if (playerTeamScore > opponentTeamScore)
+            {
+                finalScoreString += "(W) " + playerTeamScore.ToString() + " - " + opponentTeamScore.ToString();
+            }
+            else
+            {
+                finalScoreString += "(L) " + playerTeamScore.ToString() + " - " + opponentTeamScore.ToString();
+            }
+
+            return finalScoreString;
+        }
+
+        /// <summary>
         /// Parses the play by play page and finds all two point conversions which did not "fail". Of the ones
         /// which didn't fail, we will see if the player is part of this play (there is no player id associated
         /// with this page)

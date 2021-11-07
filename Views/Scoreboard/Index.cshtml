@@ -14,8 +14,14 @@
             <td>
                 <table style="min-width:300px"class="table" border="0" cellpadding="0" cellspacing="0">
                     <tr height="50">
-                        <td colspan="3" style="background-color:#C6C6C6">
+                        <td style="background-color:#C6C6C6">
                             @Html.DisplayFor(modelItem => team.Owner)
+                        </td>
+                        <td colspan="2" align="right" style="background-color:#C6C6C6;vertical-align:middle">
+                            @{
+                                var totalTeamPoints = team.TotalFantasyPoints.ToString("0.00");
+                            }
+                            <strong>@totalTeamPoints</strong>
                         </td>
                     </tr>
                     <tr height="30">
@@ -51,7 +57,7 @@
                         var color = player.GameInProgress ? "#F9F9CD" : "#FFFFFF";
                         var boldOrNormal = player.GameInProgress ? "bold" : "normal";
 
-                        <tr style="background-color:@color" height="85">
+                        <tr style="background-color:@color" height="100px">
                             <td style="vertical-align:middle">
                                 <img src ="@Html.DisplayFor(modelItem => player.Headshot)" alt=""headshot" />
                             </td>
@@ -67,69 +73,65 @@
                                 </span>
                             </td>
                             <td align="right" style="vertical-align:middle">
+                                @{
+                                    var playerPoints = player.Points.ToString("0.00");
+                                }
+
                                 @if (player.GameInProgress)
                                 {
-                                    <b>@Html.DisplayFor(modelItem => player.Points)</b>
+                                    
+                                    <strong>@playerPoints</strong>
                                 }
                                 else
                                 {
-                                    @Html.DisplayFor(modelItem => player.Points)
+                                    @playerPoints
                                 }
                             </td>
                         </tr>
                         }
                         @{i++;}
-
-                    <tr height="50">
-                        <td colspan="3" align="right" style="vertical-align:middle">
-                            @Html.DisplayFor(modelItem => team.TotalFantasyPoints)
-                        </td>
-                    </tr>
                 </table>
             </td>
-             @if (i == 1)
-                {
-                    <td>
-                        <table class="table" border="0" cellpadding="0" cellspacing="0">
-                            <tr height="50">
-                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6"></td>
-                            </tr>
-                            <tr height="30">
-                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6"></td>
-                            </tr>
-                            <tr height="85">
-                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6">QB</td>
-                            </tr>
-                            <tr height="85">
-                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6">RB</td>
-                            </tr>
-                            <tr height="85">
-                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6">RB</td>
-                            </tr>
-                            <tr height="85">
-                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6">WR</td>
-                            </tr>
-                            <tr height="85">
-                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6">WR</td>
-                            </tr>
-                            <tr height="85">
-                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6">FLEX</td>
-                            </tr>
-                            <tr height="85">
-                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6">TE</td>
-                            </tr>
-                            <tr height="85">
-                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6">K</td>
-                            </tr>
-                            <tr height="85">
-                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6">DEF</td>
-                            </tr>
-                            <tr height="50">
-                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6"></td>
-                            </tr>
-                        </table>
-                    </td>
-                }
+            @if (i == 1)
+            {
+                <td>
+                    <table class="table" border="0" cellpadding="0" cellspacing="0">
+                        <tr height="50">
+                            <td align="center" style="vertical-align:middle; background-color:#C6C6C6"></td>
+                        </tr>
+                        <tr height="30">
+                            <td align="center" style="vertical-align:middle; background-color:#C6C6C6"></td>
+                        </tr>
+                        <tr height="100px">
+                            <td align="center" style="vertical-align:middle; background-color:#C6C6C6">QB</td>
+                        </tr>
+                        <tr height="100px">
+                            <td align="center" style="vertical-align:middle; background-color:#C6C6C6">RB</td>
+                        </tr>
+                        <tr height="100px">
+                            <td align="center" style="vertical-align:middle; background-color:#C6C6C6">RB</td>
+                        </tr>
+                        <tr height="100px">
+                            <td align="center" style="vertical-align:middle; background-color:#C6C6C6">WR</td>
+                        </tr>
+                        <tr height="100px">
+                            <td align="center" style="vertical-align:middle; background-color:#C6C6C6">WR</td>
+                        </tr>
+                        <tr height="100px">
+                            <td align="center" style="vertical-align:middle; background-color:#C6C6C6">FLEX</td>
+                        </tr>
+                        <tr height="100px">
+                            <td align="center" style="vertical-align:middle; background-color:#C6C6C6">TE</td>
+                        </tr>
+                        <tr height="100px">
+                            <td align="center" style="vertical-align:middle; background-color:#C6C6C6">K</td>
+                        </tr>
+                        <tr height="100px">
+                            <td align="center" style="vertical-align:middle; background-color:#C6C6C6">DEF</td>
+                        </tr>
+                    </table>
+                </td>
+            }
         }
     </tr>
 </table>

@@ -302,17 +302,22 @@
 
                 // each thread will need a done event signifying when the thread has completed, so create a list of
                 // done events for each thread (for each espn game id)
-                var doneEvents = new ManualResetEvent[testPlayers.Keys.Count];
+                //var doneEvents = new ManualResetEvent[testPlayers.Keys.Count];
 
                 // counter for the doneEvents array
                 int i = 0;
+
+                var tasks = new Task[testPlayers.Keys.Count];
 
                 // loop through each key (espn game id) and parse the points for each player in that game,
                 // adding each SelectedPlayer in the hashtable to the approprate list of teams (team one or team two)
                 foreach (string key in testPlayers.Keys)
                 {
+                    List<SelectedPlayer> playersInGame = (List<SelectedPlayer>) testPlayers[key];
+                    tasks[i] = Task.Factory.StartNew(() => scrapeStatsFromGame(key, playersInGame));
+
                     // create the done event for this thread
-                    doneEvents[i] = new ManualResetEvent(false);
+                    /*doneEvents[i] = new ManualResetEvent(false);
 
                     // setup the state parameters which are passed into the method being executed in the thread
                     State stateInfo = new State();
@@ -320,13 +325,16 @@
                     stateInfo.players = testPlayers;
                     stateInfo.DoneEvent = doneEvents[i];
 
-                    ThreadPool.QueueUserWorkItem(scrapeStatsFromGame, stateInfo);
+                    ThreadPool.QueueUserWorkItem(scrapeStatsFromGame, stateInfo);*/
 
                     i++;
                 }
 
+                // wait for all threads to complete
+                Task.WaitAll(tasks);
+
                 // wait for all threads to have reported that they have completed their work
-                WaitHandle.WaitAll(doneEvents);
+                //WaitHandle.WaitAll(doneEvents);
 
                 // The values of each hashtable are lists of List<SelectedPlayer> so we need to get this list of lists and flatten
                 // the list
@@ -381,16 +389,20 @@
         /// is done, the thread will report that it has completed by calling the signalThread method
         /// </summary>
         /// <param name="scraperParameters"></param>
-        private void scrapeStatsFromGame(Object state)
+        /// <param name="espnGameId">ESPN Game ID for the players on either roster</param>
+        /// <param name="players">All players playing in the given ESPN Game ID</param>
+        //private void scrapeStatsFromGame(Object state)
+        private void scrapeStatsFromGame(string espnGameId, List<SelectedPlayer> players)
         {
-            State stateInfo = (State)state;
+            //State stateInfo = (State)state;
 
-            List<SelectedPlayer> selectedPlayers = (List<SelectedPlayer>)stateInfo.players[stateInfo.EspnGameId];
+            //List<SelectedPlayer> selectedPlayers = (List<SelectedPlayer>)stateInfo.players[stateInfo.EspnGameId];
 
             // Check the date time of the game for the first player (it is the same for all players in this list
             // since they belong to the same game) and if it hasn't started, just set the points equal to 0
             // and don't load the document.
-            SelectedPlayer player = selectedPlayers[0];
+            //SelectedPlayer player = selectedPlayers[0];
+            SelectedPlayer player = players[0];
             TimeSpan difference = player.GameTime.Subtract(DateTime.Now);
 
             // Also check if the first player's game has ended, which is set to true in the CurrentRoster table when the scraper
@@ -400,22 +412,27 @@
             // if the game hasn't started or the game has ended, don't load the HtmlDoc to parse stats since we've already done that
             if ((difference.TotalDays < 0) && (!gameEnded))
             {
-                EspnHtmlScraper scraper = new EspnHtmlScraper(stateInfo.EspnGameId);
+                //EspnHtmlScraper scraper = new EspnHtmlScraper(stateInfo.EspnGameId);
+                EspnHtmlScraper scraper = new EspnHtmlScraper(espnGameId);
 
                 // calculate points for each of these players
-                foreach (SelectedPlayer p in selectedPlayers)
+                //foreach (SelectedPlayer p in selectedPlayers)
+                foreach (SelectedPlayer p in players)
                 {
                     // set flag to true to indicate this player's game is in progress
                     p.GameInProgress = true;
 
-                    p.Points += scraper.parseGameTrackerPage(stateInfo.EspnGameId, p.EspnPlayerId, p.HomeOrAway, p.OpponentAbbreviation);
-                    p.Points += scraper.parseTwoPointConversionsForPlayer(stateInfo.EspnGameId, p.RawPlayerName);
+                    //p.Points += scraper.parseGameTrackerPage(stateInfo.EspnGameId, p.EspnPlayerId, p.HomeOrAway, p.OpponentAbbreviation);
+                    p.Points += scraper.parseGameTrackerPage(espnGameId, p.EspnPlayerId, p.HomeOrAway, p.OpponentAbbreviation);
+                    //p.Points += scraper.parseTwoPointConversionsForPlayer(stateInfo.EspnGameId, p.RawPlayerName);
+                    p.Points += scraper.parseTwoPointConversionsForPlayer(espnGameId, p.RawPlayerName);
                     p.TimeRemaining = scraper.parseTimeRemaining();
 
                     // calculate kicker FGs if this player is a kicker
                     if (p.Position == Position.K)
                     {
-                        p.Points += scraper.parseFieldGoals(stateInfo.EspnGameId, p.RawPlayerName);
+                        //p.Points += scraper.parseFieldGoals(stateInfo.EspnGameId, p.RawPlayerName);
+                        p.Points += scraper.parseFieldGoals(espnGameId, p.RawPlayerName);
                     }
                     // get any blocked punts or field goals (NOTE: ASSUMING "BLOCKED" WILL APPEAR, SO NEED FURTHER TESTING
                     else if (p.Position == Position.DEF)
@@ -444,7 +461,7 @@
             }
 
             // all of the work is done, so signal the thread that it's complete so the ThreadPool will be notified
-            stateInfo.DoneEvent.Set();
+            // stateInfo.DoneEvent.Set();
         }
 
         /// <summary>

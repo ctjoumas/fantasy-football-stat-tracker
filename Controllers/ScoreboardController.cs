@@ -314,7 +314,8 @@
                 foreach (string key in testPlayers.Keys)
                 {
                     List<SelectedPlayer> playersInGame = (List<SelectedPlayer>) testPlayers[key];
-                    tasks[i] = Task.Factory.StartNew(() => scrapeStatsFromGame(key, playersInGame));
+                    //tasks[i] = Task.Factory.StartNew(() => scrapeStatsFromGame(key, playersInGame));
+                    scrapeStatsFromGame(key, playersInGame);
 
                     // create the done event for this thread
                     /*doneEvents[i] = new ManualResetEvent(false);
@@ -331,7 +332,7 @@
                 }
 
                 // wait for all threads to complete
-                Task.WaitAll(tasks);
+                //Task.WaitAll(tasks);
 
                 // wait for all threads to have reported that they have completed their work
                 //WaitHandle.WaitAll(doneEvents);

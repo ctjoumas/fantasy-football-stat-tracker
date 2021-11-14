@@ -426,7 +426,7 @@
                     p.Points += scraper.parseGameTrackerPage(espnGameId, p.EspnPlayerId, p.HomeOrAway, p.OpponentAbbreviation);
                     //p.Points += scraper.parseTwoPointConversionsForPlayer(stateInfo.EspnGameId, p.RawPlayerName);
                     p.Points += scraper.parseTwoPointConversionsForPlayer(espnGameId, p.RawPlayerName);
-                    p.TimeRemaining = scraper.parseTimeRemaining();
+                    p.TimeRemaining = "";// scraper.parseTimeRemaining();
 
                     // calculate kicker FGs if this player is a kicker
                     if (p.Position == Position.K)

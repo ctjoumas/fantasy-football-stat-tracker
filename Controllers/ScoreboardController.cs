@@ -404,7 +404,11 @@
             // and don't load the document.
             //SelectedPlayer player = selectedPlayers[0];
             SelectedPlayer player = players[0];
-            TimeSpan difference = player.GameTime.Subtract(DateTime.Now);
+
+            // Get current EST time - If this is run on a machine with a differnet local time, DateTime.Now will not return the proper time
+            TimeZoneInfo easterZone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+            DateTime currentEasterStandardTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, easterZone);
+            TimeSpan difference = player.GameTime.Subtract(currentEasterStandardTime);
 
             // Also check if the first player's game has ended, which is set to true in the CurrentRoster table when the scraper
             // determines that the game has ended.

@@ -314,8 +314,8 @@
                 foreach (string key in testPlayers.Keys)
                 {
                     List<SelectedPlayer> playersInGame = (List<SelectedPlayer>) testPlayers[key];
-                    //tasks[i] = Task.Factory.StartNew(() => scrapeStatsFromGame(key, playersInGame));
-                    scrapeStatsFromGame(key, playersInGame);
+                    tasks[i] = Task.Factory.StartNew(() => scrapeStatsFromGame(key, playersInGame));
+                    //scrapeStatsFromGame(key, playersInGame);
 
                     // create the done event for this thread
                     /*doneEvents[i] = new ManualResetEvent(false);
@@ -332,7 +332,7 @@
                 }
 
                 // wait for all threads to complete
-                //Task.WaitAll(tasks);
+                Task.WaitAll(tasks);
 
                 // wait for all threads to have reported that they have completed their work
                 //WaitHandle.WaitAll(doneEvents);
@@ -406,8 +406,8 @@
             SelectedPlayer player = players[0];
 
             // Get current EST time - If this is run on a machine with a differnet local time, DateTime.Now will not return the proper time
-            TimeZoneInfo easterZone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
-            DateTime currentEasterStandardTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, easterZone);
+            TimeZoneInfo easternZone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+            DateTime currentEasterStandardTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, easternZone);
             TimeSpan difference = player.GameTime.Subtract(currentEasterStandardTime);
 
             // Also check if the first player's game has ended, which is set to true in the CurrentRoster table when the scraper
@@ -431,7 +431,7 @@
                     p.Points += scraper.parseGameTrackerPage(espnGameId, p.EspnPlayerId, p.HomeOrAway, p.OpponentAbbreviation);
                     //p.Points += scraper.parseTwoPointConversionsForPlayer(stateInfo.EspnGameId, p.RawPlayerName);
                     p.Points += scraper.parseTwoPointConversionsForPlayer(espnGameId, p.RawPlayerName);
-                    p.TimeRemaining = "";// scraper.parseTimeRemaining();
+                    p.TimeRemaining = scraper.parseTimeRemaining();
 
                     // calculate kicker FGs if this player is a kicker
                     if (p.Position == Position.K)

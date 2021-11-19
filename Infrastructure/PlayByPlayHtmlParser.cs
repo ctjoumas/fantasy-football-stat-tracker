@@ -135,6 +135,11 @@
         {
             int fieldGoalPoints = 0;
 
+            // the player name in the text could be full name or first initial and last name (e.g., N.Folk), so we need
+            // to build that name here to add into the check below
+            int indexOfSpaceAfterPlayerName = playerName.IndexOf(" ");
+            string abbreviatedPlayerName = playerName[0] + "." + playerName.Substring(indexOfSpaceAfterPlayerName + 1);
+
             // we are looking for all <span class="post-play"> nodes which have "Field Goal" in the inner text such as:
             // <span class="post-play">
             //   (6:07 - 1st) Tyler Bass 24 Yd Field Goal
@@ -146,14 +151,25 @@
             {
                 // if the field goal was good, check if the player's name was invovled (pass
                 // or reception, it's 2 points either way)
-                if (!fieldGoalNode.InnerText.ToLower().Contains("no good") && fieldGoalNode.InnerText.ToLower().Contains(playerName.ToLower()))
+                if (!fieldGoalNode.InnerText.ToLower().Contains("no good") && !fieldGoalNode.InnerText.ToLower().Contains("nullified") &&
+                    (fieldGoalNode.InnerText.ToLower().Contains(playerName.ToLower()) || fieldGoalNode.InnerText.ToLower().Contains(abbreviatedPlayerName.ToLower())))
                 {
                     // this player successfully kicked a FG, so we need to parse out the length.
                     // it will be in this format: (5:02 - 3rd) Justin Tucker 39 Yd Field Goal,
                     // so we will look for the player name and grab the number between the next two spaces
                     int playerNameIndex = fieldGoalNode.InnerText.ToLower().IndexOf(playerName.ToLower());
 
-                    int indexOfSpaceAfterPlayerName = fieldGoalNode.InnerText.IndexOf(" ", playerNameIndex + playerName.Length);
+                    // if the full player name isn't found, we need to check for the abbreviated player name
+                    if (playerNameIndex == -1)
+                    {
+                        playerNameIndex = fieldGoalNode.InnerText.ToLower().IndexOf(abbreviatedPlayerName.ToLower());
+                        indexOfSpaceAfterPlayerName = fieldGoalNode.InnerText.IndexOf(" ", playerNameIndex + abbreviatedPlayerName.Length);
+                    }
+                    else
+                    {
+                        indexOfSpaceAfterPlayerName = fieldGoalNode.InnerText.IndexOf(" ", playerNameIndex + playerName.Length);
+                    }
+                    
                     int indexOfSpaceAfterFgDisatance = fieldGoalNode.InnerText.IndexOf(" ", indexOfSpaceAfterPlayerName + 1);
                     int fgDistance = int.Parse(fieldGoalNode.InnerText.Substring(indexOfSpaceAfterPlayerName, (indexOfSpaceAfterFgDisatance - indexOfSpaceAfterPlayerName)));
 

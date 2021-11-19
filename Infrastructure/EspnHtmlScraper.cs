@@ -256,6 +256,9 @@
                     int lastSpaceIndex = teamNameText.LastIndexOf(" ");
                     string stat = teamNameText.Substring(lastSpaceIndex + 1);
 
+                    // TODO: if stat is equal to "defensive", we can skip going through each individual player and just grab the last row which is the team total for sacks and TDs
+                    // which will save looping through a large number of rows
+
                     // now we need to find the table row under the "mod-data" table, which contains the stats. In this
                     // table, there are two rows of data under the <tbody> for each player. The first row will contain <td>s of all stats,
                     // with the first td being the player id which we will need to check so we are pulling stats for the
@@ -530,10 +533,10 @@
             {
                 string stat = node.Attributes[0].Value;
 
+                // we will only check for int and not TD's since interceptions returned for TD's are accounted for in the
+                // main Defensive stats table
                 if (stat.Equals("int"))
                     interceptions += int.Parse(node.InnerText);
-                else if (stat.Equals("td"))
-                    touchdowns += int.Parse(node.InnerText);
             }
 
             defensivePointsFromInterceptions += (interceptions * DEFENSIVE_INT_POINTS) + (touchdowns * DEFENSIVE_TD_POINTS);
@@ -564,6 +567,8 @@
                     // a player can get 0.5 sacks, so we need to parse as a double
                     sacks += (double)Convert.ToDouble(node.InnerText);
                 else if (stat.Equals("td"))
+                    // this will count TDs made on INT and fumble returns, so we only want to calculate the TDs here and not in the
+                    // other tables (such as Interceptions, where it will also show up)
                     touchdowns += int.Parse(node.InnerText);
             }
 

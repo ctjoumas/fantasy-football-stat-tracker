@@ -430,14 +430,14 @@
                     //p.Points += scraper.parseGameTrackerPage(stateInfo.EspnGameId, p.EspnPlayerId, p.HomeOrAway, p.OpponentAbbreviation);
                     p.Points += scraper.parseGameTrackerPage(espnGameId, p.EspnPlayerId, p.HomeOrAway, p.OpponentAbbreviation);
                     //p.Points += scraper.parseTwoPointConversionsForPlayer(stateInfo.EspnGameId, p.RawPlayerName);
-                    p.Points += scraper.parseTwoPointConversionsForPlayer(espnGameId, p.RawPlayerName);
+                    p.Points += scraper.parseTwoPointConversionsForPlayer(p.RawPlayerName);
                     p.TimeRemaining = scraper.parseTimeRemaining();
 
                     // calculate kicker FGs if this player is a kicker
                     if (p.Position == Position.K)
                     {
                         //p.Points += scraper.parseFieldGoals(stateInfo.EspnGameId, p.RawPlayerName);
-                        p.Points += scraper.parseFieldGoals(espnGameId, p.RawPlayerName);
+                        p.Points += scraper.parseFieldGoals(p.RawPlayerName);
                     }
                     // get any blocked punts or field goals (NOTE: ASSUMING "BLOCKED" WILL APPEAR, SO NEED FURTHER TESTING
                     else if (p.Position == Position.DEF)
@@ -456,7 +456,7 @@
                         p.GameEnded = true;
 
                         // Get the final score string (such as "(W) 45 - 30") and store this in the database
-                        string finalScoreString = scraper.parseFinalScore(p.TeamAbbreviation, p.OpponentAbbreviation);
+                        string finalScoreString = scraper.parseFinalScore(p.TeamAbbreviation);
 
                         p.FinalScoreString = finalScoreString;
 

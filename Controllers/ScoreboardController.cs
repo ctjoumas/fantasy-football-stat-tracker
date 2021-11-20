@@ -62,7 +62,9 @@
             List<RosterPlayer> rosterPlayers = new List<RosterPlayer>();
 
             // get all players for each team's roster for this week
-            string sql = "select * from CurrentRoster";
+            string sql = "select o.OwnerName, o.Logo, cr.Week, cr.PlayerName, cr.Position, cr.GameEnded, cr.FinalPoints, cr.FinalPointsString " +
+                        "from CurrentRoster cr " +
+                        "join Owners o on cr.OwnerID = o.OwnerID";
 
             using (SqlCommand command = new SqlCommand(sql, sqlConnection))
             {
@@ -70,7 +72,8 @@
                 {
                     while (reader.Read())
                     {
-                        string owner = reader.GetValue(reader.GetOrdinal("Owner")).ToString();
+                        string owner = reader.GetValue(reader.GetOrdinal("OwnerName")).ToString();
+                        byte[] logo = (byte[])reader.GetValue(reader.GetOrdinal("Logo"));
                         int week = (int)reader.GetValue(reader.GetOrdinal("Week"));
                         string playerName = reader.GetValue(reader.GetOrdinal("PlayerName")).ToString();
                         string position = reader.GetValue(reader.GetOrdinal("Position")).ToString().Trim();
@@ -82,6 +85,7 @@
                         rosterPlayers.Add(new RosterPlayer()
                         {
                             Owner = owner,
+                            Logo = logo,
                             Week = week,
                             PlayerName = playerName,
                             Position = (Position)Enum.Parse(typeof(Position), position),
@@ -244,7 +248,7 @@
                             // then encode the result, which will change the %27 into %2527
                             playerNameSearchString = HttpUtility.UrlEncode(playerNameSearchString.Replace("'", HttpUtility.UrlEncode("'")));
 
-                            player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerNameSearchString + "/stats", rosterPlayer.Position, positionType, espnPlayerId, espnGameId, gameDate, homeOrAway, rosterPlayer.PlayerName, teamAbbreviation, opponentAbbreviation, rosterPlayer.Owner, rosterPlayer.GameEnded, rosterPlayer.FinalPoints, rosterPlayer.FinalScoreString);
+                            player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerNameSearchString + "/stats", rosterPlayer.Position, positionType, espnPlayerId, espnGameId, gameDate, homeOrAway, rosterPlayer.PlayerName, teamAbbreviation, opponentAbbreviation, rosterPlayer.Owner, rosterPlayer.Logo, rosterPlayer.GameEnded, rosterPlayer.FinalPoints, rosterPlayer.FinalScoreString);
 
                             addPlayerToHashtable(testPlayers, espnGameId, player);
                         }
@@ -353,6 +357,7 @@
                 Team team = new Team
                 {
                     Owner = "Liz",
+                    OwnerLogo = teamOnePlayers[0].OwnerLogo,
                     TotalFantasyPoints = Math.Round(points, 2),
                     Players = teamOnePlayers
                 };
@@ -370,6 +375,7 @@
                 team = new Team
                 {
                     Owner = "Chris",
+                    OwnerLogo = teamTwoPlayers[0].OwnerLogo,
                     TotalFantasyPoints = Math.Round(points, 2),
                     Players = teamTwoPlayers
                 };
@@ -558,7 +564,7 @@
         /// <param name="finalPoints">If this player's game has ended, they'll have final points, otherwise they'll have 0</param>
         /// <param name="finalScoreString">If this player's game has ended, they'll have a final score string to display such as "(W) 45 - 30")</param>
         /// <returns></returns>
-        private async Task<SelectedPlayer> CreatePlayer(string apiQuery, Position truePosition, Position position, string espnPlayerId, string espnGameId, DateTime gameTime, string homeOrAway, string playerName, string teamAbbreviation, string opponentAbbreviation, string owner, bool gameEnded, double finalPoints, string finalScoreString)
+        private async Task<SelectedPlayer> CreatePlayer(string apiQuery, Position truePosition, Position position, string espnPlayerId, string espnGameId, DateTime gameTime, string homeOrAway, string playerName, string teamAbbreviation, string opponentAbbreviation, string owner, byte[] logo, bool gameEnded, double finalPoints, string finalScoreString)
         {
             //HttpClient client = new HttpClient();
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", AuthModel.AccessToken);
@@ -618,6 +624,7 @@
             selectedPlayer.RawPlayerName = playerName;
             selectedPlayer.HomeOrAway = homeOrAway;
             selectedPlayer.Owner = owner;
+            selectedPlayer.OwnerLogo = logo;
             selectedPlayer.GameEnded = gameEnded;
             selectedPlayer.Points = finalPoints;
             selectedPlayer.FinalScoreString = finalScoreString;

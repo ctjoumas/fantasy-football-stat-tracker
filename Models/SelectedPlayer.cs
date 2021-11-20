@@ -30,6 +30,9 @@
 
         public string Owner { get; set; }
 
+        // TODO: This should not be stored in the SelectedPlayer as it relates to only the owner; this needs to be redesigned
+        public byte[] OwnerLogo { get; set; }
+
         public string EspnGameId { get; set; }
 
         public DateTime GameTime { get; set; }

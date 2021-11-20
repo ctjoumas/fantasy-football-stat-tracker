@@ -12,6 +12,7 @@
     public class RosterPlayer
     {
         public string Owner { get; set; }
+        public byte[] Logo { get; set; }
         public int Week { get; set; }
         public string PlayerName { get; set; }
         public Position Position { get; set; }

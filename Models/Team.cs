@@ -11,6 +11,8 @@
 
         public string Owner { get; set; }
 
+        public byte[] OwnerLogo { get; set; }
+
         public double TotalFantasyPoints { get; set; }
     }
 }

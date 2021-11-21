@@ -151,29 +151,48 @@
                             // the FG will be listed as the last play, so grab that token and make sure the kicker's name is in this text
                             JToken playTokens = driveToken.SelectToken("plays");
 
-                            int numPlayTokens = ((JArray)playTokens).Count;
-
-                            // TODO: Check to make sure this will work; if there is a penalty during the FG, that may be the last play...
-                            string lastPlay = (string)driveToken.SelectToken("plays[" + (numPlayTokens - 1).ToString() + "].text");
-
-                            // if this play has the player name, check the distance of the kick
-                            // this will be in the format of: "(4:25) C.Boswell 20 yard field goal is GOOD, Center-C.Kuntz, Holder-P.Harvin."
-                            if (lastPlay.ToLower().Contains(abbreviatedPlayerName.ToLower()))/* ||
-                                lastPlayToken.ToLower().Contains(playerName.ToLower()))*/
+                            // there could be a penalty or a timeout after the kick, so the FG may not be the last play token so we
+                            // need to loop through all plays
+                            foreach (JToken playToken in playTokens)
                             {
-                                int playerNameIndex = lastPlay.IndexOf(abbreviatedPlayerName);
-                                string tempString = lastPlay.Substring(playerNameIndex);
-                                int firstSpaceIndex = tempString.IndexOf(" ");
-                                int secondSpaceIndex = tempString.IndexOf(" ", firstSpaceIndex + 1);
+                                // if this is the field goal token, the "scoringType" token will exist and the displayName will be "Field Goal"
+                                JToken scoringTypeToken = playToken["scoringType"];
+                                if (scoringTypeToken != null)
+                                {
+                                    if (scoringTypeToken["displayName"].ToString().ToLower().Equals("field goal"))
+                                    {
+                                        string playText = (string)playToken["text"];
 
-                                int fgDistance = int.Parse(tempString.Substring(firstSpaceIndex + 1, (secondSpaceIndex - (firstSpaceIndex + 1))));
+                                        // if this play has the player name, check the distance of the kick
+                                        // this will be in the format of: "(4:25) C.Boswell 20 yard field goal is GOOD, Center-C.Kuntz, Holder-P.Harvin."
+                                        if (playText.ToLower().Contains(abbreviatedPlayerName.ToLower()) ||
+                                            playText.ToLower().Contains(playerName.ToLower()))
+                                        {
+                                            int indexOfSpaceAfterPlayerName;
+                                            int playerNameIndex = playText.IndexOf(abbreviatedPlayerName);
 
-                                if (fgDistance < 40)
-                                    fieldGoalPoints += 3;
-                                else if (fgDistance < 50)
-                                    fieldGoalPoints += 4;
-                                else if (fgDistance >= 50)
-                                    fieldGoalPoints += 5;
+                                            // if the abbreviated player name isn't found, we need to check for the full player name
+                                            if (playerNameIndex == -1)
+                                            {
+                                                playerNameIndex = playText.IndexOf(playerName.ToLower());
+                                                indexOfSpaceAfterPlayerName = playText.IndexOf(" ", playerNameIndex + playerName.Length);
+                                            }
+                                            else
+                                            {
+                                                indexOfSpaceAfterPlayerName = playText.IndexOf(" ", playerNameIndex + abbreviatedPlayerName.Length);
+                                            }
+                                            int indexOfSpaceAfterFgDistance = playText.IndexOf(" ", indexOfSpaceAfterPlayerName + 1);
+                                            int fgDistance = int.Parse(playText.Substring(indexOfSpaceAfterPlayerName, (indexOfSpaceAfterFgDistance - indexOfSpaceAfterPlayerName)));
+
+                                            if (fgDistance < 40)
+                                                fieldGoalPoints += 3;
+                                            else if (fgDistance < 50)
+                                                fieldGoalPoints += 4;
+                                            else if (fgDistance >= 50)
+                                                fieldGoalPoints += 5;
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

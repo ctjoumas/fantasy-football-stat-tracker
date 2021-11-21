@@ -317,7 +317,7 @@
                 // adding each SelectedPlayer in the hashtable to the approprate list of teams (team one or team two)
                 foreach (string key in testPlayers.Keys)
                 {
-                    List<SelectedPlayer> playersInGame = (List<SelectedPlayer>) testPlayers[key];
+                    List<SelectedPlayer> playersInGame = (List<SelectedPlayer>)testPlayers[key];
                     tasks[i] = Task.Factory.StartNew(() => scrapeStatsFromGame(key, playersInGame));
                     //scrapeStatsFromGame(key, playersInGame);
 
@@ -508,8 +508,8 @@
             // TODO: RENAME DB FinalPointsString to FinalScoreString
             string sql = "update CurrentRoster " +
                          "SET GameEnded = 'true', FinalPoints = " + playerFinalScore + ", FinalPointsString = '" + finalScoreString + "' " +
-                         "where Owner = '" + ownerName + "' and PlayerName = '" + playerName.Replace("'", "''") + "'";
-
+                         "FROM CurrentRoster " +
+                         "INNER JOIN Owners on Owners.OwnerName ='" + ownerName + "' and PlayerName = '" + playerName.Replace("'", "''") + "'";
 
             sqlConnection.Open();
 

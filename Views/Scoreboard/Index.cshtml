@@ -12,7 +12,7 @@
         @foreach (var team in Model)
         {
             <td>
-                <table style="min-width:300px;border-collapse: collapse;"class="table">
+                <table style="min-width:300px;border-collapse: collapse;" class="table">
                     <tr style="height:75px;">
                         <td style="background-color:#C6C6C6;line-height:0;padding:0px;margin:0px;width:65px;height:75px;">
                             @{
@@ -32,7 +32,7 @@
                     <tr height="30">
                         <td colspan="3"></td>
                     </tr>
-                    
+
                     @foreach (var player in team.Players)
                     {
                         // this will display either the date / time of the matchup or "Final"
@@ -64,13 +64,13 @@
 
                         <tr style="background-color:@color" height="100px">
                             <td style="vertical-align:middle">
-                                <img src ="@Html.DisplayFor(modelItem => player.Headshot)" alt=""headshot" />
+                                <img src="@Html.DisplayFor(modelItem => player.Headshot)" alt="" headshot" />
                             </td>
                             <td style="vertical-align:middle">
                                 <span style="font-weight:@boldOrNormal;">
                                     @Html.DisplayFor(modelItem => player.Name)
                                     <br />
-                                     <font size="2">
+                                    <font size="2">
                                         @player.TeamAbbreviation.ToUpper() - @player.TruePosition
                                         <br />
                                         @matchupDisplay
@@ -90,7 +90,7 @@
 
                                 @if (player.GameInProgress)
                                 {
-                                    
+
                                     <strong>@playerPoints</strong>
                                 }
                                 else
@@ -99,15 +99,15 @@
                                 }
                             </td>
                         </tr>
-                        }
-                        @{i++;}
+                    }
+                    @{i++;}
                 </table>
             </td>
             @if (i == 1)
             {
                 <td>
                     <table class="table" border="0" cellpadding="0" cellspacing="0">
-                        <tr style="height:75px;border:dotted;">
+                        <tr style="height:75px;">
                             <td align="center" style="vertical-align:middle; background-color:#C6C6C6"></td>
                         </tr>
                         <tr height="30">

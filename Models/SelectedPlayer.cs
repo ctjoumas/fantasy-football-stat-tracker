@@ -59,6 +59,9 @@
 
         public bool GameEnded { get; set; } = false;
 
+        // Holds the current score string such as "17 - 20"
+        public string CurrentScoreString { get; set; }
+
         // Holds the final score string (such as "(W) 45 - 30") from the database, which is stored once the game ends
         public string FinalScoreString { get; set; }
     }

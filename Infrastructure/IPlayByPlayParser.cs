@@ -8,6 +8,8 @@
     public interface IPlayByPlayParser
     {
         public string parseTimeRemaining();
+
+        public string parseCurrentScore(string homeOrAway);
         
         public double parseTwoPointConversionsForPlayer(string playerName);
 

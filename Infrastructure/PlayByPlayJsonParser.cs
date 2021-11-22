@@ -117,6 +117,38 @@
         }
 
         /// <summary>
+        /// Parses the current score for a given player. We don't care about the player name, we just need to know if
+        /// the player is home or away so we can list that score first.
+        /// </summary>
+        /// <param name="homeOrAway">Home or away for the given player so we know which score to display first</param>
+        /// <returns>A score in the format of "20-17", with the first number being the home or away score.</returns>
+        public string parseCurrentScore(string homeOrAway)
+        {
+            string currentScore = "";
+
+            // we need to look at the drives.current.plays token. The plays is an array of plays, but we should only care
+            // about the last item which should be the latest play
+            // TODO: This can be combined with the parseTimeRemaining method since it pulls the same element to find the current time remaining
+            JToken currentDriveTokens = _playByPlayJsonObject.SelectToken("drives.current.plays");
+
+            int currentPlayTokens = ((JArray)currentDriveTokens).Count;
+
+            string homeScore = (string)_playByPlayJsonObject.SelectToken("drives.current.plays[" + (currentPlayTokens - 1).ToString() + "].homeScore");
+            string awayScore = (string)_playByPlayJsonObject.SelectToken("drives.current.plays[" + (currentPlayTokens - 1).ToString() + "].awayScore");
+
+            if (homeOrAway.Equals("home"))
+            {
+                currentScore = homeScore + "-" + awayScore;
+            }
+            else
+            {
+                currentScore = awayScore + "-" + homeScore;
+            }
+            
+            return currentScore;
+        }
+
+        /// <summary>
         /// Calculate the field goal points, based on distance, for a kicker. This data is only found in the JSON play by play, but we
         /// are able to get the number of XPs from there which is calculated in the parseGameTrackerPage method.
         /// </summary>

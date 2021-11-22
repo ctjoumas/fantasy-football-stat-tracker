@@ -180,7 +180,7 @@
                     {
                         indexOfSpaceAfterPlayerName = fieldGoalNode.InnerText.IndexOf(" ", playerNameIndex + playerName.Length);
                     }
-                    
+
                     int indexOfSpaceAfterFgDisatance = fieldGoalNode.InnerText.IndexOf(" ", indexOfSpaceAfterPlayerName + 1);
                     int fgDistance = int.Parse(fieldGoalNode.InnerText.Substring(indexOfSpaceAfterPlayerName, (indexOfSpaceAfterFgDisatance - indexOfSpaceAfterPlayerName)));
 
@@ -271,6 +271,10 @@
         {
             double fantasyPoints = 0;
 
+            // the two-point conversion may be using the abbreviated players name, so we need to check both full and abbreviated names
+            int spaceIndex = playerName.IndexOf(" ");
+            string abbreviatedPlayerName = playerName.Substring(0, 1) + "." + playerName.Substring(spaceIndex + 1);
+
             // we are looking for all <span class="post-play"> nodes which have "Two-Point" in the inner text such as:
             // <span class="post-play">
             //   (0:27 - 3rd) Tommy Sweeney Pass From Josh Allen for 1 Yard (Pass formation) TWO-POINT CONVERSION ATTEMPT. D.Knox pass to J.Allen is complete. ATTEMPT SUCCEEDS.
@@ -284,9 +288,39 @@
                 // the player's name was invovled (pass or reception, it's 2 points either way)
                 if (!twoPointConversionNode.InnerText.ToLower().Contains("failed") &&
                     !twoPointConversionNode.InnerText.ToLower().Contains("fails") &&
-                    twoPointConversionNode.InnerText.ToLower().Contains(playerName.ToLower()))
+                    (twoPointConversionNode.InnerText.ToLower().Contains(playerName.ToLower()) || twoPointConversionNode.InnerText.ToLower().Contains(abbreviatedPlayerName.ToLower())))
                 {
-                    fantasyPoints += 2;
+                    // We need one more check to ensure this player actually made the play. This will need more testing as there are several
+                    // ways this is shown in the play by play:
+                    // (12:42 - 4th) Stefon Diggs Pass From Josh Allen for 9 Yrds TWO-POINT CONVERSION ATTEMPT. J.Allen rushes right end. ATTEMPT SUCCEEDS.
+                    // (10:34 - 4th) James Robinson 1 Yard Rush (Pass formation) TWO-POINT CONVERSION ATTEMPT. T.Lawrence pass to D.Arnold is complete. ATTEMPT SUCCEEDS.
+                    // (0:37 - 2nd) Nahshon Wright 0 Yd Return of Blocked Punt (Ezekiel Elliott Run for Two-Point Conversion)
+                    // In the first two examples, the play before "TWO-POINT CONVERSION ATTEMPT" is the TD play and what follows is the two-point conversion;
+                    // in the last example, the two-point conversion play is in parentheses. It seems safe to check both conditions
+
+                    string twoPointConversionText;
+                    int index;
+
+                    // check first condition
+                    if (twoPointConversionNode.InnerText.ToLower().Contains("two-point conversion attempt"))
+                    {
+                        // cut off the scoring play and just check the two point conversion text remaining
+                        index = twoPointConversionNode.InnerText.ToLower().IndexOf("two-point conversion attempt");
+                        twoPointConversionText = twoPointConversionNode.InnerText.Substring(index);
+                    }
+                    else
+                    {
+                        // cut off the scoring play, which is before the parentheses
+                        index = twoPointConversionNode.InnerText.IndexOf("(");
+                        twoPointConversionText = twoPointConversionNode.InnerText.Substring(index);
+                    }
+
+                    // now we can check the text containing only the two point conversion play to see if this player was involved
+                    if (twoPointConversionText.ToLower().Contains(playerName.ToLower()) ||
+                        twoPointConversionText.ToLower().Contains(abbreviatedPlayerName.ToLower()))
+                    {
+                        fantasyPoints += 2;
+                    }
                 }
             }
 

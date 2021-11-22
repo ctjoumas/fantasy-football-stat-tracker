@@ -438,17 +438,13 @@
                     //p.Points += scraper.parseTwoPointConversionsForPlayer(stateInfo.EspnGameId, p.RawPlayerName);
                     p.Points += scraper.parseTwoPointConversionsForPlayer(p.RawPlayerName);
                     p.TimeRemaining = scraper.parseTimeRemaining();
+                    p.CurrentScoreString = scraper.parseCurrentScore(p.HomeOrAway);
 
                     // calculate kicker FGs if this player is a kicker
                     if (p.Position == Position.K)
                     {
                         //p.Points += scraper.parseFieldGoals(stateInfo.EspnGameId, p.RawPlayerName);
                         p.Points += scraper.parseFieldGoals(p.RawPlayerName);
-                    }
-                    // get any blocked punts or field goals (NOTE: ASSUMING "BLOCKED" WILL APPEAR, SO NEED FURTHER TESTING
-                    else if (p.Position == Position.DEF)
-                    {
-
                     }
 
                     // check the scraper to see if the game has ended and update this player row

@@ -126,6 +126,17 @@
         }
 
         /// <summary>
+        /// This shouldn't be needed as the current score will only be parsed during a live game, in which case,
+        /// the JSON parser will be used.
+        /// </summary>
+        /// <param name="homeOrAway"></param>
+        /// <returns></returns>
+        public string parseCurrentScore(string homeOrAway)
+        {
+            return "N/A";
+        }
+
+        /// <summary>
         /// Calculate the field goal points, based on distance, for a kicker. This data is not on the gametracker page, but we are able to get the
         /// number of XPs from there which is calculated in the parseGameTrackerPage method.
         /// </summary>

@@ -115,6 +115,19 @@
         }
 
         /// <summary>
+        /// Parses the current score for a given player. We don't care about the player name, we just need to know if
+        /// the player is home or away so we can list that score first.
+        /// </summary>
+        /// <param name="homeOrAway">Home or away for the given player so we know which score to display first</param>
+        /// <returns>A score in the format of "20-17", with the first number being the home or away score.</returns>
+        public string parseCurrentScore(string homeOrAway)
+        {
+            string currentScoreString = playByPlayParser.parseCurrentScore(homeOrAway);
+
+            return currentScoreString;
+        }
+
+        /// <summary>
         /// Gets the final score string (such as "(W) 45 - 30") and store this in the database
         /// </summary>
         /// <param name="teamAbbreviation"></param>
@@ -166,11 +179,11 @@
 
             if (playerTeamScore > opponentTeamScore)
             {
-                finalScoreString += "(W) " + playerTeamScore.ToString() + " - " + opponentTeamScore.ToString();
+                finalScoreString += "(W) " + playerTeamScore.ToString() + "-" + opponentTeamScore.ToString();
             }
             else
             {
-                finalScoreString += "(L) " + playerTeamScore.ToString() + " - " + opponentTeamScore.ToString();
+                finalScoreString += "(L) " + playerTeamScore.ToString() + "-" + opponentTeamScore.ToString();
             }
 
             return finalScoreString;
@@ -208,7 +221,7 @@
         /// </summary>
         /// <param name="gameId">Game ID of the game this player is playing in</param>
         /// <param name="playerId">Player ID of the player we are pulling stats for. If this is "", then we are looking for a team defense</param>
-        /// <param name="home_or_away">Depending on if the player is playing a home or away game, we find stats in a particular data tag</param>
+        /// <param name="homeOrAway">Depending on if the player is playing a home or away game, we find stats in a particular data tag</param>
         /// <param name="opponentAbbreviation">This is only used when scoring a team defnese so we know when an opponent scores a 2 point conversion</param>
         /// <returns>Fantasy points for this player (without 2-pt conversions, which is handled in a separate method</returns>
         public double parseGameTrackerPage(string gameId, string playerId, string homeOrAway, string opponentAbbreviation)

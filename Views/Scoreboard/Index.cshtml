@@ -14,15 +14,15 @@
             <td>
                 <table style="min-width:300px;border-collapse: collapse;" class="table">
                     <tr style="height:75px;">
-                        <td style="background-color:#C6C6C6;line-height:0;padding:0px;margin:0px;width:65px;height:75px;">
+                        <td style="background-color:#C6C6C6;line-height:0;padding:5px;margin:5px;width:65px;height:75px;">
                             @{
                                 byte[] bytes = (byte[])team.OwnerLogo;
                                 string base64String = Convert.ToBase64String(bytes, 0, bytes.Length);
-                                var logoSource = "data:image/jpg;base64," + base64String;
+                                var logoSource = "data:image/png;base64," + base64String;
                                 <img style="display:block;width:100%;height:100%;padding:0px;margin:0px 0px 0px 0px;vertical-align: middle;" src=@logoSource />
                             }
                         </td>
-                        <td colspan="2" align="right" style="background-color:#C6C6C6;padding:0px;margin:0px;vertical-align:middle;height:75px;">
+                        <td colspan="2" align="right" style="background-color:#C6C6C6;vertical-align:middle;height:75px;">
                             @{
                                 var totalTeamPoints = team.TotalFantasyPoints.ToString("0.00");
                             }

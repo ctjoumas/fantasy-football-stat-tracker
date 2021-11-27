@@ -62,9 +62,12 @@
             List<RosterPlayer> rosterPlayers = new List<RosterPlayer>();
 
             // get all players for each team's roster for this week
+            // TODO: this currently selects the latest week in the CurrentRoster; when a dropdown list for the week is added, this query will use that
+            // to pull the scoreboard for that week
             string sql = "select o.OwnerName, o.Logo, cr.Week, cr.PlayerName, cr.Position, cr.GameEnded, cr.FinalPoints, cr.FinalPointsString " +
                         "from CurrentRoster cr " +
-                        "join Owners o on cr.OwnerID = o.OwnerID";
+                        "join Owners o on cr.OwnerID = o.OwnerID " +
+                        "where cr.Week in (select max(Week) from CurrentRoster)";
 
             using (SqlCommand command = new SqlCommand(sql, sqlConnection))
             {

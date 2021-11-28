@@ -124,25 +124,28 @@
         /// <returns>A score in the format of "20-17", with the first number being the home or away score.</returns>
         public string parseCurrentScore(string homeOrAway)
         {
-            string currentScore = "";
+            string currentScore = "0-0";
 
             // we need to look at the drives.current.plays token. The plays is an array of plays, but we should only care
             // about the last item which should be the latest play
             // TODO: This can be combined with the parseTimeRemaining method since it pulls the same element to find the current time remaining
             JToken currentDriveTokens = _playByPlayJsonObject.SelectToken("drives.current.plays");
 
-            int currentPlayTokens = ((JArray)currentDriveTokens).Count;
-
-            string homeScore = (string)_playByPlayJsonObject.SelectToken("drives.current.plays[" + (currentPlayTokens - 1).ToString() + "].homeScore");
-            string awayScore = (string)_playByPlayJsonObject.SelectToken("drives.current.plays[" + (currentPlayTokens - 1).ToString() + "].awayScore");
-
-            if (homeOrAway.Equals("home"))
+            if (currentDriveTokens != null)
             {
-                currentScore = homeScore + "-" + awayScore;
-            }
-            else
-            {
-                currentScore = awayScore + "-" + homeScore;
+                int currentPlayTokens = ((JArray)currentDriveTokens).Count;
+
+                string homeScore = (string)_playByPlayJsonObject.SelectToken("drives.current.plays[" + (currentPlayTokens - 1).ToString() + "].homeScore");
+                string awayScore = (string)_playByPlayJsonObject.SelectToken("drives.current.plays[" + (currentPlayTokens - 1).ToString() + "].awayScore");
+
+                if (homeOrAway.Equals("home"))
+                {
+                    currentScore = homeScore + "-" + awayScore;
+                }
+                else
+                {
+                    currentScore = awayScore + "-" + homeScore;
+                }
             }
             
             return currentScore;
@@ -241,34 +244,37 @@
             // get the current drive token to get the quarter time remaining
             JToken currentDriveTokens = _playByPlayJsonObject.SelectToken("drives.current.plays");
 
-            int currentPlayTokens = ((JArray)currentDriveTokens).Count;
-
-            string quarter = (string)_playByPlayJsonObject.SelectToken("drives.current.plays[" + (currentPlayTokens - 1).ToString() + "].period.number");
-            string clock = (string)_playByPlayJsonObject.SelectToken("drives.current.plays[" + (currentPlayTokens - 1).ToString() + "].clock.displayValue");
-
-            switch (quarter)
+            if (currentDriveTokens != null)
             {
-                case "1":
-                    quarter = "1st";
-                    break;
-                case "2":
-                    quarter = "2nd";
-                    break;
-                case "3":
-                    quarter = "3rd";
-                    break;
-                case "4":
-                    quarter = "4th";
-                    break;
-                case "5": // TODO: guessing on this...need to verify
-                    quarter = "OT";
-                    break;
-                default:
-                    quarter = "?";
-                    break;
-            }
+                int currentPlayTokens = ((JArray)currentDriveTokens).Count;
 
-            timeRemaining = quarter + " " + clock;
+                string quarter = (string)_playByPlayJsonObject.SelectToken("drives.current.plays[" + (currentPlayTokens - 1).ToString() + "].period.number");
+                string clock = (string)_playByPlayJsonObject.SelectToken("drives.current.plays[" + (currentPlayTokens - 1).ToString() + "].clock.displayValue");
+
+                switch (quarter)
+                {
+                    case "1":
+                        quarter = "1st";
+                        break;
+                    case "2":
+                        quarter = "2nd";
+                        break;
+                    case "3":
+                        quarter = "3rd";
+                        break;
+                    case "4":
+                        quarter = "4th";
+                        break;
+                    case "5": // TODO: guessing on this...need to verify
+                        quarter = "OT";
+                        break;
+                    default:
+                        quarter = "?";
+                        break;
+                }
+
+                timeRemaining = quarter + " " + clock;
+            }
 
             return timeRemaining;
         }

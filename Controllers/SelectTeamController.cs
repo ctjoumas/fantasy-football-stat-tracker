@@ -4,11 +4,12 @@
     using Azure.Identity;
     using FantasyFootballStatTracker.Models;
     using Microsoft.AspNetCore.Mvc;
+    using Microsoft.AspNetCore.Mvc.Rendering;
     using System;
     using System.Collections.Generic;
     using System.Data.SqlClient;
     using System.Linq;
-    
+
     public class SelectTeamController : Controller
     {
         [HttpGet]
@@ -19,9 +20,13 @@
             sqlConnection.Open();
 
             PlayerModel player = new PlayerModel();
-            player.PlayerSelectedListOwner1 = new List<EspnPlayer>();
-            player.PlayerSelectedListOwner2 = new List<EspnPlayer>();
-            player.PlayerUnSelectedList = GetAllPlayers(sqlConnection);
+            //player.PlayerSelectedListOwner1 = new List<EspnPlayer>();
+            //player.PlayerSelectedListOwner2 = new List<EspnPlayer>();
+            //player.PlayerUnSelectedList = GetAllPlayers(sqlConnection);
+            player.PlayerSelectedListOwner1 = new List<SelectListItem>();
+            player.PlayerSelectedListOwner2 = new List<SelectListItem>();
+            player.PlayerUnselectedList = GetAllPlayers(sqlConnection);
+
 
             sqlConnection.Close();
 
@@ -35,12 +40,13 @@
 
             sqlConnection.Open();
 
-            //int week = GetWeekToSetRostersFor(sqlConnection);
+            //List<EspnPlayer> allPlayers = GetAllPlayers(sqlConnection);
+            List<SelectListItem> allPlayers = GetAllPlayers(sqlConnection);
 
-            List<EspnPlayer> allPlayers = GetAllPlayers(sqlConnection);
-
-            List<EspnPlayer> playerListOwner1 = allPlayers.Where(m => _playerModel.SelectedEspnPlayerNamesOwner1.Contains(m.PlayerName)).ToList();
-            List<EspnPlayer> playerListOwner2 = allPlayers.Where(m => _playerModel.SelectedEspnPlayerNamesOwner2.Contains(m.PlayerName)).ToList();
+            //List<EspnPlayer> playerListOwner1 = allPlayers.Where(m => _playerModel.SelectedEspnPlayerNamesOwner1.Contains(m.PlayerName)).ToList();
+            //List<EspnPlayer> playerListOwner2 = allPlayers.Where(m => _playerModel.SelectedEspnPlayerNamesOwner2.Contains(m.PlayerName)).ToList();
+            List<SelectListItem> playerListOwner1 = allPlayers.Where(m => _playerModel.SelectedEspnPlayerNamesOwner1.Contains(m.Value)).ToList();
+            List<SelectListItem> playerListOwner2 = allPlayers.Where(m => _playerModel.SelectedEspnPlayerNamesOwner2.Contains(m.Value)).ToList();
 
             UpdateCurrentRosterWithSelectedPlayers(sqlConnection, playerListOwner1, playerListOwner2);
 
@@ -50,21 +56,30 @@
             return RedirectToAction("Index", "Scoreboard");
         }
 
-        private void UpdateCurrentRosterWithSelectedPlayers(SqlConnection sqlConnection, List<EspnPlayer> playerListOwner1, List<EspnPlayer> playerListOwner2)
+        //private void UpdateCurrentRosterWithSelectedPlayers(SqlConnection sqlConnection, List<EspnPlayer> playerListOwner1, List<EspnPlayer> playerListOwner2)
+        private void UpdateCurrentRosterWithSelectedPlayers(SqlConnection sqlConnection, List<SelectListItem> playerListOwner1, List<SelectListItem> playerListOwner2)
         {
             int week = GetWeekToSetRostersFor(sqlConnection);
 
+            int dashIndex;
+            string position;
+
             // TODO: Get the Owenr IDs into this page rather than hardcoding as it is set below
-            foreach (EspnPlayer player in playerListOwner1)
+            //foreach (EspnPlayer player in playerListOwner1)
+            foreach (SelectListItem player in playerListOwner1)
             {
+                // extract the position from the player text (it is in the format "Player Name - PK")
+                dashIndex = player.Text.IndexOf("-");
+                position = player.Text.Substring(dashIndex + 2);
+
                 // the kicker position is stored initially (from ESPN rosters) as PK and we need to change this to K
-                if (player.Position.Equals("PK"))
+                if (position.Equals("PK"))
                 {
-                    player.Position = "K";
+                    position = "K";
                 }
 
                 string sql = "insert into CurrentRoster (OwnerID, Week, PlayerName, Position, GameEnded, FinalPoints, FinalPointsString) " +
-                             "values ('1', '" + week + "', '" + player.PlayerName + "', '" + player.Position + "', 0, 0, '')";
+                             "values ('1', '" + week + "', '" + player.Value + "', '" + position + "', 0, 0, '')";
 
                 using (SqlCommand command = new SqlCommand(sql, sqlConnection))
                 {
@@ -72,16 +87,21 @@
                 }
             }
 
-            foreach (EspnPlayer player in playerListOwner2)
+            //foreach (EspnPlayer player in playerListOwner2)
+            foreach (SelectListItem player in playerListOwner2)
             {
+                // extract the position from the player text (it is in the format "Player Name - PK")
+                dashIndex = player.Text.IndexOf("-");
+                position = player.Text.Substring(dashIndex + 2);
+
                 // the kicker position is stored initially (from ESPN rosters) as PK and we need to change this to K
-                if (player.Position.Equals("PK"))
+                if (position.Equals("PK"))
                 {
-                    player.Position = "K";
+                    position = "K";
                 }
 
                 string sql = "insert into CurrentRoster (OwnerID, Week, PlayerName, Position, GameEnded, FinalPoints, FinalPointsString) " +
-                             "values ('2', '" + week + "', '" + player.PlayerName + "', '" + player.Position + "', 0, 0, '')";
+                             "values ('2', '" + week + "', '" + player.Value + "', '" + position + "', 0, 0, '')";
 
                 using (SqlCommand command = new SqlCommand(sql, sqlConnection))
                 {
@@ -94,9 +114,11 @@
         /// Gets all players from the Players table who are playing (not on bye) in the current week.
         /// </summary>
         /// <returns>List of all players playing in the given week.</returns>
-        private List<EspnPlayer> GetAllPlayers(SqlConnection sqlConnection)
+        //private List<EspnPlayer> GetAllPlayers(SqlConnection sqlConnection)
+        private List<SelectListItem> GetAllPlayers(SqlConnection sqlConnection)
         {
-            List<EspnPlayer> players = new List<EspnPlayer>();
+            //List<EspnPlayer> players = new List<EspnPlayer>();
+            List<SelectListItem> playerList = new List<SelectListItem>();
 
             int week = GetWeekToSetRostersFor(sqlConnection);
 
@@ -104,25 +126,33 @@
                          "join TeamsSchedule ts on p.TeamId = ts.TeamId " +
                          "where ts.Week = " + week.ToString();
 
+            string playerName;
+            string position;
+
             using (SqlCommand command = new SqlCommand(sql, sqlConnection))
             {
                 using (SqlDataReader reader = command.ExecuteReader())
                 {
                     while (reader.Read())
                     {
-                        players.Add(new EspnPlayer
+                        /*players.Add(new EspnPlayer
                         {
                             EspnPlayerId = int.Parse(reader["EspnPlayerId"].ToString()),
                             PlayerName = reader["PlayerName"].ToString(),
                             Position= reader["Position"].ToString()
-                        });
+                        });*/
+                        playerName = reader["PlayerName"].ToString();
+                        position = reader["Position"].ToString();
+                        playerList.Add(new SelectListItem() { Value = playerName, Text = playerName + " - " + position });
                     }
                 }
             }
 
-            players = players.OrderBy(x => x.PlayerName).ToList();
+            //players = players.OrderBy(x => x.PlayerName).ToList();
+            playerList = playerList.OrderBy(x => x.Value).ToList();
 
-            return players;
+            //return players;
+            return playerList;
         }
 
         /// <summary>

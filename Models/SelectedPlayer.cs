@@ -29,6 +29,7 @@
         public Position Position { get; set; }
 
         public int OwnerId { get; set; }
+
         public string OwnerName { get; set; }
 
         // TODO: This should not be stored in the SelectedPlayer as it relates to only the owner; this needs to be redesigned

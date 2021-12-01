@@ -1,6 +1,6 @@
 ﻿@model FantasyFootballStatTracker.Models.PlayerModel
 
-@{ 
+@{
     ViewBag.Title = "Select Players";
 }
 
@@ -17,64 +17,64 @@
         }
     </script>
 
-    
+
 
     @using (Html.BeginForm("Index", "SelectTeam"))
     {
-    <center>
-    <table style="width:min-content; border-collapse:inherit;margin: 0;display:block;float:none;">
-        <tr>
-            <td colspan="3"><a asp-action="Index" asp-controller="Scoreboard">Scoreboard</a></td>
-        </tr>
-        <tr style="border-collapse:inherit;margin: 0;display:block;float:none;">
-            <td style="text-align: center;width:200px;">
-                Players:<br />
-                @Html.ListBox("UnselectedItem", new SelectList(Model.PlayerUnSelectedList, "PlayerName", "PlayerName"), new { style = "width:200px;height:500px;" })
-            </td>
-            <td style="width: 75px;text-align: center;">
-                <table style="min-width:75%;border-collapse: collapse;margin-left: auto;margin-right: auto;">
-                    <tr>
-                        <td style="height:250px;border-collapse:inherit;margin: 0;float:none;vertical-align: middle;">
-                            <!--input type="button" value=">>" onclick="javascript: MoveListBoxItem('UnselectedItem', 'SelectedEspnPlayerIdOwner1')" /><br />-->
-                            <!--input type="button" value="<<" onclick="javascript: MoveListBoxItem('SelectedEspnPlayerIdOwner1', 'UnselectedItem')" /><br />-->
-                            <input type="button" value=">>" onclick="javascript: MoveListBoxItem('UnselectedItem', 'SelectedEspnPlayerNamesOwner1')" /><br />
-                            <input type="button" value="<<" onclick="javascript: MoveListBoxItem('SelectedEspnPlayerNamesOwner1', 'UnselectedItem')" /><br />
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="height:250px;border-collapse:inherit;margin: 0;float:none;vertical-align: middle;">
-                            <!--input type="button" value=">>" onclick="javascript: MoveListBoxItem('UnselectedItem', 'SelectedEspnPlayerIdOwner2')" /><br />-->
-                            <!--input type="button" value="<<" onclick="javascript: MoveListBoxItem('SelectedEspnPlayerIdOwner2', 'UnselectedItem')" /><br />-->
-                            <input type="button" value=">>" onclick="javascript: MoveListBoxItem('UnselectedItem', 'SelectedEspnPlayerNamesOwner2')" /><br />
-                            <input type="button" value="<<" onclick="javascript: MoveListBoxItem('SelectedEspnPlayerNamesOwner2', 'UnselectedItem')" /><br />
-                        </td>
-                    </tr>
-                </table>
-            </td>
-            <td style="text-align: center;width:200px;">
-                <table style="border-collapse: collapse;margin-left: auto;margin-right: auto;">
-                    <tr>
-                        <td style="border-collapse:inherit;margin: 0;display:block;float:none;">
-                            Owner One Team<br />
-                            @Html.ListBoxFor(m => m.SelectedEspnPlayerNamesOwner1, new SelectList(Model.PlayerSelectedListOwner1, "PlayerName", "PlayerName"), new { style = "width:200px;height:250px;" })
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="border-collapse: inherit; margin: 0; display: block; float: none;">
-                            Owner Two Team<br />
-                            @Html.ListBoxFor(m => m.SelectedEspnPlayerNamesOwner2, new SelectList(Model.PlayerSelectedListOwner2, "PlayerName", "PlayerName"), new { style = "width:200px;height:250px;" })
-                        </td>
-                    </tr>
-                </table>
-            </td>
-        </tr>
-        <tr>
-            <td colspan="3" style="text-align: right;border-collapse:inherit;margin: 0;display:block;float:none;">
-                <input type="submit" value="Submit" />
-            </td>
-        </tr>
-    </table>
-    </center>
+        <center>
+            <table style="width:min-content; border-collapse:inherit;margin: 0;display:block;float:none;">
+                <tr>
+                    <td colspan="3"><a asp-action="Index" asp-controller="Scoreboard">Scoreboard</a></td>
+                </tr>
+                <tr style="border-collapse:inherit;margin: 0;display:block;float:none;">
+                    <td style="text-align: center;width:200px;">
+                        Players:<br />
+                        @Html.ListBox("UnselectedItem", Model.PlayerUnselectedList, new { style = "width:200px;height:500px;" })
+                    </td>
+                    <td style="width: 75px;text-align: center;">
+                        <table style="min-width:75%;border-collapse: collapse;margin-left: auto;margin-right: auto;">
+                            <tr>
+                                <td style="height:250px;border-collapse:inherit;margin: 0;float:none;vertical-align: middle;">
+                                    <!--input type="button" value=">>" onclick="javascript: MoveListBoxItem('UnselectedItem', 'SelectedEspnPlayerIdOwner1')" /><br />-->
+                                    <!--input type="button" value="<<" onclick="javascript: MoveListBoxItem('SelectedEspnPlayerIdOwner1', 'UnselectedItem')" /><br />-->
+                                    <input type="button" value=">>" onclick="javascript: MoveListBoxItem('UnselectedItem', 'SelectedEspnPlayerNamesOwner1')" /><br />
+                                    <input type="button" value="<<" onclick="javascript: MoveListBoxItem('SelectedEspnPlayerNamesOwner1', 'UnselectedItem')" /><br />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="height:250px;border-collapse:inherit;margin: 0;float:none;vertical-align: middle;">
+                                    <!--input type="button" value=">>" onclick="javascript: MoveListBoxItem('UnselectedItem', 'SelectedEspnPlayerIdOwner2')" /><br />-->
+                                    <!--input type="button" value="<<" onclick="javascript: MoveListBoxItem('SelectedEspnPlayerIdOwner2', 'UnselectedItem')" /><br />-->
+                                    <input type="button" value=">>" onclick="javascript: MoveListBoxItem('UnselectedItem', 'SelectedEspnPlayerNamesOwner2')" /><br />
+                                    <input type="button" value="<<" onclick="javascript: MoveListBoxItem('SelectedEspnPlayerNamesOwner2', 'UnselectedItem')" /><br />
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                    <td style="text-align: center;width:200px;">
+                        <table style="border-collapse: collapse;margin-left: auto;margin-right: auto;">
+                            <tr>
+                                <td style="border-collapse:inherit;margin: 0;display:block;float:none;">
+                                    Owner One Team<br />
+                                    @Html.ListBoxFor(m => m.SelectedEspnPlayerNamesOwner1, new SelectList(Model.PlayerSelectedListOwner1, "PlayerName", "PlayerName"), new { style = "width:200px;height:250px;" })
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="border-collapse: inherit; margin: 0; display: block; float: none;">
+                                    Owner Two Team<br />
+                                    @Html.ListBoxFor(m => m.SelectedEspnPlayerNamesOwner2, new SelectList(Model.PlayerSelectedListOwner2, "PlayerName", "PlayerName"), new { style = "width:200px;height:250px;" })
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="3" style="text-align: right;border-collapse:inherit;margin: 0;display:block;float:none;">
+                        <input type="submit" value="Submit" />
+                    </td>
+                </tr>
+            </table>
+        </center>
     }
 
 </body>

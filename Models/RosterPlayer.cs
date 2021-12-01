@@ -11,7 +11,8 @@
     /// </summary>
     public class RosterPlayer
     {
-        public string Owner { get; set; }
+        public int OwnerId { get; set; }
+        public string OwnerName { get; set; }
         public byte[] Logo { get; set; }
         public int Week { get; set; }
         public string PlayerName { get; set; }

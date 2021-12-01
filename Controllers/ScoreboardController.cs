@@ -24,9 +24,25 @@
 
     public class ScoreboardController : Controller
     {
-        private static HttpClient client = new HttpClient();
+        /// <summary>
+        /// HttpClient used for getting data for each player from the Yahoo API
+        /// </summary>
+        private readonly HttpClient client;
 
+        /// <summary>
+        /// Session key for the currently selected scoreboard week
+        /// </summary>
         public const string SessionKeyWeek = "_Week";
+
+        /// <summary>
+        /// Injecting HttpClientFactory to set the HttpClient used for calling the yahoo API to get data for each
+        /// player in the scoreboard.
+        /// </summary>
+        /// <param name="factory"></param>
+        public ScoreboardController(IHttpClientFactory factory)
+        {
+            client = factory.CreateClient();
+        }
 
         private static async Task<string> GetAzureSqlAccessToken()
         {
@@ -66,9 +82,6 @@
 
             List<RosterPlayer> rosterPlayers = new List<RosterPlayer>();
 
-            // if the form is first loaded, week will be null so we will select the max week
-            //string weekSelection = week;
-            
             // if the week was not selected in the form (the form was redirected to), we'll select the latest week
             if (selectedWeek == null)
             {
@@ -76,9 +89,7 @@
             }
 
             // get all players for each team's roster for this week
-            // TODO: this currently selects the latest week in the CurrentRoster; when a dropdown list for the week is added, this query will use that
-            // to pull the scoreboard for that week
-            string sql = "select o.OwnerName, o.Logo, cr.Week, cr.PlayerName, cr.Position, cr.GameEnded, cr.FinalPoints, cr.FinalPointsString " +
+            string sql = "select o.OwnerID, o.OwnerName, o.Logo, cr.Week, cr.PlayerName, cr.Position, cr.GameEnded, cr.FinalPoints, cr.FinalPointsString " +
                         "from CurrentRoster cr " +
                         "join Owners o on cr.OwnerID = o.OwnerID " +
                         "where cr.Week in (select " + selectedWeek + " from CurrentRoster)";
@@ -89,7 +100,8 @@
                 {
                     while (reader.Read())
                     {
-                        string owner = reader.GetValue(reader.GetOrdinal("OwnerName")).ToString();
+                        int ownerId = (int)reader.GetValue(reader.GetOrdinal("OwnerID"));
+                        string ownerName = reader.GetValue(reader.GetOrdinal("OwnerName")).ToString();
                         byte[] logo = (byte[])reader.GetValue(reader.GetOrdinal("Logo"));
                         int week = (int)reader.GetValue(reader.GetOrdinal("Week"));
                         string playerName = reader.GetValue(reader.GetOrdinal("PlayerName")).ToString();
@@ -101,7 +113,8 @@
                         // add this player to the current roster
                         rosterPlayers.Add(new RosterPlayer()
                         {
-                            Owner = owner,
+                            OwnerId = ownerId,
+                            OwnerName = ownerName,
                             Logo = logo,
                             Week = week,
                             PlayerName = playerName,
@@ -162,7 +175,7 @@
                                     break;
 
                                 case Position.RB:
-                                    if (rosterPlayer.Owner.Equals("Liz"))
+                                    if (rosterPlayer.OwnerId == 1)
                                     {
                                         if (rosterOneRbCount == 2)
                                         {
@@ -174,7 +187,7 @@
                                             rosterOneRbCount++;
                                         }
                                     }
-                                    else if (rosterPlayer.Owner.Equals("Chris"))
+                                    else if (rosterPlayer.OwnerId == 2)
                                     {
                                         if (rosterTwoRbCount == 2)
                                         {
@@ -190,7 +203,7 @@
                                     break;
 
                                 case Position.WR:
-                                    if (rosterPlayer.Owner.Equals("Liz"))
+                                    if (rosterPlayer.OwnerId == 1)
                                     {
                                         if (rosterOneWrCount == 2)
                                         {
@@ -202,7 +215,7 @@
                                             rosterOneWrCount++;
                                         }
                                     }
-                                    else if (rosterPlayer.Owner.Equals("Chris"))
+                                    else if (rosterPlayer.OwnerId == 2)
                                     {
                                         if (rosterTwoWrCount == 2)
                                         {
@@ -217,7 +230,7 @@
                                     break;
 
                                 case Position.TE:
-                                    if (rosterPlayer.Owner.Equals("Liz"))
+                                    if (rosterPlayer.OwnerId == 1)
                                     {
                                         if (rosterOneTeCount == 1)
                                         {
@@ -229,7 +242,7 @@
                                             rosterOneTeCount++;
                                         }
                                     }
-                                    else if (rosterPlayer.Owner.Equals("Chris"))
+                                    else if (rosterPlayer.OwnerId == 2)
                                     {
                                         if (rosterTwoTeCount == 1)
                                         {
@@ -265,7 +278,7 @@
                             // then encode the result, which will change the %27 into %2527
                             playerNameSearchString = HttpUtility.UrlEncode(playerNameSearchString.Replace("'", HttpUtility.UrlEncode("'")));
 
-                            player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerNameSearchString + "/stats", rosterPlayer.Position, positionType, espnPlayerId, espnGameId, gameDate, homeOrAway, rosterPlayer.PlayerName, teamAbbreviation, opponentAbbreviation, rosterPlayer.Owner, rosterPlayer.Logo, rosterPlayer.GameEnded, rosterPlayer.FinalPoints, rosterPlayer.FinalScoreString);
+                            player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerNameSearchString + "/stats", rosterPlayer.Position, positionType, espnPlayerId, espnGameId, gameDate, homeOrAway, rosterPlayer.PlayerName, teamAbbreviation, opponentAbbreviation, rosterPlayer.OwnerId, rosterPlayer.OwnerName, rosterPlayer.Logo, rosterPlayer.GameEnded, rosterPlayer.FinalPoints, rosterPlayer.FinalScoreString);
 
                             addPlayerToHashtable(testPlayers, espnGameId, player);
                         }
@@ -396,7 +409,8 @@
                 List<SelectedPlayer> players = listOfPlayerLists.SelectMany(x => x).ToList();
 
                 // Pull out the players for team one and sort by position
-                List<SelectedPlayer> teamOnePlayers = players.Where(x => x.Owner.Equals("Liz")).ToList();
+                //List<SelectedPlayer> teamOnePlayers = players.Where(x => x.Owner.Equals("Liz")).ToList();
+                List<SelectedPlayer> teamOnePlayers = players.Where(x => x.OwnerId == 1).ToList();
                 teamOnePlayers = teamOnePlayers.OrderBy(x => (int)(x.Position)).ToList();
 
                 // Total up the scores from this team
@@ -414,7 +428,7 @@
                 teams.Add(team);
 
                 // Pull out the players for team two and sort by position
-                List<SelectedPlayer> teamTwoPlayers = players.Where(x => x.Owner.Equals("Chris")).ToList();
+                List<SelectedPlayer> teamTwoPlayers = players.Where(x => x.OwnerId == 2).ToList();
                 teamTwoPlayers = teamTwoPlayers.OrderBy(x => (int)(x.Position)).ToList();
 
                 // Total up the scores from this team
@@ -511,7 +525,7 @@
 
                         p.FinalScoreString = finalScoreString;
 
-                        updateCurrentRosterWithFinalScore(p.Owner, p.RawPlayerName, p.Points, finalScoreString, week);
+                        updateCurrentRosterWithFinalScore(p.OwnerId, p.RawPlayerName, p.Points, finalScoreString, week);
                     }
                 }
             }
@@ -587,12 +601,12 @@
         /// and updating the FinalPoints field, so we can grab this the next time the app displays the scores rather
         /// than scrap the gametracker page again.
         /// </summary>
-        /// <param name="ownerName">The owner of the team</param>
+        /// <param name="ownerId">The owner id of the team</param>
         /// <param name="playerName">The player whose points we are updating in the CurrentRoster table</param>
         /// <param name="playerFinalScore">The final score the player got in the game</param>
         /// <param name="finalScoreString">The final score string for the player's team, which is displayed in the UI</param>
         /// <param name="week">The week we are updating</param>
-        private void updateCurrentRosterWithFinalScore(string ownerName, string playerName, double playerFinalScore, string finalScoreString, string week)
+        private void updateCurrentRosterWithFinalScore(int ownerId, string playerName, double playerFinalScore, string finalScoreString, string week)
         {
             var connectionStringBuilder = new SqlConnectionStringBuilder
             {
@@ -610,13 +624,14 @@
             // THIS MAY TAKE A LONG TIME (NEED TO TEST FURTHER) - CAN THIS BE STORED SOMEWHERE SO ALL THREADS CAN USE IT?
             sqlConnection.AccessToken = tokenRequestResult.Token;
 
-            // TODO: When the players are picked from the form, we should be using the player id to update the table
+            // TODO: This should be using the player id to update the table, but currently cannot because the defenses have the same player id (0);
+            // the player and roster scraper will need to be updated to give defneses a unique id before this can be done.
             // update the specific player and add a double apostrophe to the name if there is one in the name (such as in Ja'Marr Chase)
             // TODO: RENAME DB FinalPointsString to FinalScoreString
             string sql = "update CurrentRoster " +
                          "SET GameEnded = 'true', FinalPoints = " + playerFinalScore + ", FinalPointsString = '" + finalScoreString + "' " +
                          "FROM CurrentRoster " +
-                         "INNER JOIN Owners on Owners.OwnerName ='" + ownerName + "' and PlayerName = '" + playerName.Replace("'", "''") + "'" + " and Week = '" + week + "'";
+                         "INNER JOIN Owners on Owners.OwnerId ='" + ownerId + "' and PlayerName = '" + playerName.Replace("'", "''") + "'" + " and Week = '" + week + "'";
 
             sqlConnection.Open();
 
@@ -671,16 +686,15 @@
         /// <param name="finalPoints">If this player's game has ended, they'll have final points, otherwise they'll have 0</param>
         /// <param name="finalScoreString">If this player's game has ended, they'll have a final score string to display such as "(W) 45 - 30")</param>
         /// <returns></returns>
-        private async Task<SelectedPlayer> CreatePlayer(string apiQuery, Position truePosition, Position position, string espnPlayerId, string espnGameId, DateTime gameTime, string homeOrAway, string playerName, string teamAbbreviation, string opponentAbbreviation, string owner, byte[] logo, bool gameEnded, double finalPoints, string finalScoreString)
+        private async Task<SelectedPlayer> CreatePlayer(string apiQuery, Position truePosition, Position position, string espnPlayerId, string espnGameId, DateTime gameTime, string homeOrAway, string playerName, string teamAbbreviation, string opponentAbbreviation, int ownerId, string ownerName, byte[] logo, bool gameEnded, double finalPoints, string finalScoreString)
         {
-            //HttpClient client = new HttpClient();
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", AuthModel.AccessToken);
 
             HttpRequestMessage request = new HttpRequestMessage();
             request.RequestUri = new Uri(apiQuery);
             request.Method = HttpMethod.Get;
-            var response2 = client.GetAsync(request.RequestUri);
-            string testResponse = await response2.Result.Content.ReadAsStringAsync();
+            var response = client.GetAsync(request.RequestUri);
+            string testResponse = await response.Result.Content.ReadAsStringAsync();
 
             XDocument document = XDocument.Parse(testResponse);
 
@@ -730,7 +744,8 @@
             selectedPlayer.OpponentAbbreviation = opponentAbbreviation;
             selectedPlayer.RawPlayerName = playerName;
             selectedPlayer.HomeOrAway = homeOrAway;
-            selectedPlayer.Owner = owner;
+            selectedPlayer.OwnerId = ownerId;
+            selectedPlayer.OwnerName = ownerName;
             selectedPlayer.OwnerLogo = logo;
             selectedPlayer.GameEnded = gameEnded;
             selectedPlayer.Points = finalPoints;

@@ -26,6 +26,8 @@ namespace YahooFantasyFootball
         {
             services.AddControllersWithViews();
 
+            services.AddHttpClient();
+
             services.Configure<YahooConfiguration>(Configuration.GetSection("YahooConfiguration"));
 
             services.AddDistributedMemoryCache();

@@ -6,6 +6,14 @@
 
 <table class="table" border="0" cellpadding="0" cellspacing="0">
     <tr>
+        <td>
+            <label>Select Week</label>
+            <form asp-controller="Scoreboard" asp-action="Index" method="post">
+                <select name="week" class="form-control" asp-items="@ViewBag.weeks" new { onchange="this.form.submit();" }></select>
+            </form>
+        </td>
+    </tr>
+    <tr>
         @{
             int i = 0;
         }

@@ -3,7 +3,9 @@
     using Azure.Core;
     using Azure.Identity;
     using FantasyFootballStatTracker.Models;
+    using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc;
+    using Microsoft.AspNetCore.Mvc.Rendering;
     using System;
     using System.Collections;
     using System.Collections.Generic;
@@ -24,6 +26,8 @@
     {
         private static HttpClient client = new HttpClient();
 
+        public const string SessionKeyWeek = "_Week";
+
         private static async Task<string> GetAzureSqlAccessToken()
         {
             // See https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/services-support-managed-identities#azure-sql
@@ -37,8 +41,9 @@
         /// Queries the CurrentRoster database to create a hashtable storing players for each owner, grouped by espn game id
         /// so we can parse all players in the same doc, limiting the number of times we need to download the doc 
         /// </summary>
+        /// <param name="selectedWeek">The week selected in the form; if this is null, we'll select the latest week</param>
         /// <returns>Hashtable of all players, grouped by espn game ids</returns>
-        public async Task<Hashtable> createPlayersHashtable()
+        public async Task<Hashtable> createPlayersHashtable(string selectedWeek)
         {
             // Hashtable to store players grouped by espn game id so we can parse all players in the same doc, limiting
             // the number of times we need to download the doc
@@ -61,13 +66,22 @@
 
             List<RosterPlayer> rosterPlayers = new List<RosterPlayer>();
 
+            // if the form is first loaded, week will be null so we will select the max week
+            //string weekSelection = week;
+            
+            // if the week was not selected in the form (the form was redirected to), we'll select the latest week
+            if (selectedWeek == null)
+            {
+                selectedWeek = "max(Week)";
+            }
+
             // get all players for each team's roster for this week
             // TODO: this currently selects the latest week in the CurrentRoster; when a dropdown list for the week is added, this query will use that
             // to pull the scoreboard for that week
             string sql = "select o.OwnerName, o.Logo, cr.Week, cr.PlayerName, cr.Position, cr.GameEnded, cr.FinalPoints, cr.FinalPointsString " +
                         "from CurrentRoster cr " +
                         "join Owners o on cr.OwnerID = o.OwnerID " +
-                        "where cr.Week in (select max(Week) from CurrentRoster)";
+                        "where cr.Week in (select " + selectedWeek + " from CurrentRoster)";
 
             using (SqlCommand command = new SqlCommand(sql, sqlConnection))
             {
@@ -259,15 +273,44 @@
                 }
             }
 
+            await sqlConnection.CloseAsync();
+
             return testPlayers;
         }
 
+        /// <summary>
+        /// The post action which is called when the week in the dropdown list is selected. This will simply store the
+        /// week in a session state variable and redirect to the get action where the week will be pulled out so the
+        /// data for that week's matchup is pulled and displayed in the view. This redirect to the get prevents the browser
+        /// from popping up a warning if you refresh the page and the dropdown list tries to post again.
+        /// </summary>
+        /// <param name="week">The week selected in the dropdown list</param>
+        /// <returns>A redirect to the GET action</returns>
+        [HttpPost]
+        public IActionResult Index(string week)
+        {
+            SessionExtensions.SetString(HttpContext.Session, SessionKeyWeek, week);
+
+            return RedirectToAction("Index");
+        }
+
+        /// <summary>
+        /// The GET action which will check for the week in the session state variable. If the week was not selected (the
+        /// drop down list stays on the default latest week), it will pull back the latest week, otherwise the week selected
+        /// in the dropdown list is used to pull matchup data.
+        /// </summary>
+        /// <returns>The view with data from the selected week in the dropdown list</returns>
         public async Task<IActionResult> Index()
         {
+            string week = SessionExtensions.GetString(HttpContext.Session, SessionKeyWeek);
+
             // we need to first check to make sure the token isn't null (if the site hasn't been refreshed in a while and
             // is attempted to be refreshed on the scoreboard, it will be null
             if (AuthModel.AccessToken != null)
             {
+                // populate the week dropdown with all weeks a matchup has been played
+                ViewBag.weeks = GetGameWeeks(week);
+
                 List<Team> teams = new List<Team>();
 
                 // TESTING pulling multiple players back from Yahoo API
@@ -305,7 +348,7 @@
 
                 // Get the Hashtable which will store players grouped by espn game id so we can parse all players in the same doc, limiting
                 // the number of times we need to download the doc
-                Hashtable testPlayers = await createPlayersHashtable();
+                Hashtable testPlayers = await createPlayersHashtable(week);
 
                 // each thread will need a done event signifying when the thread has completed, so create a list of
                 // done events for each thread (for each espn game id)
@@ -320,8 +363,11 @@
                 // adding each SelectedPlayer in the hashtable to the approprate list of teams (team one or team two)
                 foreach (string key in testPlayers.Keys)
                 {
+                    // allocating a new week variable for the thread
+                    string tempWeek = week;
+
                     List<SelectedPlayer> playersInGame = (List<SelectedPlayer>)testPlayers[key];
-                    tasks[i] = Task.Factory.StartNew(() => scrapeStatsFromGame(key, playersInGame));
+                    tasks[i] = Task.Factory.StartNew(() => scrapeStatsFromGame(key, playersInGame, tempWeek));
                     //scrapeStatsFromGame(key, playersInGame);
 
                     // create the done event for this thread
@@ -398,11 +444,11 @@
         /// Scrapes stats for each player playing in a particular game. This is called in a thread so when the work
         /// is done, the thread will report that it has completed by calling the signalThread method
         /// </summary>
-        /// <param name="scraperParameters"></param>
         /// <param name="espnGameId">ESPN Game ID for the players on either roster</param>
         /// <param name="players">All players playing in the given ESPN Game ID</param>
+        /// <param name="week">The week stats are being scraped for, which is only used when updating the final score in the database</param>
         //private void scrapeStatsFromGame(Object state)
-        private void scrapeStatsFromGame(string espnGameId, List<SelectedPlayer> players)
+        private void scrapeStatsFromGame(string espnGameId, List<SelectedPlayer> players, string week)
         {
             //State stateInfo = (State)state;
 
@@ -465,13 +511,74 @@
 
                         p.FinalScoreString = finalScoreString;
 
-                        updateCurrentRosterWithFinalScore(p.Owner, p.RawPlayerName, p.Points, finalScoreString);
+                        updateCurrentRosterWithFinalScore(p.Owner, p.RawPlayerName, p.Points, finalScoreString, week);
                     }
                 }
             }
 
             // all of the work is done, so signal the thread that it's complete so the ThreadPool will be notified
             // stateInfo.DoneEvent.Set();
+        }
+
+        /// <summary>
+        /// Gets from the CurrentRoster table a list of all weeks a matchup has been played.
+        /// </summary>
+        /// <param name="selectedWeek">The week selected from the form; null if page is first loaded</param>
+        /// <returns>/A list of all weeks a matchup has been played</returns>
+        private List<SelectListItem> GetGameWeeks(string selectedWeek)
+        {
+            List<SelectListItem> weeks = new List<SelectListItem>();
+
+            var connectionStringBuilder = new SqlConnectionStringBuilder
+            {
+                DataSource = "tcp:playersandscheduledetails.database.windows.net,1433",
+                InitialCatalog = "PlayersAndSchedulesDetails",
+                TrustServerCertificate = false,
+                Encrypt = true
+            };
+
+            var sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
+
+            var tokenRequestContext = new TokenRequestContext(new[] { "https://database.windows.net//.default" });
+            var tokenRequestResult = new DefaultAzureCredential().GetToken(tokenRequestContext);
+
+            // THIS MAY TAKE A LONG TIME (NEED TO TEST FURTHER) - CAN THIS BE STORED SOMEWHERE SO ALL THREADS CAN USE IT?
+            sqlConnection.AccessToken = tokenRequestResult.Token;
+
+            sqlConnection.Open();
+
+            string sql = "select distinct week from CurrentRoster";
+
+            using (SqlCommand command = new SqlCommand(sql, sqlConnection))
+            {
+                using (SqlDataReader reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        string week = reader["week"].ToString();
+
+                        // if this week is the week which was selected from the form, set this as the selected week in the
+                        // drop down list
+                        bool selected;
+
+                        // if the selectedweek is null, we'll keep this true so the last item will be selected
+                        if (selectedWeek == null)
+                        {
+                            selected = true;
+                        }
+                        else
+                        {
+                            selected = week.Equals(selectedWeek) ? true : false;
+                        }
+
+                        weeks.Add(new SelectListItem(week, week, selected));
+                    }
+                }
+            }
+
+            sqlConnection.Close();
+
+            return weeks;
         }
 
         /// <summary>
@@ -484,7 +591,8 @@
         /// <param name="playerName">The player whose points we are updating in the CurrentRoster table</param>
         /// <param name="playerFinalScore">The final score the player got in the game</param>
         /// <param name="finalScoreString">The final score string for the player's team, which is displayed in the UI</param>
-        private void updateCurrentRosterWithFinalScore(string ownerName, string playerName, double playerFinalScore, string finalScoreString)
+        /// <param name="week">The week we are updating</param>
+        private void updateCurrentRosterWithFinalScore(string ownerName, string playerName, double playerFinalScore, string finalScoreString, string week)
         {
             var connectionStringBuilder = new SqlConnectionStringBuilder
             {
@@ -508,7 +616,7 @@
             string sql = "update CurrentRoster " +
                          "SET GameEnded = 'true', FinalPoints = " + playerFinalScore + ", FinalPointsString = '" + finalScoreString + "' " +
                          "FROM CurrentRoster " +
-                         "INNER JOIN Owners on Owners.OwnerName ='" + ownerName + "' and PlayerName = '" + playerName.Replace("'", "''") + "'";
+                         "INNER JOIN Owners on Owners.OwnerName ='" + ownerName + "' and PlayerName = '" + playerName.Replace("'", "''") + "'" + " and Week = '" + week + "'";
 
             sqlConnection.Open();
 

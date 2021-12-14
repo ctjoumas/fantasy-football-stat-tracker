@@ -6,6 +6,7 @@
     using FantasyFootballStatTracker.Infrastructure;
     using HtmlAgilityPack;
     using Newtonsoft.Json.Linq;
+    using YahooFantasyFootball.Models;
 
     public class EspnHtmlScraper
     {
@@ -224,7 +225,7 @@
         /// <param name="homeOrAway">Depending on if the player is playing a home or away game, we find stats in a particular data tag</param>
         /// <param name="opponentAbbreviation">This is only used when scoring a team defnese so we know when an opponent scores a 2 point conversion</param>
         /// <returns>Fantasy points for this player (without 2-pt conversions, which is handled in a separate method</returns>
-        public double parseGameTrackerPage(string gameId, string playerId, string homeOrAway, string opponentAbbreviation)
+        public double parseGameTrackerPage(string gameId, string playerId, Position position, string homeOrAway, string opponentAbbreviation)
         {
             double fantasyPoints = 0;
 
@@ -285,11 +286,10 @@
                         // after extracting the player id in a link tag
                         var playerIdNode = statsNode.SelectSingleNode(".//a");
 
-                        // if the playerId coming into this function is "0", as stored in the database, that means we are searching for
-                        // team defense stats, so we will fall into the else to do that. Otherwise, if there is a playerID coming into
-                        // this function and there isn't a player for this stat (e.g. this player has no interceptions), there will not
-                        // be a player ID Node, so we will just skip this stat
-                        if ((playerIdNode != null) && (!playerId.Equals("0")))
+                        // if we are searching for           // team defense stats, so we we will fall into the else to do that. Otherwise, if there is a playerID coming
+                        // into this function and there isn't a player for this stat (e.g. this player has no interceptions), there will
+                        // not be a player ID Node, so we will just skip this stat
+                        if ((playerIdNode != null) && !position.Equals(Position.DEF))
                         {
                             string playerUid = playerIdNode.Attributes["data-player-uid"].Value;
 
@@ -315,7 +315,7 @@
                                 }
                             }
                         }
-                        else if ((playerIdNode != null) && (playerId.Equals("0")))
+                        else if ((playerIdNode != null) && (position.Equals(Position.DEF)))
                         {
                             if (stat.Equals("Defensive"))
                                 fantasyPoints += handleDefensiveStats(statsNode);
@@ -328,9 +328,9 @@
                 }
             }
 
-            // if we are scoring for team defense (playerId == "0"), we need to check how many points were scored
+            // if we are scoring for team defense, we need to check how many points were scored
             // against them as well as whether they blocked any kicks or field goals
-            if (playerId.Equals("0"))
+            if (position.Equals(Position.DEF))
             {
                 fantasyPoints += handleDefenseTeamPoints(gameTrackerDoc, homeOrAway, gameId, opponentAbbreviation);
                 fantasyPoints += handleBlockedKicksAndPunts(opponentAbbreviation);

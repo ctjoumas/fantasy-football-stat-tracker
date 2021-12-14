@@ -19,6 +19,7 @@
         public Position Position { get; set; }
         public bool GameEnded { get; set; }
         public double FinalPoints { get; set; }
+        public string EspnPlayerId { get; set; }
 
         /// <summary>
         /// If the game is over, we will have a final score string such as "(W) 45 - 30"

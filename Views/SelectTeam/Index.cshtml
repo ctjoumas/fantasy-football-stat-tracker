@@ -17,9 +17,7 @@
         }
     </script>
 
-
-
-    @using (Html.BeginForm("Index", "SelectTeam"))
+    @using (Html.BeginForm("Index", "SelectTeam", FormMethod.Post))
     {
         <center>
             <table style="width:min-content; border-collapse:inherit;margin: 0;display:block;float:none;">
@@ -29,24 +27,22 @@
                 <tr style="border-collapse:inherit;margin: 0;display:block;float:none;">
                     <td style="text-align: center;width:200px;">
                         Players:<br />
-                        @Html.ListBox("UnselectedItem", Model.PlayerUnselectedList, new { style = "width:200px;height:500px;" })
+                        @{
+                            @Html.ListBoxFor(m => m.PlayerUnselectedList, new SelectList(Model.PlayerUnselectedList, "EspnPlayerId", "PlayerName"), new { style = "width:200px;height:500px;" })
+                        }
                     </td>
                     <td style="width: 75px;text-align: center;">
                         <table style="min-width:75%;border-collapse: collapse;margin-left: auto;margin-right: auto;">
                             <tr>
                                 <td style="height:250px;border-collapse:inherit;margin: 0;float:none;vertical-align: middle;">
-                                    <!--input type="button" value=">>" onclick="javascript: MoveListBoxItem('UnselectedItem', 'SelectedEspnPlayerIdOwner1')" /><br />-->
-                                    <!--input type="button" value="<<" onclick="javascript: MoveListBoxItem('SelectedEspnPlayerIdOwner1', 'UnselectedItem')" /><br />-->
-                                    <input type="button" value=">>" onclick="javascript: MoveListBoxItem('UnselectedItem', 'SelectedEspnPlayerNamesOwner1')" /><br />
-                                    <input type="button" value="<<" onclick="javascript: MoveListBoxItem('SelectedEspnPlayerNamesOwner1', 'UnselectedItem')" /><br />
+                                    <input type="button" value=">>" onclick="javascript: MoveListBoxItem('PlayerUnselectedList', 'PlayerIdSelectedListOwner1')" /><br />
+                                    <input type="button" value="<<" onclick="javascript: MoveListBoxItem('PlayerIdSelectedListOwner1', 'PlayerUnselectedList')" /><br />
                                 </td>
                             </tr>
                             <tr>
                                 <td style="height:250px;border-collapse:inherit;margin: 0;float:none;vertical-align: middle;">
-                                    <!--input type="button" value=">>" onclick="javascript: MoveListBoxItem('UnselectedItem', 'SelectedEspnPlayerIdOwner2')" /><br />-->
-                                    <!--input type="button" value="<<" onclick="javascript: MoveListBoxItem('SelectedEspnPlayerIdOwner2', 'UnselectedItem')" /><br />-->
-                                    <input type="button" value=">>" onclick="javascript: MoveListBoxItem('UnselectedItem', 'SelectedEspnPlayerNamesOwner2')" /><br />
-                                    <input type="button" value="<<" onclick="javascript: MoveListBoxItem('SelectedEspnPlayerNamesOwner2', 'UnselectedItem')" /><br />
+                                    <input type="button" value=">>" onclick="javascript: MoveListBoxItem('PlayerUnselectedList', 'PlayerIdSelectedListOwner2')" /><br />
+                                    <input type="button" value="<<" onclick="javascript: MoveListBoxItem('PlayerIdSelectedListOwner2', 'PlayerUnselectedList')" /><br />
                                 </td>
                             </tr>
                         </table>
@@ -56,13 +52,13 @@
                             <tr>
                                 <td style="border-collapse:inherit;margin: 0;display:block;float:none;">
                                     Owner One Team<br />
-                                    @Html.ListBoxFor(m => m.SelectedEspnPlayerNamesOwner1, new SelectList(Model.PlayerSelectedListOwner1, "PlayerName", "PlayerName"), new { style = "width:200px;height:250px;" })
+                                    @Html.ListBoxFor(m => m.PlayerIdSelectedListOwner1, new SelectList(Model.PlayerIdSelectedListOwner1, "EspnPlayerId", "PlayerName"), new { style = "width:200px;height:250px;" })
                                 </td>
                             </tr>
                             <tr>
                                 <td style="border-collapse: inherit; margin: 0; display: block; float: none;">
                                     Owner Two Team<br />
-                                    @Html.ListBoxFor(m => m.SelectedEspnPlayerNamesOwner2, new SelectList(Model.PlayerSelectedListOwner2, "PlayerName", "PlayerName"), new { style = "width:200px;height:250px;" })
+                                    @Html.ListBoxFor(m => m.PlayerIdSelectedListOwner2, new SelectList(Model.PlayerIdSelectedListOwner2, "EspnPlayerId", "PlayerName"), new { style = "width:200px;height:250px;" })
                                 </td>
                             </tr>
                         </table>

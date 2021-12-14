@@ -89,7 +89,7 @@
             }
 
             // get all players for each team's roster for this week
-            string sql = "select o.OwnerID, o.OwnerName, o.Logo, cr.Week, cr.PlayerName, cr.Position, cr.GameEnded, cr.FinalPoints, cr.FinalPointsString " +
+            string sql = "select o.OwnerID, o.OwnerName, o.Logo, cr.Week, cr.PlayerName, cr.Position, cr.GameEnded, cr.FinalPoints, cr.FinalPointsString, cr.EspnPlayerId " +
                         "from CurrentRoster cr " +
                         "join Owners o on cr.OwnerID = o.OwnerID " +
                         "where cr.Week in (select " + selectedWeek + " from CurrentRoster)";
@@ -109,6 +109,7 @@
                         bool gameEnded = (bool)reader.GetValue(reader.GetOrdinal("GameEnded"));
                         double finalPoints = (double)reader.GetValue(reader.GetOrdinal("FinalPoints"));
                         string finalScoreString = reader.GetValue(reader.GetOrdinal("FinalPointsString")).ToString();
+                        string espnPlayerId = reader.GetValue(reader.GetOrdinal("EspnPlayerId")).ToString();
 
                         // add this player to the current roster
                         rosterPlayers.Add(new RosterPlayer()
@@ -121,7 +122,8 @@
                             Position = (Position)Enum.Parse(typeof(Position), position),
                             GameEnded = gameEnded,
                             FinalPoints = finalPoints,
-                            FinalScoreString = finalScoreString
+                            FinalScoreString = finalScoreString,
+                            EspnPlayerId = espnPlayerId
                         });
                     }
                 }
@@ -136,15 +138,12 @@
             int rosterTwoTeCount = 0;
 
             // go through each player on the roster and create the player and add them to the hashtable
-            // TODO: once this is put in the UI where players are selected from a dropdown, we'll put the player ID in the CurrentRoster
-            // table and use that for searching below
             foreach (RosterPlayer rosterPlayer in rosterPlayers)
             {
                 sql = "SELECT ts.EspnGameId, p.EspnPlayerId, ts.HomeOrAway, p.PlayerName, p.TeamAbbreviation, ts.OpponentAbbreviation, p.Position, ts.GameDate " +
                         "from Players p " +
                         "join TeamsSchedule ts on ts.TeamId = p.TeamId " +
-                        //"where p.PlayerName = '" + rosterPlayer.PlayerName.Replace("'", "''") + "' and p.Position = '" + rosterPlayer.Position + "' and ts.Week = " + rosterPlayer.Week;
-                        "where p.PlayerName = '" + rosterPlayer.PlayerName.Replace("'", "''") + "' and ts.Week = " + rosterPlayer.Week;
+                        "where p.EspnPlayerId = '" + rosterPlayer.EspnPlayerId + "' and ts.Week = " + rosterPlayer.Week;
 
                 using (SqlCommand command = new SqlCommand(sql, sqlConnection))
                 {
@@ -278,7 +277,7 @@
                             // then encode the result, which will change the %27 into %2527
                             playerNameSearchString = HttpUtility.UrlEncode(playerNameSearchString.Replace("'", HttpUtility.UrlEncode("'")));
 
-                            player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerNameSearchString + "/stats", rosterPlayer.Position, positionType, espnPlayerId, espnGameId, gameDate, homeOrAway, rosterPlayer.PlayerName, teamAbbreviation, opponentAbbreviation, rosterPlayer.OwnerId, rosterPlayer.OwnerName, rosterPlayer.Logo, rosterPlayer.GameEnded, rosterPlayer.FinalPoints, rosterPlayer.FinalScoreString);
+                            player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerNameSearchString + "/stats", rosterPlayer.Position, positionType, espnPlayerId, espnGameId, gameDate, homeOrAway, rosterPlayer.PlayerName, teamAbbreviation, opponentAbbreviation, rosterPlayer.OwnerId, rosterPlayer.OwnerName, rosterPlayer.Logo, rosterPlayer.GameEnded, rosterPlayer.FinalPoints, rosterPlayer.FinalScoreString, rosterPlayer.Week);
 
                             addPlayerToHashtable(testPlayers, espnGameId, player);
                         }
@@ -376,11 +375,8 @@
                 // adding each SelectedPlayer in the hashtable to the approprate list of teams (team one or team two)
                 foreach (string key in testPlayers.Keys)
                 {
-                    // allocating a new week variable for the thread
-                    string tempWeek = week;
-
                     List<SelectedPlayer> playersInGame = (List<SelectedPlayer>)testPlayers[key];
-                    tasks[i] = Task.Factory.StartNew(() => scrapeStatsFromGame(key, playersInGame, tempWeek));
+                    tasks[i] = Task.Factory.StartNew(() => scrapeStatsFromGame(key, playersInGame));
                     //scrapeStatsFromGame(key, playersInGame);
 
                     // create the done event for this thread
@@ -460,9 +456,7 @@
         /// </summary>
         /// <param name="espnGameId">ESPN Game ID for the players on either roster</param>
         /// <param name="players">All players playing in the given ESPN Game ID</param>
-        /// <param name="week">The week stats are being scraped for, which is only used when updating the final score in the database</param>
-        //private void scrapeStatsFromGame(Object state)
-        private void scrapeStatsFromGame(string espnGameId, List<SelectedPlayer> players, string week)
+        private void scrapeStatsFromGame(string espnGameId, List<SelectedPlayer> players)
         {
             //State stateInfo = (State)state;
 
@@ -497,7 +491,7 @@
                     p.GameInProgress = true;
 
                     //p.Points += scraper.parseGameTrackerPage(stateInfo.EspnGameId, p.EspnPlayerId, p.HomeOrAway, p.OpponentAbbreviation);
-                    p.Points += scraper.parseGameTrackerPage(espnGameId, p.EspnPlayerId, p.HomeOrAway, p.OpponentAbbreviation);
+                    p.Points += scraper.parseGameTrackerPage(espnGameId, p.EspnPlayerId, p.Position, p.HomeOrAway, p.OpponentAbbreviation);
                     //p.Points += scraper.parseTwoPointConversionsForPlayer(stateInfo.EspnGameId, p.RawPlayerName);
                     p.Points += scraper.parseTwoPointConversionsForPlayer(p.RawPlayerName);
                     p.TimeRemaining = scraper.parseTimeRemaining();
@@ -525,7 +519,7 @@
 
                         p.FinalScoreString = finalScoreString;
 
-                        updateCurrentRosterWithFinalScore(p.OwnerId, p.RawPlayerName, p.Points, finalScoreString, week);
+                        updateCurrentRosterWithFinalScore(p.OwnerId, p.EspnPlayerId, p.Points, finalScoreString, p.Week);
                     }
                 }
             }
@@ -602,11 +596,11 @@
         /// than scrap the gametracker page again.
         /// </summary>
         /// <param name="ownerId">The owner id of the team</param>
-        /// <param name="playerName">The player whose points we are updating in the CurrentRoster table</param>
+        /// <param name="espnPlayerId">The id of the player whose points we are updating in the CurrentRoster table</param>
         /// <param name="playerFinalScore">The final score the player got in the game</param>
         /// <param name="finalScoreString">The final score string for the player's team, which is displayed in the UI</param>
         /// <param name="week">The week we are updating</param>
-        private void updateCurrentRosterWithFinalScore(int ownerId, string playerName, double playerFinalScore, string finalScoreString, string week)
+        private void updateCurrentRosterWithFinalScore(int ownerId, string espnPlayerId, double playerFinalScore, string finalScoreString, int week)
         {
             var connectionStringBuilder = new SqlConnectionStringBuilder
             {
@@ -624,14 +618,11 @@
             // THIS MAY TAKE A LONG TIME (NEED TO TEST FURTHER) - CAN THIS BE STORED SOMEWHERE SO ALL THREADS CAN USE IT?
             sqlConnection.AccessToken = tokenRequestResult.Token;
 
-            // TODO: This should be using the player id to update the table, but currently cannot because the defenses have the same player id (0);
-            // the player and roster scraper will need to be updated to give defneses a unique id before this can be done.
-            // update the specific player and add a double apostrophe to the name if there is one in the name (such as in Ja'Marr Chase)
             // TODO: RENAME DB FinalPointsString to FinalScoreString
             string sql = "update CurrentRoster " +
                          "SET GameEnded = 'true', FinalPoints = " + playerFinalScore + ", FinalPointsString = '" + finalScoreString + "' " +
                          "FROM CurrentRoster " +
-                         "INNER JOIN Owners on Owners.OwnerId ='" + ownerId + "' and PlayerName = '" + playerName.Replace("'", "''") + "'" + " and Week = '" + week + "'";
+                         "INNER JOIN Owners on Owners.OwnerId ='" + ownerId + "' and EspnPlayerId = '" + espnPlayerId + "'" + " and Week = '" + week.ToString() + "'";
 
             sqlConnection.Open();
 
@@ -685,8 +676,9 @@
         /// <param name="gameEnded">The db will have a GameEnded flag set whether the player's game has ended or not</param>
         /// <param name="finalPoints">If this player's game has ended, they'll have final points, otherwise they'll have 0</param>
         /// <param name="finalScoreString">If this player's game has ended, they'll have a final score string to display such as "(W) 45 - 30")</param>
+        /// <param name="week">The week this player is playing in</param>
         /// <returns></returns>
-        private async Task<SelectedPlayer> CreatePlayer(string apiQuery, Position truePosition, Position position, string espnPlayerId, string espnGameId, DateTime gameTime, string homeOrAway, string playerName, string teamAbbreviation, string opponentAbbreviation, int ownerId, string ownerName, byte[] logo, bool gameEnded, double finalPoints, string finalScoreString)
+        private async Task<SelectedPlayer> CreatePlayer(string apiQuery, Position truePosition, Position position, string espnPlayerId, string espnGameId, DateTime gameTime, string homeOrAway, string playerName, string teamAbbreviation, string opponentAbbreviation, int ownerId, string ownerName, byte[] logo, bool gameEnded, double finalPoints, string finalScoreString, int week)
         {
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", AuthModel.AccessToken);
 
@@ -750,12 +742,13 @@
             selectedPlayer.GameEnded = gameEnded;
             selectedPlayer.Points = finalPoints;
             selectedPlayer.FinalScoreString = finalScoreString;
+            selectedPlayer.Week = week;
 
             return selectedPlayer;
         }
 
         // Maintain state to pass to the scrapeStatsFromGame method
-        public class State
+        /*public class State
         {
             public string EspnGameId { get; set; }
 
@@ -764,6 +757,6 @@
             List<Team> Teams { get; set; }
 
             public ManualResetEvent DoneEvent { get; set; }
-        }
+        }*/
     }
 }

@@ -66,6 +66,9 @@
 
         // Holds the final score string (such as "(W) 45 - 30") from the database, which is stored once the game ends
         public string FinalScoreString { get; set; }
+
+        // The week the player is playing in
+        public int Week { get; set; }
     }
 
     /// <summary>

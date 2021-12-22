@@ -41,72 +41,81 @@
                         <td colspan="3"></td>
                     </tr>
 
-                    @foreach (var player in team.Players)
+                    @if (team.Players.Count == 0)
                     {
-                        // this will display either the date / time of the matchup or "Final"
-                        var matchupDisplay = "";
-                        var day = player.GameTime.DayOfWeek.ToString().Substring(0, 3);
-
-                        var hour = Convert.ToInt32(player.GameTime.ToString("hh"));
-                        var minute = player.GameTime.ToString("mm");
-                        var pmOrAm = player.GameTime.ToString("tt", System.Globalization.CultureInfo.InvariantCulture);
-                        var opponentAbbreviation = player.OpponentAbbreviation.ToUpper();
-                        var gameLocation = player.HomeOrAway.Equals("home") ? "vs" : "@";
-
-                        // if the game has ended, we will display "Final"
-                        if (player.GameEnded)
-                        {
-                            matchupDisplay = "Final " + player.FinalScoreString + " " + gameLocation + " " + opponentAbbreviation;
-                        }
-                        else if (player.GameInProgress)
-                        {
-                            matchupDisplay = player.TimeRemaining + " " + player.CurrentScoreString + " " + gameLocation + " " + opponentAbbreviation;
-                        }
-                        else
-                        {
-                            matchupDisplay = day + " " + hour + ":" + minute + pmOrAm + " " + gameLocation + " " + opponentAbbreviation;
-                        }
-
-                        var color = player.GameInProgress ? "#F9F9CD" : "#FFFFFF";
-                        var boldOrNormal = player.GameInProgress ? "bold" : "normal";
-
-                        <tr style="background-color:@color" height="100px">
-                            <td style="vertical-align:middle">
-                                <img src="@Html.DisplayFor(modelItem => player.Headshot)" alt="" headshot" />
-                            </td>
-                            <td style="vertical-align:middle">
-                                <span style="font-weight:@boldOrNormal;">
-                                    @Html.DisplayFor(modelItem => player.Name)
-                                    <br />
-                                    <font size="2">
-                                        @player.TeamAbbreviation.ToUpper() - @player.TruePosition
-                                        <br />
-                                        @matchupDisplay
-                                    </font>
-                                </span>
-                            </td>
-                            <td align="right" style="vertical-align:middle">
-                                @{
-                                    var playerPoints = player.Points.ToString("0.00");
-
-                                    // if the game hasn't started, display a "-" so it's easy to see which game hasn't started when none are in progress
-                                    if (!player.GameEnded && !player.GameInProgress)
-                                    {
-                                        playerPoints = "-";
-                                    }
-                                }
-
-                                @if (player.GameInProgress)
-                                {
-
-                                    <strong>@playerPoints</strong>
-                                }
-                                else
-                                {
-                                    @playerPoints
-                                }
-                            </td>
+                        <tr style="vertical-align:middle;" height="900px">
+                            <td style="text-align:center;" colspan="3">@Html.ActionLink("Click here to select this week's roster", "Index", "SelectTeam2", new { week = team.Week, ownerId = team.OwnerId })</td>
                         </tr>
+                    }
+                    else
+                    {
+                        @foreach (var player in team.Players)
+                        {
+                            // this will display either the date / time of the matchup or "Final"
+                            var matchupDisplay = "";
+                            var day = player.GameTime.DayOfWeek.ToString().Substring(0, 3);
+
+                            var hour = Convert.ToInt32(player.GameTime.ToString("hh"));
+                            var minute = player.GameTime.ToString("mm");
+                            var pmOrAm = player.GameTime.ToString("tt", System.Globalization.CultureInfo.InvariantCulture);
+                            var opponentAbbreviation = player.OpponentAbbreviation.ToUpper();
+                            var gameLocation = player.HomeOrAway.Equals("home") ? "vs" : "@";
+
+                            // if the game has ended, we will display "Final"
+                            if (player.GameEnded)
+                            {
+                                matchupDisplay = "Final " + player.FinalScoreString + " " + gameLocation + " " + opponentAbbreviation;
+                            }
+                            else if (player.GameInProgress)
+                            {
+                                matchupDisplay = player.TimeRemaining + " " + player.CurrentScoreString + " " + gameLocation + " " + opponentAbbreviation;
+                            }
+                            else
+                            {
+                                matchupDisplay = day + " " + hour + ":" + minute + pmOrAm + " " + gameLocation + " " + opponentAbbreviation;
+                            }
+
+                            var color = player.GameInProgress ? "#F9F9CD" : "#FFFFFF";
+                            var boldOrNormal = player.GameInProgress ? "bold" : "normal";
+
+                            <tr style="background-color:@color" height="100px">
+                                <td style="vertical-align:middle">
+                                    <img src="@Html.DisplayFor(modelItem => player.Headshot)" alt="" headshot" />
+                                </td>
+                                <td style="vertical-align:middle">
+                                    <span style="font-weight:@boldOrNormal;">
+                                        @Html.DisplayFor(modelItem => player.Name)
+                                        <br />
+                                        <font size="2">
+                                            @player.TeamAbbreviation.ToUpper() - @player.TruePosition
+                                            <br />
+                                            @matchupDisplay
+                                        </font>
+                                    </span>
+                                </td>
+                                <td align="right" style="vertical-align:middle">
+                                    @{
+                                        var playerPoints = player.Points.ToString("0.00");
+
+                                        // if the game hasn't started, display a "-" so it's easy to see which game hasn't started when none are in progress
+                                        if (!player.GameEnded && !player.GameInProgress)
+                                        {
+                                            playerPoints = "-";
+                                        }
+                                    }
+
+                                    @if (player.GameInProgress)
+                                    {
+
+                                        <strong>@playerPoints</strong>
+                                    }
+                                    else
+                                    {
+                                        @playerPoints
+                                    }
+                                </td>
+                            </tr>
+                        }
                     }
                     @{i++;}
                 </table>

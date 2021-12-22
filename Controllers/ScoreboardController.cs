@@ -13,7 +13,6 @@
     using System.Linq;
     using System.Net.Http;
     using System.Net.Http.Headers;
-    using System.Threading;
     using System.Threading.Tasks;
     using System.Web;
     using System.Xml.Linq;
@@ -33,6 +32,11 @@
         /// Session key for the currently selected scoreboard week
         /// </summary>
         public const string SessionKeyWeek = "_Week";
+
+        /// <summary>
+        /// Stores the owner logos
+        /// </summary>
+        private List<byte[]> OwnerLogos = new List<byte[]>();
 
         /// <summary>
         /// Injecting HttpClientFactory to set the HttpClient used for calling the yahoo API to get data for each
@@ -82,17 +86,24 @@
 
             List<RosterPlayer> rosterPlayers = new List<RosterPlayer>();
 
-            // if the week was not selected in the form (the form was redirected to), we'll select the latest week
-            if (selectedWeek == null)
+            // get the owner logos
+            string sql = "select Logo from Owners";
+            using (SqlCommand command = new SqlCommand(sql, sqlConnection))
             {
-                selectedWeek = "max(Week)";
+                using (SqlDataReader reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        OwnerLogos.Add((byte[])reader.GetValue(reader.GetOrdinal("Logo")));
+                    }
+                }
             }
 
             // get all players for each team's roster for this week
-            string sql = "select o.OwnerID, o.OwnerName, o.Logo, cr.Week, cr.PlayerName, cr.Position, cr.GameEnded, cr.FinalPoints, cr.FinalPointsString, cr.EspnPlayerId " +
-                        "from CurrentRoster cr " +
-                        "join Owners o on cr.OwnerID = o.OwnerID " +
-                        "where cr.Week in (select " + selectedWeek + " from CurrentRoster)";
+            sql = "select o.OwnerID, o.OwnerName, cr.Week, cr.PlayerName, cr.Position, cr.GameEnded, cr.FinalPoints, cr.FinalPointsString, cr.EspnPlayerId " +
+                         "from CurrentRoster cr " +
+                         "join Owners o on cr.OwnerID = o.OwnerID " +
+                         "where cr.Week in (select " + selectedWeek + " from CurrentRoster)";
 
             using (SqlCommand command = new SqlCommand(sql, sqlConnection))
             {
@@ -102,7 +113,6 @@
                     {
                         int ownerId = (int)reader.GetValue(reader.GetOrdinal("OwnerID"));
                         string ownerName = reader.GetValue(reader.GetOrdinal("OwnerName")).ToString();
-                        byte[] logo = (byte[])reader.GetValue(reader.GetOrdinal("Logo"));
                         int week = (int)reader.GetValue(reader.GetOrdinal("Week"));
                         string playerName = reader.GetValue(reader.GetOrdinal("PlayerName")).ToString();
                         string position = reader.GetValue(reader.GetOrdinal("Position")).ToString().Trim();
@@ -116,7 +126,6 @@
                         {
                             OwnerId = ownerId,
                             OwnerName = ownerName,
-                            Logo = logo,
                             Week = week,
                             PlayerName = playerName,
                             Position = (Position)Enum.Parse(typeof(Position), position),
@@ -314,14 +323,21 @@
         /// <returns>The view with data from the selected week in the dropdown list</returns>
         public async Task<IActionResult> Index()
         {
-            string week = SessionExtensions.GetString(HttpContext.Session, SessionKeyWeek);
-
             // we need to first check to make sure the token isn't null (if the site hasn't been refreshed in a while and
             // is attempted to be refreshed on the scoreboard, it will be null
             if (AuthModel.AccessToken != null)
             {
+                string week = SessionExtensions.GetString(HttpContext.Session, SessionKeyWeek);
+
                 // populate the week dropdown with all weeks a matchup has been played
                 ViewBag.weeks = GetGameWeeks(week);
+
+                // there may be a better way of doing this, but the GetGameWeeks call will update the session variable to the latest
+                // week if no week was selected, whether it's the latest week or the new week which a team needs to be selected for
+                if (week == null)
+                {
+                    week = SessionExtensions.GetString(HttpContext.Session, SessionKeyWeek);
+                }
 
                 List<Team> teams = new List<Team>();
 
@@ -415,8 +431,9 @@
 
                 Team team = new Team
                 {
-                    Owner = "Liz",
-                    OwnerLogo = teamOnePlayers[0].OwnerLogo,
+                    OwnerId = 1,
+                    Week = int.Parse(week),
+                    OwnerLogo = OwnerLogos[0],//teamOnePlayers[0].OwnerLogo,
                     TotalFantasyPoints = Math.Round(points, 2),
                     Players = teamOnePlayers
                 };
@@ -433,8 +450,9 @@
 
                 team = new Team
                 {
-                    Owner = "Chris",
-                    OwnerLogo = teamTwoPlayers[0].OwnerLogo,
+                    OwnerId = 2,
+                    Week = int.Parse(week),
+                    OwnerLogo = OwnerLogos[1],
                     TotalFantasyPoints = Math.Round(points, 2),
                     Players = teamTwoPlayers
                 };
@@ -529,7 +547,9 @@
         }
 
         /// <summary>
-        /// Gets from the CurrentRoster table a list of all weeks a matchup has been played.
+        /// Gets from the CurrentRoster table a list of all weeks a matchup has been played. A check is then made to see if the
+        /// latest week has already been played so the new week can be added and the owners can then select their teams by clicking
+        /// a link to redirect to the select team page.
         /// </summary>
         /// <param name="selectedWeek">The week selected from the form; null if page is first loaded</param>
         /// <returns>/A list of all weeks a matchup has been played</returns>
@@ -557,13 +577,15 @@
 
             string sql = "select distinct week from CurrentRoster";
 
+            string week = "";
+
             using (SqlCommand command = new SqlCommand(sql, sqlConnection))
             {
                 using (SqlDataReader reader = command.ExecuteReader())
                 {
                     while (reader.Read())
                     {
-                        string week = reader["week"].ToString();
+                        week = reader["week"].ToString();
 
                         // if this week is the week which was selected from the form, set this as the selected week in the
                         // drop down list
@@ -584,9 +606,74 @@
                 }
             }
 
+            // the latest week is stored in the week variable and we can check this to see if this week has completed and
+            // new week needs to be added
+            if (!IsLatestWeekSelectedForEitherOwner(sqlConnection, week))
+            {
+                int intWeek = int.Parse(week);
+                intWeek++;
+
+                week = intWeek.ToString();
+
+                // select this week so it will provide the owner(s) with the link to select a team
+                weeks.Add(new SelectListItem(week, week, true));
+            }
+
+            // Set the session to hold the latest week so it will select the team for this week, but only update this if
+            // the user didn't select a week from the dropdown (if the selectedWeek is null)
+            if (selectedWeek == null)
+            {
+                SessionExtensions.SetString(HttpContext.Session, SessionKeyWeek, week);
+            }
+
             sqlConnection.Close();
 
             return weeks;
+        }
+
+        /// <summary>
+        /// Checks the latest week selected from the CurrentRoster table to see if this week has ended (with at least one
+        /// day elapsed) or not.
+        /// </summary>
+        /// <param name="latestWeek">The latest week selected for either owner in the CurrentRoster table</param>
+        /// <returns></returns>
+        private bool IsLatestWeekSelectedForEitherOwner(SqlConnection sqlConnection, string latestWeek)
+        {
+            bool latestWeekSelectedForEitherOwner = true;
+
+            // get the latest game date for a game in the last week we have a roster selected for
+            // i.e., if the last week we have a roster selected in CurrentRoster is week 12, we'll get the last date of any
+            // game which occurs in week 12 from the TeamSchedule
+            string sql = "select max(GameDate) from TeamsSchedule where week = " + latestWeek;
+
+            DateTime lastGameDateForLatestSelectedRosterWeek;
+
+            using (SqlCommand command = new SqlCommand(sql, sqlConnection))
+            {
+                using (SqlDataReader reader = command.ExecuteReader())
+                {
+                    reader.Read();
+
+                    // there is only one value returned, so we just need to grab the first value
+                    lastGameDateForLatestSelectedRosterWeek = DateTime.Parse(reader.GetValue(0).ToString());
+                }
+            }
+
+            // Get current EST time - If this is run on a machine with a differnet local time, DateTime.Now will not return the proper time
+            TimeZoneInfo easternZone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+            DateTime currentEasterStandardTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, easternZone);
+            TimeSpan difference = lastGameDateForLatestSelectedRosterWeek.Subtract(currentEasterStandardTime);
+
+            // we are taking the last game for the selected week minus today's date; so if we selected rosters for week 11
+            // and the monday night game in week 11 ended and it's currently tuesday, it would return -1 because we are one day past
+            // the last game played in the latest selected roster week; if it's currently wednesday, it would return -2, etc. We can
+            //  wait a day before we redirect the user to select rosters (say, tuesday night), so we'll check if the difference is < -1
+            if (difference.TotalDays < -1)
+            {
+                latestWeekSelectedForEitherOwner = false;
+            }
+
+            return latestWeekSelectedForEitherOwner;
         }
 
         /// <summary>

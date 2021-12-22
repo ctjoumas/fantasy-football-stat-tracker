@@ -54,16 +54,7 @@
             }
             else
             {
-                // Check if the latest week's games in the current rosters (CurrentRoster table) is the current NFL week; if so, we'll
-                // go to the scoreboard otherwise we'll go to the page to selec the team
-                if (IsRosterSelectedForCurrentWeek())
-                {
-                    return RedirectToAction("Index", "Scoreboard");
-                }
-                else
-                {
-                    return RedirectToAction("Index", "SelectTeam");
-                }
+                return RedirectToAction("Index", "Scoreboard");
             }
         }
 
@@ -72,16 +63,7 @@
             // now that we have the authorization code, exchange it for an access token using a call to the /get_token endpoint
             await GetAccessToken(code);
 
-            // Check if the latest week's games in the current rosters (CurrentRoster table) is the current NFL week; if so, we'll
-            // go to the scoreboard otherwise we'll go to the page to selec the team
-            if (IsRosterSelectedForCurrentWeek())
-            {
-                return RedirectToAction("Index", "Scoreboard");
-            }
-            else
-            {
-                return RedirectToAction("Index", "SelectTeam");
-            }
+            return RedirectToAction("Index", "Scoreboard");
         }
 
         /// <summary>

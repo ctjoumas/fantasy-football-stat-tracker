@@ -9,7 +9,9 @@
     {
         public List<SelectedPlayer> Players { get; set; }
 
-        public string Owner { get; set; }
+        public int OwnerId { get; set; }
+
+        public int Week { get; set; }
 
         public byte[] OwnerLogo { get; set; }
 

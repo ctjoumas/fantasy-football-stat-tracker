@@ -67,68 +67,6 @@
         }
 
         /// <summary>
-        /// Gets the latest week in the CurrentRoster table and checks the latest game date in the TeamsSchedule table with this week. If this
-        /// date is prior to today's date, we need to select rosters for the next (current) week.
-        /// </summary>
-        /// <returns>True if the rosters are set for the current week, false otherwise.</returns>
-        private bool IsRosterSelectedForCurrentWeek()
-        {
-            bool isRosterSelectedForCurrentWeek = true;
-
-            var connectionStringBuilder = new SqlConnectionStringBuilder
-            {
-                DataSource = "tcp:playersandscheduledetails.database.windows.net,1433",
-                InitialCatalog = "PlayersAndSchedulesDetails",
-                TrustServerCertificate = false,
-                Encrypt = true
-            };
-
-            var sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
-
-            var tokenRequestContext = new TokenRequestContext(new[] { "https://database.windows.net//.default" });
-            var tokenRequestResult = new DefaultAzureCredential().GetToken(tokenRequestContext);
-
-            // THIS MAY TAKE A LONG TIME (NEED TO TEST FURTHER) - CAN THIS BE STORED SOMEWHERE SO ALL THREADS CAN USE IT?
-            sqlConnection.AccessToken = tokenRequestResult.Token;
-
-            // get the latest game date for a game in the last week we have a roster selected for
-            // i.e., if the last week we have a roster selected in CurrentRoster is week 12, we'll get the last date of any
-            // game which occurs in week 12 from the TeamSchedule
-            string sql = "select max(GameDate) from TeamsSchedule where week = (select max(Week) from CurrentRoster)";
-
-            sqlConnection.Open();
-
-            DateTime lastGameDateForLatestSelectedRosterWeek;
-
-            using (SqlCommand command = new SqlCommand(sql, sqlConnection))
-            {
-                using (SqlDataReader reader = command.ExecuteReader())
-                {
-                    reader.Read();
-
-                    // there is only one value returned, so we just need to grab the first value
-                    lastGameDateForLatestSelectedRosterWeek = DateTime.Parse(reader.GetValue(0).ToString());
-                }
-            }
-
-            // Get current EST time - If this is run on a machine with a differnet local time, DateTime.Now will not return the proper time
-            TimeZoneInfo easternZone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
-            DateTime currentEasterStandardTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, easternZone);
-            TimeSpan difference = lastGameDateForLatestSelectedRosterWeek.Subtract(currentEasterStandardTime);
-
-            // we are taking the last game for the selected week minus today's date; so if we selected rosters for week 11
-            // and the monday night game in week 11 ended and it's currently tuesday, it would return -1 because we are one day past
-            // the last game played in the latest selected roster week; if it's currently wednesday, it would return -2, etc. We can
-            //  wait a day before we redirect the user to select rosters (say, tuesday night), so we'll check if the difference is < -1
-            if (difference.TotalDays < -1)
-            {
-                isRosterSelectedForCurrentWeek = false;
-            }
-
-            return isRosterSelectedForCurrentWeek;
-        }
-
-        /// <summary>
         /// This will request the Access Token from yahoo making an HTTP POST request.
         /// This method should be moved somewhere else; just testing here.
         /// </summary>

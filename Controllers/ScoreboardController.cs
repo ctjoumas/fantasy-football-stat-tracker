@@ -34,6 +34,11 @@
         public const string SessionKeyWeek = "_Week";
 
         /// <summary>
+        /// Session key for the Azure SQL Access token
+        /// </summary>
+        public const string SessionKeyAzureSqlAccessToken = "_Token";
+
+        /// <summary>
         /// Stores the owner logos
         /// </summary>
         private List<byte[]> OwnerLogos = new List<byte[]>();
@@ -77,10 +82,22 @@
                 Encrypt = true
             };
 
-            await using var sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString)
+            string azureSqlToken = SessionExtensions.GetString(HttpContext.Session, SessionKeyAzureSqlAccessToken);
+
+            // if we haven't retrieved the token yet, retrieve it and set it in the session (at this point though, we should have the token)
+            if (azureSqlToken == null)
+            {
+                azureSqlToken = await GetAzureSqlAccessToken();
+
+                SessionExtensions.SetString(HttpContext.Session, SessionKeyAzureSqlAccessToken, azureSqlToken);
+            }
+
+            SqlConnection sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
+            sqlConnection.AccessToken = azureSqlToken;
+            /*await using var sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString)
             {
                 AccessToken = await GetAzureSqlAccessToken()
-            };
+            };*/
 
             await sqlConnection.OpenAsync();
 
@@ -567,11 +584,22 @@
 
             var sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
 
-            var tokenRequestContext = new TokenRequestContext(new[] { "https://database.windows.net//.default" });
-            var tokenRequestResult = new DefaultAzureCredential().GetToken(tokenRequestContext);
+            string azureSqlToken = SessionExtensions.GetString(HttpContext.Session, SessionKeyAzureSqlAccessToken);
+
+            // if we haven't retrieved the token yet, retrieve it and set it in the session (at this point though, we should have the token)
+            if (azureSqlToken == null)
+            {
+                var tokenRequestContext = new TokenRequestContext(new[] { "https://database.windows.net//.default" });
+                var tokenRequestResult = new DefaultAzureCredential().GetToken(tokenRequestContext);
+
+                azureSqlToken = tokenRequestResult.Token;
+
+                SessionExtensions.SetString(HttpContext.Session, SessionKeyAzureSqlAccessToken, azureSqlToken);
+            }
 
             // THIS MAY TAKE A LONG TIME (NEED TO TEST FURTHER) - CAN THIS BE STORED SOMEWHERE SO ALL THREADS CAN USE IT?
-            sqlConnection.AccessToken = tokenRequestResult.Token;
+            //sqlConnection.AccessToken = tokenRequestResult.Token;
+            sqlConnection.AccessToken = azureSqlToken;
 
             sqlConnection.Open();
 
@@ -627,7 +655,7 @@
                 {
                     // select this week so it will provide the owner(s) with the link to select a team
                     weeks.Add(new SelectListItem(week, week, false));
-                }                
+                }
             }
 
             // Set the session to hold the latest week so it will select the team for this week, but only update this if
@@ -710,11 +738,24 @@
 
             var sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
 
-            var tokenRequestContext = new TokenRequestContext(new[] { "https://database.windows.net//.default" });
-            var tokenRequestResult = new DefaultAzureCredential().GetToken(tokenRequestContext);
+            // TESTING
+            // check to see if the access token has already been retrieved and us it if so
+            string azureSqlToken = SessionExtensions.GetString(HttpContext.Session, SessionKeyAzureSqlAccessToken);
+
+            // if we haven't retrieved the token yet, retrieve it and set it in the session
+            if (azureSqlToken == null)
+            {
+                var tokenRequestContext = new TokenRequestContext(new[] { "https://database.windows.net//.default" });
+                var tokenRequestResult = new DefaultAzureCredential().GetToken(tokenRequestContext);
+
+                azureSqlToken = tokenRequestResult.Token;
+
+                SessionExtensions.SetString(HttpContext.Session, SessionKeyAzureSqlAccessToken, azureSqlToken);
+            }
 
             // THIS MAY TAKE A LONG TIME (NEED TO TEST FURTHER) - CAN THIS BE STORED SOMEWHERE SO ALL THREADS CAN USE IT?
-            sqlConnection.AccessToken = tokenRequestResult.Token;
+            //sqlConnection.AccessToken = tokenRequestResult.Token;
+            sqlConnection.AccessToken = azureSqlToken;
 
             // TODO: RENAME DB FinalPointsString to FinalScoreString
             string sql = "update CurrentRoster " +

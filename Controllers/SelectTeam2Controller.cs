@@ -27,6 +27,11 @@
 
     public class SelectTeam2Controller : Controller
     {
+        /// <summary>
+        /// Session key for the Azure SQL Access token
+        /// </summary>
+        public const string SessionKeyAzureSqlAccessToken = "_Token";
+
         public IActionResult Index(int week, int ownerId)
         {
             ViewData["Week"] = week;
@@ -104,7 +109,7 @@
                 foreach (EspnPlayer player in players)
                 {
                     // add the player if they match the name filter and they are not already selected
-                    if ( player.PlayerName.ToLower().Contains(nameFilter) &&
+                    if (player.PlayerName.ToLower().Contains(nameFilter) &&
                          !selectedPlayerIds.Contains(player.EspnPlayerId.ToString()))
                     {
                         filteredPlayerList.Add(player);
@@ -173,13 +178,26 @@
 
             var sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
 
-            var tokenRequestContext = new TokenRequestContext(new[] { "https://database.windows.net//.default" });
-            var tokenRequestResult = new DefaultAzureCredential().GetToken(tokenRequestContext);
+            // TESTING
+            // check to see if the access token has already been retrieved and us it if so
+            string azureSqlToken = Microsoft.AspNetCore.Http.SessionExtensions.GetString(HttpContext.Session, SessionKeyAzureSqlAccessToken);
+
+            // if we haven't retrieved the token yet, retrieve it and set it in the session
+            if (azureSqlToken == null)
+            {
+                var tokenRequestContext = new TokenRequestContext(new[] { "https://database.windows.net//.default" });
+                var tokenRequestResult = new DefaultAzureCredential().GetToken(tokenRequestContext);
+
+                azureSqlToken = tokenRequestResult.Token;
+
+                Microsoft.AspNetCore.Http.SessionExtensions.SetString(HttpContext.Session, SessionKeyAzureSqlAccessToken, azureSqlToken);
+            }
 
             // THIS MAY TAKE A LONG TIME (NEED TO TEST FURTHER) - CAN THIS BE STORED SOMEWHERE SO ALL THREADS CAN USE IT?
-            sqlConnection.AccessToken = tokenRequestResult.Token;
+            //sqlConnection.AccessToken = tokenRequestResult.Token;
+            sqlConnection.AccessToken = azureSqlToken;
 
             return sqlConnection;
         }
-    }    
+    }
 }

@@ -615,8 +615,19 @@
 
                 week = intWeek.ToString();
 
-                // select this week so it will provide the owner(s) with the link to select a team
-                weeks.Add(new SelectListItem(week, week, true));
+                // if the user didn't select a week in the scoreboard, or the user switched to a different week and came back to the
+                // latest week where teams haven't yet been selected, select this week; otherwise any other week the user selected from
+                // the scoreboard will be selected
+                if ((selectedWeek == null) || (selectedWeek.Equals(week)))
+                {
+                    // select this week so it will provide the owner(s) with the link to select a team
+                    weeks.Add(new SelectListItem(week, week, true));
+                }
+                else
+                {
+                    // select this week so it will provide the owner(s) with the link to select a team
+                    weeks.Add(new SelectListItem(week, week, false));
+                }                
             }
 
             // Set the session to hold the latest week so it will select the team for this week, but only update this if

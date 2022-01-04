@@ -1,7 +1,5 @@
 ﻿namespace YahooFantasyFootball.Controllers
 {
-    using Azure.Core;
-    using Azure.Identity;
     using Microsoft.AspNetCore.Http.Extensions;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.Extensions.Logging;
@@ -10,7 +8,6 @@
     using Newtonsoft.Json.Linq;
     using System;
     using System.Collections.Generic;
-    using System.Data.SqlClient;
     using System.Diagnostics;
     using System.Net.Http;
     using System.Threading.Tasks;

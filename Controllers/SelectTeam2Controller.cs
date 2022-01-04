@@ -10,6 +10,7 @@
     using System.Collections.Generic;
     using System.Data.SqlClient;
     using System.Linq;
+    using YahooFantasyFootball.Models;
 
     public static class SessionExtensions
     {
@@ -122,44 +123,119 @@
             return filteredPlayerList;
         }
 
-        [HttpPost]
-        public IActionResult SaveRoster(int week, int ownerId, int[] selectedPlayerIds)
+        /// <summary>
+        /// Checks to see if the players selected make up a valid roster.
+        /// </summary>
+        /// <param name="selectedPlayerIds">List of ESPN player IDs selected by the user.</param>
+        /// <returns>True if the roster is valid, false otherwise.</returns>
+        private bool IsValidRoster(int[] selectedPlayerIds)
         {
-            SqlConnection sqlConnection = GetSqlConnection();
+            bool isValidRoster = false;
 
-            sqlConnection.Open();
-
-            List<EspnPlayer> players = HttpContext.Session.GetObjectFromJson<List<EspnPlayer>>("Players");
-
-            // get only the players with the selected IDs
-            players = players.Where(p => selectedPlayerIds.Contains(p.EspnPlayerId)).ToList();
-
-            string position = "";
-
-            foreach (EspnPlayer player in players)
+            // only check if there are 9 players, which make up a full roster
+            if (selectedPlayerIds.Length == 9)
             {
-                position = player.Position;
+                List<EspnPlayer> players = HttpContext.Session.GetObjectFromJson<List<EspnPlayer>>("Players");
 
-                // the kicker position is stored initially (from ESPN rosters) as PK and we need to change this to K
-                if (position.Equals("PK"))
+                // get only the players with the selected IDs
+                players = players.Where(p => selectedPlayerIds.Contains(p.EspnPlayerId)).ToList();
+
+                int countQb = 0;
+                int countRb = 0;
+                int countWr = 0;
+                int countTe = 0;
+                int countK = 0;
+                int countDef = 0;
+
+                foreach (EspnPlayer player in players)
                 {
-                    position = "K";
+                    switch (player.Position)
+                    {
+                        case "QB":
+                            countQb++;
+                            break;
+
+                        case "RB":
+                            countRb++;
+                            break;
+
+                        case "WR":
+                            countWr++;
+                            break;
+
+                        case "TE":
+                            countTe++;
+                            break;
+
+                        case "PK":
+                            countK++;
+                            break;
+
+                        case "DEF":
+                            countDef++;
+                            break;
+                    }
                 }
 
-                string sql = "insert into CurrentRoster (OwnerID, Week, PlayerName, Position, GameEnded, FinalPoints, FinalPointsString, EspnPlayerId) " +
-                             "values ('" + ownerId + "', '" + week + "', '" + player.PlayerName + "', '" + position + "', 0, 0, '', '" + player.EspnPlayerId + "')";
-
-                using (SqlCommand command = new SqlCommand(sql, sqlConnection))
+                if (countQb == 1 && countK == 1 && countDef == 1)
                 {
-                    command.ExecuteNonQuery();
+                    if (((countRb == 3) && (countWr == 2) && (countTe == 1)) ||
+                        ((countWr == 3) && (countRb == 2) && (countTe == 1)) ||
+                        ((countTe == 2) && (countWr == 2) && (countRb == 2)))
+                    {
+                        isValidRoster = true;
+                    }
                 }
             }
 
-            sqlConnection.Close();
+            return isValidRoster;
+        }
 
-            // the current rosters are updated so we can now display the scoreboard
-            //return RedirectToAction("Index", "Scoreboard");
-            return Json(new { redirectUrl = Url.Action("Index", "Scoreboard") });
+        [HttpPost]
+        public IActionResult SaveRoster(int week, int ownerId, int[] selectedPlayerIds)
+        {
+            // check if this roster is valid before sumitting the roster
+            if (!IsValidRoster(selectedPlayerIds))
+            {
+                return Json(new { success = false });
+            }
+            else
+            {
+                SqlConnection sqlConnection = GetSqlConnection();
+
+                sqlConnection.Open();
+
+                List<EspnPlayer> players = HttpContext.Session.GetObjectFromJson<List<EspnPlayer>>("Players");
+
+                // get only the players with the selected IDs
+                players = players.Where(p => selectedPlayerIds.Contains(p.EspnPlayerId)).ToList();
+
+                string position = "";
+
+                foreach (EspnPlayer player in players)
+                {
+                    position = player.Position;
+
+                    // the kicker position is stored initially (from ESPN rosters) as PK and we need to change this to K
+                    if (position.Equals("PK"))
+                    {
+                        position = "K";
+                    }
+
+                    string sql = "insert into CurrentRoster (OwnerID, Week, PlayerName, Position, GameEnded, FinalPoints, FinalPointsString, EspnPlayerId) " +
+                                 "values ('" + ownerId + "', '" + week + "', '" + player.PlayerName + "', '" + position + "', 0, 0, '', '" + player.EspnPlayerId + "')";
+
+                    using (SqlCommand command = new SqlCommand(sql, sqlConnection))
+                    {
+                        command.ExecuteNonQuery();
+                    }
+                }
+
+                sqlConnection.Close();
+
+                // the current rosters are updated so we can now display the scoreboard
+                return Json(new { success = true, redirectUrl = Url.Action("Index", "Scoreboard") });
+            }
         }
 
         /// <summary>
@@ -178,7 +254,6 @@
 
             var sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
 
-            // TESTING
             // check to see if the access token has already been retrieved and us it if so
             string azureSqlToken = Microsoft.AspNetCore.Http.SessionExtensions.GetString(HttpContext.Session, SessionKeyAzureSqlAccessToken);
 
@@ -193,8 +268,6 @@
                 Microsoft.AspNetCore.Http.SessionExtensions.SetString(HttpContext.Session, SessionKeyAzureSqlAccessToken, azureSqlToken);
             }
 
-            // THIS MAY TAKE A LONG TIME (NEED TO TEST FURTHER) - CAN THIS BE STORED SOMEWHERE SO ALL THREADS CAN USE IT?
-            //sqlConnection.AccessToken = tokenRequestResult.Token;
             sqlConnection.AccessToken = azureSqlToken;
 
             return sqlConnection;

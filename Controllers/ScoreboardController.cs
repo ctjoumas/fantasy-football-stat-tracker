@@ -94,10 +94,6 @@
 
             SqlConnection sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
             sqlConnection.AccessToken = azureSqlToken;
-            /*await using var sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString)
-            {
-                AccessToken = await GetAzureSqlAccessToken()
-            };*/
 
             await sqlConnection.OpenAsync();
 
@@ -597,8 +593,6 @@
                 SessionExtensions.SetString(HttpContext.Session, SessionKeyAzureSqlAccessToken, azureSqlToken);
             }
 
-            // THIS MAY TAKE A LONG TIME (NEED TO TEST FURTHER) - CAN THIS BE STORED SOMEWHERE SO ALL THREADS CAN USE IT?
-            //sqlConnection.AccessToken = tokenRequestResult.Token;
             sqlConnection.AccessToken = azureSqlToken;
 
             sqlConnection.Open();
@@ -683,9 +677,17 @@
             // get the latest game date for a game in the last week we have a roster selected for
             // i.e., if the last week we have a roster selected in CurrentRoster is week 12, we'll get the last date of any
             // game which occurs in week 12 from the TeamSchedule
-            string sql = "select max(GameDate) from TeamsSchedule where week = " + latestWeek;
+            // We also need to check to make sure there is a game scheduled the next week; if not, then even if this last week has completed
+            // more than a day ago, this is still the latest week selected for the owners. If there isn't a next week, the SQL statement will
+            // return null (TODO: there is probably a better way of doing this)
+            //string sql = "select max(GameDate) from TeamsSchedule where week = " + latestWeek;
+            string nextWeek = (int.Parse(latestWeek) + 1).ToString();
+            string sql = "select max(GameDate) from TeamsSchedule where week = " + latestWeek + " and (select max(GameDate) from TeamsSchedule where week = " + nextWeek + ") is not null";
 
-            DateTime lastGameDateForLatestSelectedRosterWeek;
+            DateTime lastGameDateForLatestSelectedRosterWeek = new DateTime();
+
+            // flag to determine if there is a next week scheduled or not
+            bool isNextWeekScheduled = false;
 
             using (SqlCommand command = new SqlCommand(sql, sqlConnection))
             {
@@ -694,22 +696,31 @@
                     reader.Read();
 
                     // there is only one value returned, so we just need to grab the first value
-                    lastGameDateForLatestSelectedRosterWeek = DateTime.Parse(reader.GetValue(0).ToString());
+                    if (!reader.GetValue(0).ToString().Equals(String.Empty))
+                    {
+                        isNextWeekScheduled = true;
+                        lastGameDateForLatestSelectedRosterWeek = DateTime.Parse(reader.GetValue(0).ToString());
+                    }
                 }
             }
 
-            // Get current EST time - If this is run on a machine with a differnet local time, DateTime.Now will not return the proper time
-            TimeZoneInfo easternZone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
-            DateTime currentEasterStandardTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, easternZone);
-            TimeSpan difference = lastGameDateForLatestSelectedRosterWeek.Subtract(currentEasterStandardTime);
-
-            // we are taking the last game for the selected week minus today's date; so if we selected rosters for week 11
-            // and the monday night game in week 11 ended and it's currently tuesday, it would return -1 because we are one day past
-            // the last game played in the latest selected roster week; if it's currently wednesday, it would return -2, etc. We can
-            //  wait a day before we redirect the user to select rosters (say, tuesday night), so we'll check if the difference is < -1
-            if (difference.TotalDays < -1)
+            // if a next week is not scheduled, we will leave the latest week selected for either owner as true by skipping the following code
+            // to check the day difference
+            if (isNextWeekScheduled)
             {
-                latestWeekSelectedForEitherOwner = false;
+                // Get current EST time - If this is run on a machine with a differnet local time, DateTime.Now will not return the proper time
+                TimeZoneInfo easternZone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+                DateTime currentEasterStandardTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, easternZone);
+                TimeSpan difference = lastGameDateForLatestSelectedRosterWeek.Subtract(currentEasterStandardTime);
+
+                // we are taking the last game for the selected week minus today's date; so if we selected rosters for week 11
+                // and the monday night game in week 11 ended and it's currently tuesday, it would return -1 because we are one day past
+                // the last game played in the latest selected roster week; if it's currently wednesday, it would return -2, etc. We can
+                //  wait a day before we redirect the user to select rosters (say, tuesday night), so we'll check if the difference is < -1
+                if (difference.TotalDays < -1)
+                {
+                    latestWeekSelectedForEitherOwner = false;
+                }
             }
 
             return latestWeekSelectedForEitherOwner;
@@ -738,8 +749,6 @@
 
             var sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
 
-            // TESTING
-            // check to see if the access token has already been retrieved and us it if so
             string azureSqlToken = SessionExtensions.GetString(HttpContext.Session, SessionKeyAzureSqlAccessToken);
 
             // if we haven't retrieved the token yet, retrieve it and set it in the session
@@ -753,8 +762,6 @@
                 SessionExtensions.SetString(HttpContext.Session, SessionKeyAzureSqlAccessToken, azureSqlToken);
             }
 
-            // THIS MAY TAKE A LONG TIME (NEED TO TEST FURTHER) - CAN THIS BE STORED SOMEWHERE SO ALL THREADS CAN USE IT?
-            //sqlConnection.AccessToken = tokenRequestResult.Token;
             sqlConnection.AccessToken = azureSqlToken;
 
             // TODO: RENAME DB FinalPointsString to FinalScoreString

@@ -36,7 +36,7 @@
             font-weight: bold;
         }
 
-        /* The Close Button */
+        /* The Close Button on the Modal */
         .close {
             background-color: darkblue;
             border: none;
@@ -50,6 +50,49 @@
             font-size: 16px;
             cursor: pointer;
         }
+
+        #txtFilter {
+            background-image: url('/css/searchicon.png');
+            background-position: 10px 12px;
+            background-repeat: no-repeat;
+            width: 100%;
+            font-size: 16px;
+            padding: 12px 20px 12px 40px;
+            border: 1px solid #ddd;
+        }
+
+        #allPlayersUL, #selectedPlayersUL {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+            #allPlayersUL li a, #selectedPlayersUL li a {
+                border: 1px solid #ddd;
+                margin-top: -1px; /* Prevent double borders */
+                background-color: #f6f6f6;
+                padding: 12px;
+                text-decoration: none;
+                font-size: 18px;
+                color: black;
+                display: block;
+            }
+
+                #allPlayersUL li a:hover:not(.header), #selectedPlayersUL li a:hover:not(.header) {
+                    background-color: #eee;
+                }
+
+        /* The "x" button to remove a player from the selected players list */
+        .remove {
+            cursor: pointer;
+            position: absolute;
+            padding: 12px 16px;
+            transform: translate(1000%, -106%);
+        }
+
+            .remove:hover {
+                background: #bbb;
+            }
     </style>
 </head>
 <body>
@@ -60,26 +103,19 @@
             <td style="text-align: left; width:50%;">Search for player:</td>
             <td style="text-align: left; width:50%;">Selected Team:</td>
         </tr>
-        <tr>
-            <td style="vertical-align: top;">
-                <input id="txtPlayerName" type="text" style="width:98%;" autocomplete="off" />
-                <br />
-                <select id="filteredPlayerList" class="js-example-basic-single" style="width: 100%;display: none;" size="1">
-                </select>
+        <tr style="height: 300px;">
+            <td style="border-collapse:inherit;margin: 0;display:block;float:none;">
+                <input type="text" id="txtFilter" onkeyup="filterPlayers()" style="width:86%;" placeholder="Search for players" title="Type in a name">
+                <ul id="allPlayersUL">
+                </ul>
             </td>
             <td style="vertical-align: top;">
-                <select id="selectedPlayerList" style="width: 100%;" size="9"></select>
+                <ul id="selectedPlayersUL">
+                </ul>
             </td>
         </tr>
         <tr>
-            <td></td>
-            <td style="text-align: right;border-collapse:inherit;margin: 0;display:block;float:none;">
-                <input id="btnRemove" type="button" value="Remove" />
-            </td>
-        </tr>
-        <tr>
-            <td></td>
-            <td style="text-align: right;border-collapse:inherit;margin: 0;display:block;float:none;">
+            <td colspan="2" style="text-align: center;">
                 <input id="btnSubmit" type="submit" value="Submit" />
             </td>
         </tr>
@@ -92,94 +128,96 @@
             <p>Invalid roster.</p>
             <div style="color:black; font-weight: normal;">Please enter a valid roster</div>
             <br />
-            <!--span class="close"-->
-                <button class="close" id="closeBtn">Close</button>
-            <!--/span-->
+            <button class="close" id="closeBtn">Close</button>
         </div>
     </div>
 
     <script type="text/javascript">
         $(document).ready(function () {
-            //$('.js-example-basic-single').select2();
-
             // load the initial list of all players, which will be stored into a cached session variable
-            GetPlayers();
+            GetAllPlayers();
 
-            $("#txtPlayerName").keyup(delay(function (e) {
-                GetPlayers();
-            }, 300));
+            // handle when a player is clicked in the list
+            $('#allPlayersUL').on('click', 'li', function() {
+                // remove this item from the list
+                $(this).remove();
 
-            // handle when a player is selected
-            $("#filteredPlayerList").on('change', function () {
-                var filteredPlayerList = $("#filteredPlayerList");
-                var selectedPlayerList = $("#selectedPlayerList");
+                // hide all of the li's
+                $('#allPlayersUL li').hide();
 
-                var selectedItem = $('#filteredPlayerList option:selected');
+                // clear the text in the search box
+                $("#txtFilter").val("");
+                $("#txtFilter").focus();
 
-                selectedPlayerList.append('<option value="' + selectedItem.val() + '">' + selectedItem.text() + '</option>');
-
-                // expand the dropdown list
-                var event = document.createEvent('MouseEvents');
-                event.initMouseEvent('mousedown', true, true, window);
-
-                // clear search text and the list of players
-                $("#txtPlayerName").val('');
-                $("#txtPlayerName").focus();
-                filteredPlayerList.empty();
-                $('#filteredPlayerList').css("width", "100%");
-                filteredPlayerList.hide();
-            });
-
-            // handle when a player is removed
-            $('#btnRemove').click(function (e) {
-                $('#selectedPlayerList option:selected').remove();
+                // add the item to the selected players list
+                $("#selectedPlayersUL").append('<li id="' + $(this).attr('id') + '"><a href="#">' + $(this).text() + '</a><span class="remove" onclick="removeSelectedPlayer(' + $(this).attr('id') + ')">x</span></li>');
             });
         });
-        function GetPlayers() {
-            var name = $("#txtPlayerName").val();
-
-            // get all selected players and remove this from the returned filter so they cannot be selected again
-            var selectedPlayers = $('#selectedPlayerList option');
-            var selectedPlayerIds = $.map(selectedPlayers, function (option) {
-                return option.value;
+        // this function is called when the x button on a li in the selectedPlayersUL is clicked
+        function removeSelectedPlayer(playerId) {
+            // loop through all li's in the selected player list and remove the one with the playerId from the
+            // selectedPlayersUL and add it back to the allPlayersUL
+            $('#selectedPlayersUL li').each(function (index, item) {
+                if ($(item).attr('id') == playerId) {
+                    $(item).remove();
+                    $("#allPlayersUL").append('<li style="display: none;" id="' + playerId + '"><a href="#">' + $(item).children().first().text() + '</a></li>');
+                }
             });
+        }
+        function filterPlayers() {
+            var input = $("#txtFilter");
+            var filter = input.val().toUpperCase();
+            var ul = $("#allPlayersUL");
+            var li = ul[0].getElementsByTagName("li");
+            var txtValue;
 
+            var matches = 0;
+
+            // hide all of the li's
+            $('#allPlayersUL li').hide();
+
+            // loop through all list items and show the matches, but limit showing only the top 10 matches
+            for (i = 0; i < li.length; i++) {
+                txtValue = $(li[i]).text();
+
+                if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                    if (matches < 10) {
+                        $(li[i]).show();
+                    }
+                    else {
+                        break;
+                    }
+
+                    matches++;
+                }
+            }
+        }
+        function GetAllPlayers() {
             $.ajax({
                 type: "POST",
-                url: "@Url.Action("SearchPlayers")",
-                data: { playerName: name, selectedPlayerIds: selectedPlayerIds },
+                url: "@Url.Action("GetAllPlayers")",
                 dataType: "json",
                 success: function (players) {
 
                     // only populate and fill the filtered player list if there is at least one player returned
                     if (players.length > 0) {
-
-                        // clear the filtered player list before adding players
-                        var filteredPlayerList = $("#filteredPlayerList");
-                        filteredPlayerList.empty();
+                        var allPlayersUl = $('#allPlayersUL');
 
                         $.each(players, function (i, player) {
-                            $(filteredPlayerList).append('<option value="' + player.espnPlayerId + '">' + player.playerName + ' ' + player.position + '</option>');
+                            $(allPlayersUl).append('<li style="display: none;" id="' + player.espnPlayerId + '"><a href="#">' + player.playerName + ' ' + player.position + '</a></li>');
                         });
-
-                        filteredPlayerList.show();
-
-                        // expand the dropdown list
-                        var event = document.createEvent('MouseEvents');
-                        event.initMouseEvent('mousedown', true, true, window);
-                        $(filteredPlayerList).attr("size", $("#filteredPlayerList option").length+1);
                     }
                 }
             });
         }
         $('#btnSubmit').click(function (e) {
-            // get all selected players and remove this from the returned filter so they cannot be selected again
-            var selectedPlayers = $('#selectedPlayerList option');
-            var selectedPlayerIds = $.map(selectedPlayers, function (option) {
-                return option.value;
+            // get all selected player id's so this can be sent to the SaveRoster action in the SelectTeam controller
+            let selectedPlayerIds = [];
+
+            $('#selectedPlayersUL li').each(function (index, item) {
+                selectedPlayerIds.push($(item).attr('id'));
             });
 
-            e.preventDefault();
             var element = this;
             $.ajax({
                 type: "POST",
@@ -187,12 +225,11 @@
                 data: { week: @ViewData["Week"], ownerId: @ViewData["OwnerId"], selectedPlayerIds: selectedPlayerIds },
                 dataType: "json",
                 success: function (response) {
-                    if (response.result == true) {
+                    if (response.success == true) {
                         $(element).closest("form").submit();
                         window.location = response.redirectUrl;
                     }
                     else {
-                        //document.getElementById('error-message').innerHTML = response.error;
                         // get the modal
                         var modal = document.getElementById("myModal");
 
@@ -206,13 +243,6 @@
                         span.onclick = function () {
                             modal.style.display = "none";
                         }
-
-                        // when the user clicks anywhere outside of the modal, close it
-                        /*window.onclick = function (event) {
-                            if (event.target == modal) {
-                                modal.style.display = "none";
-                            }
-                        }*/
                     }
                 },
             });

@@ -10,7 +10,6 @@
     using System.Collections.Generic;
     using System.Data.SqlClient;
     using System.Linq;
-    using YahooFantasyFootball.Models;
 
     public static class SessionExtensions
     {
@@ -38,48 +37,27 @@
             ViewData["Week"] = week;
             ViewData["OwnerId"] = ownerId;
 
-            List<EspnPlayer> players = GetPlayers("", new string[0]);
+            List<EspnPlayer> players = GetAllPlayers();
 
             HttpContext.Session.SetObjectAsJson("Players", players);
 
             return View();
         }
 
-        /// <summary>
-        /// Method to display the filtered data.
-        /// </summary>
-        /// <param name="player"></param>
-        /// <returns></returns>
         [HttpPost]
-        public List<EspnPlayer> SearchPlayers(string playerName, string[] selectedPlayerIds)
+        public List<EspnPlayer> GetAllPlayers()
         {
-            List<EspnPlayer> players = new List<EspnPlayer>();
-
-            if (playerName != null)
-            {
-                players = GetPlayers(playerName, selectedPlayerIds);
-            }
-
-            return players;
-        }
-
-        /// <summary>
-        /// Gets all players from the Players table who are playing (not on bye) in the current week.
-        /// </summary>
-        /// <returns>List of all players playing in the given week.</returns>
-        private List<EspnPlayer> GetPlayers(string nameFilter, string[] selectedPlayerIds)
-        {
-            List<EspnPlayer> filteredPlayerList = new List<EspnPlayer>();
-
             List<EspnPlayer> players = HttpContext.Session.GetObjectFromJson<List<EspnPlayer>>("Players");
 
             if (players == null)
             {
+                players = new List<EspnPlayer>();
+
                 int week = (int)ViewData["Week"];
 
                 string sql = "select p.EspnPlayerId, p.PlayerName, p.Position from Players p " +
                              "join TeamsSchedule ts on p.TeamId = ts.TeamId " +
-                             "where ts.Week = " + week.ToString() + " and p.PlayerName like '%" + nameFilter + "%'";
+                             "where ts.Week = " + week.ToString();
 
                 SqlConnection sqlConnection = GetSqlConnection();
 
@@ -91,7 +69,7 @@
                     {
                         while (reader.Read())
                         {
-                            filteredPlayerList.Add(
+                            players.Add(
                                 new EspnPlayer()
                                 {
                                     EspnPlayerId = int.Parse(reader["EspnPlayerId"].ToString()),
@@ -104,23 +82,11 @@
                 }
 
                 sqlConnection.Close();
-            }
-            else
-            {
-                foreach (EspnPlayer player in players)
-                {
-                    // add the player if they match the name filter and they are not already selected
-                    if (player.PlayerName.ToLower().Contains(nameFilter) &&
-                         !selectedPlayerIds.Contains(player.EspnPlayerId.ToString()))
-                    {
-                        filteredPlayerList.Add(player);
-                    }
-                }
+
+                players.OrderBy(x => x.PlayerName).ToList();
             }
 
-            filteredPlayerList.OrderBy(x => x.PlayerName).ToList();
-
-            return filteredPlayerList;
+            return players;
         }
 
         /// <summary>
@@ -136,6 +102,12 @@
             if (selectedPlayerIds.Length == 9)
             {
                 List<EspnPlayer> players = HttpContext.Session.GetObjectFromJson<List<EspnPlayer>>("Players");
+
+                // this shouldn't happen, but in case the session variable is null, make the check and re-populate it
+                if (players == null)
+                {
+                    players = GetAllPlayers();
+                }
 
                 // get only the players with the selected IDs
                 players = players.Where(p => selectedPlayerIds.Contains(p.EspnPlayerId)).ToList();

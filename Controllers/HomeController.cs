@@ -42,8 +42,8 @@
                 string key = _config.Value.ClientId;
                 string returnUrl = _config.Value.RedirectUri;
 
-                string url = "https://api.login.yahoo.com/oauth2/request_auth?client_id=" + key + $"&redirect_uri={UriHelper.Encode(new Uri("https://localhost:44376/Home/Login"))}&response_type=code&language=en-us";
-                //string url = "https://api.login.yahoo.com/oauth2/request_auth?client_id=" + key + $"&redirect_uri={UriHelper.Encode(new Uri(returnUrl))}&response_type=code&language=en-us";
+                //string url = "https://api.login.yahoo.com/oauth2/request_auth?client_id=" + key + $"&redirect_uri={UriHelper.Encode(new Uri("https://localhost:44376/Home/Login"))}&response_type=code&language=en-us";
+                string url = "https://api.login.yahoo.com/oauth2/request_auth?client_id=" + key + $"&redirect_uri={UriHelper.Encode(new Uri(returnUrl))}&response_type=code&language=en-us";
 
                 Response.Redirect(url);
 
@@ -72,8 +72,8 @@
             string consumerKey = _config.Value.ClientId;
             string consumerSecret = _config.Value.ClientSecret;
 
-            string returnUrl = "https://localhost:44376/Home/Login";
-            //string returnUrl = "https://tjoumasfantasyfootball.azurewebsites.net/Home/Login";
+            //string returnUrl = "https://localhost:44376/Home/Login";
+            string returnUrl = "https://tjoumasfantasyfootball.azurewebsites.net/Home/Login";
 
             /*Exchange authorization code for Access Token by sending Post Request*/
             Uri address = new Uri("https://api.login.yahoo.com/oauth2/get_token");

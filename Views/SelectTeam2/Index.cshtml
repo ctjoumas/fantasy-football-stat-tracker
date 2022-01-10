@@ -67,32 +67,107 @@
             margin: 0;
         }
 
-            #allPlayersUL li a, #selectedPlayersUL li a {
-                border: 1px solid #ddd;
-                margin-top: -1px; /* Prevent double borders */
-                background-color: #f6f6f6;
-                padding: 12px;
-                text-decoration: none;
-                font-size: 18px;
-                color: black;
-                display: block;
-            }
+        #allPlayersUL li, #selectedPlayersUL li {
+            border: 1px solid #ddd;
+            margin-top: -1px; /* Prevent double borders */
+            background-color: #f6f6f6;
+            padding: 12px;
+            text-decoration: none;
+            font-size: 18px;
+            color: black;
+            display: block;
+        }
 
-                #allPlayersUL li a:hover:not(.header), #selectedPlayersUL li a:hover:not(.header) {
-                    background-color: #eee;
-                }
+        #allPlayersUL li:hover:not(.header), #selectedPlayersUL li:hover:not(.header) {
+            background-color: #eee;
+            cursor: pointer;
+        }
+
+        a, a:hover:not(.header) {
+            text-decoration: none;
+        }
 
         /* The "x" button to remove a player from the selected players list */
         .remove {
             cursor: pointer;
-            position: absolute;
-            padding: 12px 16px;
-            transform: translate(1000%, -106%);
         }
 
-            .remove:hover {
-                background: #bbb;
-            }
+        .remove:hover {
+            background: #bbb;
+        }
+
+        .qb {
+            background-color: peru;
+            border: none;
+            color: white;
+            width: 30px;
+            font-weight: bold;
+            position: absolute;
+            text-align: center;
+            padding: 2px;
+            font-size: 12px;
+            border-radius: 20%;
+        }
+
+        .wr {
+            background-color: blue;
+            color: white;
+            width: 30px;
+            font-weight: bold;
+            position: absolute;
+            text-align: center;
+            padding: 2px;
+            font-size: 12px;
+            border-radius: 20%;
+        }
+
+        .rb {
+            background-color: red;
+            color: white;
+            width: 30px;
+            font-weight: bold;
+            position: absolute;
+            text-align: center;
+            padding: 2px;
+            font-size: 12px;
+            border-radius: 20%;
+        }
+
+        .te {
+            background-color: purple;
+            color: white;
+            width: 30px;
+            font-weight: bold;
+            position: absolute;
+            text-align: center;
+            padding: 2px;
+            font-size: 12px;
+            border-radius: 20%;
+        }
+
+        .def {
+            background-color: olivedrab;
+            color: white;
+            width: 30px;
+            font-weight: bold;
+            position: absolute;
+            text-align: center;
+            padding: 2px;
+            font-size: 12px;
+            border-radius: 20%;
+        }
+
+        .pk {
+            background-color: green;
+            color: white;
+            width: 30px;
+            font-weight: bold;
+            position: absolute;
+            text-align: center;
+            padding: 2px;
+            font-size: 12px;
+            border-radius: 20%;
+        }
     </style>
 </head>
 <body>
@@ -150,7 +225,7 @@
                 $("#txtFilter").focus();
 
                 // add the item to the selected players list
-                $("#selectedPlayersUL").append('<li id="' + $(this).attr('id') + '"><a href="#">' + $(this).text() + '</a><span class="remove" onclick="removeSelectedPlayer(' + $(this).attr('id') + ')">x</span></li>');
+                $("#selectedPlayersUL").append('<li id="' + $(this).attr('id') + '" playerName="' + $(this).attr('playerName') + '" position = "' + $(this).attr('position') + '"><span class="' + $(this).attr('position').toLowerCase() + '">' + $(this).attr('position') + '</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#">' + $(this).attr('playerName') + '</a><span class="remove" style="float: right;" onclick="removeSelectedPlayer(' + $(this).attr('id') + ')">x</span></li>');
             });
         });
         // this function is called when the x button on a li in the selectedPlayersUL is clicked
@@ -160,7 +235,8 @@
             $('#selectedPlayersUL li').each(function (index, item) {
                 if ($(item).attr('id') == playerId) {
                     $(item).remove();
-                    $("#allPlayersUL").append('<li style="display: none;" id="' + playerId + '"><a href="#">' + $(item).children().first().text() + '</a></li>');
+
+                    $("#allPlayersUL").append('<li style="display: none;" id="' + playerId + '" playerName="' + $(item).attr('playerName') + '" position="' + $(item).attr('position') + '"><span class="' + $(item).attr('position').toLowerCase() + '">' + $(item).attr('position') + '</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#">' + $(item).attr('playerName') + '</a></li>');
                 }
             });
         }
@@ -176,19 +252,21 @@
             // hide all of the li's
             $('#allPlayersUL li').hide();
 
-            // loop through all list items and show the matches, but limit showing only the top 10 matches
-            for (i = 0; i < li.length; i++) {
-                txtValue = $(li[i]).text();
+            if (filter != "") {
+                // loop through all list items and show the matches, but limit showing only the top 10 matches
+                for (i = 0; i < li.length; i++) {
+                    txtValue = $(li[i]).attr('playerName');
 
-                if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                    if (matches < 10) {
-                        $(li[i]).show();
-                    }
-                    else {
-                        break;
-                    }
+                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                        if (matches < 10) {
+                            $(li[i]).show();
+                        }
+                        else {
+                            break;
+                        }
 
-                    matches++;
+                        matches++;
+                    }
                 }
             }
         }
@@ -204,7 +282,7 @@
                         var allPlayersUl = $('#allPlayersUL');
 
                         $.each(players, function (i, player) {
-                            $(allPlayersUl).append('<li style="display: none;" id="' + player.espnPlayerId + '"><a href="#">' + player.playerName + ' ' + player.position + '</a></li>');
+                            $(allPlayersUl).append('<li style="display: none;" id="' + player.espnPlayerId + '" playerName="' + player.playerName + '" position="' + player.position + '"><span class="' + player.position.toLowerCase() + '">' + player.position + '</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#">' + player.playerName + '</a></li>');
                         });
                     }
                 }

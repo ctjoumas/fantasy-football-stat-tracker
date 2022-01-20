@@ -34,10 +34,14 @@
 
         public IActionResult Index(int week, int ownerId)
         {
+            // If one owner has already selected their team, the Players session variable may still be set; we want to
+            // clear this out so we can update the list of players to not include the players the other owner selected
+            HttpContext.Session.Clear();
+
             ViewData["Week"] = week;
             ViewData["OwnerId"] = ownerId;
 
-            List<EspnPlayer> players = GetAllPlayers();
+            List <EspnPlayer> players = GetAllPlayers();
 
             HttpContext.Session.SetObjectAsJson("Players", players);
 
@@ -54,10 +58,21 @@
                 players = new List<EspnPlayer>();
 
                 int week = (int)ViewData["Week"];
+                int ownerId = (int)ViewData["OwnerId"];
+
+                // we want to look for the other owner when excluding their players; since there are only two owners (id 1 and id 2),
+                // we can just check the number and set the other owner's id accordingly
+                string otherOwnerId = "1";
+                
+                if (ownerId == 1)
+                {
+                    otherOwnerId = "2";
+                }
 
                 string sql = "select p.EspnPlayerId, p.PlayerName, p.Position from Players p " +
                              "join TeamsSchedule ts on p.TeamId = ts.TeamId " +
-                             "where ts.Week = " + week.ToString();
+                             "where ts.Week = " + week.ToString() + " and p.EspnPlayerId not in " +
+                             "  (select EspnPlayerId from CurrentRoster where OwnerID = " + otherOwnerId + " and Week = " + week.ToString() + ")";
 
                 SqlConnection sqlConnection = GetSqlConnection();
 

@@ -1,5 +1,5 @@
 ﻿@{
-    Layout = null;
+    ViewData["Title"] = "Scoreboard";
 }
 
 <!DOCTYPE html>
@@ -191,18 +191,18 @@
 <body>
     <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 
-    <table style="border-collapse:inherit;margin: 0;margin-left: auto;margin-right: auto;float: none;width: 50%;vertical-align: middle;padding: 2px;border-spacing: 20px;">
+    <table style="border-collapse:inherit;margin: 0;margin-left: auto;margin-right: auto;float: none;width: 75%;vertical-align: middle;padding: 2px;border-spacing: 20px;">
         <tr>
-            <td style="text-align: left; width:50%;">Search for player:</td>
-            <td style="text-align: left; width:50%;">Selected Team:</td>
+            <td style="text-align: left">Search for player:</td>
+            <td style="text-align: left">Selected Team:</td>
         </tr>
         <tr style="height: 300px;">
-            <td style="border-collapse:inherit;margin: 0;display:block;float:none;">
-                <input type="text" id="txtFilter" onkeyup="filterPlayers()" style="width:86%;" placeholder="Search for players" title="Type in a name">
+            <td style="width: 50%; vertical-align: top;">
+                <input type="text" id="txtFilter" onkeyup="filterPlayers()" placeholder="Search for players" title="Type in a name">
                 <ul id="allPlayersUL">
                 </ul>
             </td>
-            <td style="vertical-align: top;">
+            <td style="width: 50%; vertical-align: top;">
                 <ul id="selectedPlayersUL">
                 </ul>
             </td>

@@ -50,25 +50,6 @@
             font-weight: bold;
         }
 
-        /* The Close Button on the Modal */
-        .close {
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            cursor: pointer;
-            background: #2079b0;
-            padding: 6px;
-            border-radius: 8px;
-            color: white;
-            transition: .6s;
-        }
-
-        .close:hover {
-            background: #7ba6c0;
-            text-decoration: none;
-            cursor: pointer;
-        }
-
         #txtFilter {
             background-image: url('/css/searchicon.png');
             background-position: 10px 12px;
@@ -221,7 +202,7 @@
             <p>Invalid roster.</p>
             <div style="color:black; font-weight: normal;">Please enter a valid roster</div>
             <br />
-            <button class="close" id="closeBtn">Close</button>
+            <button style="width: 25%; align-self: center" class="button" id="closeBtn">Close</button>
         </div>
     </div>
 
@@ -329,14 +310,14 @@
                         // get the modal
                         var modal = document.getElementById("myModal");
 
-                        // get the span element that closes the modal
-                        var span = document.getElementsByClassName("close")[0];
+                        // get the button that closes the modal
+                        var closeButton = document.getElementById("closeBtn");
 
                         // open the modal
                         modal.style.display = "block";
 
-                        // when the user clicks on span (x), close the modal
-                        span.onclick = function () {
+                        // when the user clicks on the close button, close the modal
+                        closeButton.onclick = function () {
                             modal.style.display = "none";
                         }
                     }

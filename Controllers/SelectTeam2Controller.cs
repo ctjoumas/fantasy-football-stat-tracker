@@ -209,6 +209,10 @@
                         position = "K";
                     }
 
+                    // If there is an apostrophe in the player name (such as ' in Ja'Marr Chase), we need to add a double
+                    // apostrophe, if there is one in the name, so it inserts properly
+                    player.PlayerName = player.PlayerName.Replace("'", "''");
+
                     string sql = "insert into CurrentRoster (OwnerID, Week, PlayerName, Position, GameEnded, FinalPoints, FinalPointsString, EspnPlayerId) " +
                                  "values ('" + ownerId + "', '" + week + "', '" + player.PlayerName + "', '" + position + "', 0, 0, '', '" + player.EspnPlayerId + "')";
 

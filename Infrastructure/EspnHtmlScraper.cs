@@ -1,12 +1,10 @@
-﻿namespace YahooFantasyFootball.Infrastructure
+﻿namespace FantasyFootballStatTracker.Infrastructure
 {
     using System;
-    using System.Linq;
     using FantasyFootballStatTracker;
-    using FantasyFootballStatTracker.Infrastructure;
+    using FantasyFootballStatTracker.Models;
     using HtmlAgilityPack;
     using Newtonsoft.Json.Linq;
-    using YahooFantasyFootball.Models;
 
     public class EspnHtmlScraper
     {

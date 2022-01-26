@@ -1,4 +1,4 @@
-﻿namespace YahooFantasyFootball.Controllers
+﻿namespace FantasyFootballStatTracker.Controllers
 {
     using Microsoft.AspNetCore.Http.Extensions;
     using Microsoft.AspNetCore.Mvc;
@@ -11,8 +11,8 @@
     using System.Diagnostics;
     using System.Net.Http;
     using System.Threading.Tasks;
-    using YahooFantasyFootball.Configuration;
-    using YahooFantasyFootball.Models;
+    using FantasyFootballStatTracker.Configuration;
+    using FantasyFootballStatTracker.Models;
 
     public class HomeController : Controller
     {

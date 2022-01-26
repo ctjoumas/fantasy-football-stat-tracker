@@ -1,9 +1,5 @@
-﻿namespace YahooFantasyFootball.Configuration
+﻿namespace FantasyFootballStatTracker.Configuration
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Threading.Tasks;
     using System.Xml.Linq;
 
     internal static class YahooXml

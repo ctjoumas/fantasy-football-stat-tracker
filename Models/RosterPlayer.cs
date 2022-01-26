@@ -1,11 +1,5 @@
 ﻿namespace FantasyFootballStatTracker.Models
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Threading.Tasks;
-    using YahooFantasyFootball.Models;
-
     /// <summary>
     /// Stores the properties of the CurrentRoster database for each owners rostered players.
     /// </summary>

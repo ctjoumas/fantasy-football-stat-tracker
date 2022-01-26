@@ -1,10 +1,8 @@
-﻿namespace YahooFantasyFootball.Models
+﻿namespace FantasyFootballStatTracker.Models
 {
-    using System;
     using System.Collections.Generic;
-    using System.Text;
     using System.Xml.Serialization;
-    using YahooFantasyFootball.Configuration;
+    using FantasyFootballStatTracker.Configuration;
 
     public enum SortOrder
     {

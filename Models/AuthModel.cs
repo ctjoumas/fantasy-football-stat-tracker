@@ -1,9 +1,6 @@
-﻿namespace YahooFantasyFootball.Models
+﻿namespace FantasyFootballStatTracker.Models
 {
     using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Threading.Tasks;
 
     public static class AuthModel
     {

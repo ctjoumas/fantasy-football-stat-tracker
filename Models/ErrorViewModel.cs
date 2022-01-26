@@ -1,4 +1,4 @@
-namespace YahooFantasyFootball.Models
+namespace FantasyFootballStatTracker.Models
 {
     using System;
 

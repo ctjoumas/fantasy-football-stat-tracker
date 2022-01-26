@@ -1,9 +1,6 @@
-﻿namespace YahooFantasyFootball.Models
+﻿namespace FantasyFootballStatTracker.Models
 {
-    using System;
     using System.Collections.Generic;
-    using System.Linq;
-    using System.Threading.Tasks;
     using System.Xml.Serialization;
 
     [XmlRoot(ElementName = "position_types", Namespace = "http://fantasysports.yahooapis.com/fantasy/v2/base.rng")]

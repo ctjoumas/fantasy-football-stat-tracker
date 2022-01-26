@@ -1,4 +1,4 @@
-﻿namespace YahooFantasyFootball.Controllers
+﻿namespace FantasyFootballStatTracker.Controllers
 {
     using Azure.Core;
     using Azure.Identity;
@@ -17,9 +17,8 @@
     using System.Web;
     using System.Xml.Linq;
     using System.Xml.Serialization;
-    using YahooFantasyFootball.Configuration;
-    using YahooFantasyFootball.Infrastructure;
-    using YahooFantasyFootball.Models;
+    using FantasyFootballStatTracker.Configuration;
+    using FantasyFootballStatTracker.Infrastructure;
 
     public class ScoreboardController : Controller
     {
@@ -82,14 +81,14 @@
                 Encrypt = true
             };
 
-            string azureSqlToken = SessionExtensions.GetString(HttpContext.Session, SessionKeyAzureSqlAccessToken);
+            string azureSqlToken = Microsoft.AspNetCore.Http.SessionExtensions.GetString(HttpContext.Session, SessionKeyAzureSqlAccessToken);
 
             // if we haven't retrieved the token yet, retrieve it and set it in the session (at this point though, we should have the token)
             if (azureSqlToken == null)
             {
                 azureSqlToken = await GetAzureSqlAccessToken();
 
-                SessionExtensions.SetString(HttpContext.Session, SessionKeyAzureSqlAccessToken, azureSqlToken);
+                Microsoft.AspNetCore.Http.SessionExtensions.SetString(HttpContext.Session, SessionKeyAzureSqlAccessToken, azureSqlToken);
             }
 
             SqlConnection sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
@@ -284,7 +283,12 @@
                                 case Position.DEF:
                                     // if this is a defense, we need to strip off the last part of the team name (so buffalo instead of buffalo bills)
                                     int lastSpaceIndex = playerNameSearchString.LastIndexOf(" ");
-                                    playerNameSearchString = playerNameSearchString.Substring(0, lastSpaceIndex);
+
+                                    // in the case of "washington", there is no space so we need to check for that
+                                    if (lastSpaceIndex != -1)
+                                    {
+                                        playerNameSearchString = playerNameSearchString.Substring(0, lastSpaceIndex);
+                                    }
 
                                     positionType = Position.DEF;
                                     break;
@@ -323,7 +327,7 @@
         [HttpPost]
         public IActionResult Index(string week)
         {
-            SessionExtensions.SetString(HttpContext.Session, SessionKeyWeek, week);
+            Microsoft.AspNetCore.Http.SessionExtensions.SetString(HttpContext.Session, SessionKeyWeek, week);
 
             return RedirectToAction("Index");
         }
@@ -340,7 +344,7 @@
             // is attempted to be refreshed on the scoreboard, it will be null
             if (AuthModel.AccessToken != null)
             {
-                string week = SessionExtensions.GetString(HttpContext.Session, SessionKeyWeek);
+                string week = Microsoft.AspNetCore.Http.SessionExtensions.GetString(HttpContext.Session, SessionKeyWeek);
 
                 // populate the week dropdown with all weeks a matchup has been played
                 ViewBag.weeks = GetGameWeeks(week);
@@ -349,7 +353,7 @@
                 // week if no week was selected, whether it's the latest week or the new week which a team needs to be selected for
                 if (week == null)
                 {
-                    week = SessionExtensions.GetString(HttpContext.Session, SessionKeyWeek);
+                    week = Microsoft.AspNetCore.Http.SessionExtensions.GetString(HttpContext.Session, SessionKeyWeek);
                 }
 
                 List<Team> teams = new List<Team>();
@@ -580,7 +584,7 @@
 
             var sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
 
-            string azureSqlToken = SessionExtensions.GetString(HttpContext.Session, SessionKeyAzureSqlAccessToken);
+            string azureSqlToken = Microsoft.AspNetCore.Http.SessionExtensions.GetString(HttpContext.Session, SessionKeyAzureSqlAccessToken);
 
             // if we haven't retrieved the token yet, retrieve it and set it in the session (at this point though, we should have the token)
             if (azureSqlToken == null)
@@ -590,7 +594,7 @@
 
                 azureSqlToken = tokenRequestResult.Token;
 
-                SessionExtensions.SetString(HttpContext.Session, SessionKeyAzureSqlAccessToken, azureSqlToken);
+                Microsoft.AspNetCore.Http.SessionExtensions.SetString(HttpContext.Session, SessionKeyAzureSqlAccessToken, azureSqlToken);
             }
 
             sqlConnection.AccessToken = azureSqlToken;
@@ -656,7 +660,7 @@
             // the user didn't select a week from the dropdown (if the selectedWeek is null)
             if (selectedWeek == null)
             {
-                SessionExtensions.SetString(HttpContext.Session, SessionKeyWeek, week);
+                Microsoft.AspNetCore.Http.SessionExtensions.SetString(HttpContext.Session, SessionKeyWeek, week);
             }
 
             sqlConnection.Close();
@@ -749,7 +753,7 @@
 
             var sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
 
-            string azureSqlToken = SessionExtensions.GetString(HttpContext.Session, SessionKeyAzureSqlAccessToken);
+            string azureSqlToken = Microsoft.AspNetCore.Http.SessionExtensions.GetString(HttpContext.Session, SessionKeyAzureSqlAccessToken);
 
             // if we haven't retrieved the token yet, retrieve it and set it in the session
             if (azureSqlToken == null)
@@ -759,7 +763,7 @@
 
                 azureSqlToken = tokenRequestResult.Token;
 
-                SessionExtensions.SetString(HttpContext.Session, SessionKeyAzureSqlAccessToken, azureSqlToken);
+                Microsoft.AspNetCore.Http.SessionExtensions.SetString(HttpContext.Session, SessionKeyAzureSqlAccessToken, azureSqlToken);
             }
 
             sqlConnection.AccessToken = azureSqlToken;
@@ -850,17 +854,57 @@
             Player player = null;
 
             // if we have a player (or defense, such as Los Angeles) with the same name, we need
-            // to check the player name in each xElement to select the right team
+            // to check the player name in each xElement to select the right team. However, a
+            // defense needs a special check since the "full" name for the Los Angeles Rams and the Los
+            // Angeles Chargers is "Los Angeles", so we will need to check the editorial_team_full_name node
+            // for a defense
             if (xElements.Count > 1)
             {
                 foreach (XElement xElement in xElements)
                 {
-                    if (xElement.Value.ToLower().Contains(playerName.ToLower()))
+                    // this element will contain the player name (or defense team name) in the format of
+                    // <player_key>key</player_key>
+                    // <player_id>1</player_id>
+                    // <name>
+                    //   <full>Dwayne Washington</full> *** NOTE: Rams and Chargers will have "Los Angeles" here
+                    //   <first>First name</first> *** NOTE: Rams and Chargers will have "Los Angeles" here
+                    //   ...
+                    // </name>
+                    // <editorial_team_full_name>Los Angeles Rams</editorial_team_full_name>
+
+                    
+
+                    // the player or defense full name
+                    string playerFullName;
+
+                    // If this is a player, we are only interested in the full name and this will only return one node
+                    if (position != Position.DEF)
+                    {
+                        playerFullName = (xElement.Descendants(YahooXml.XMLNS + "full").ToList())[0].FirstNode.ToString();
+                    }
+                    else
+                    {
+                        playerFullName = (xElement.Descendants(YahooXml.XMLNS + "editorial_team_full_name").ToList())[0].FirstNode.ToString();
+                    }
+
+                    // THIS IS A SPECIAL CASE AND CAN BE REMOVED ONCE WASHINGTON HAS A TEAM NAME
+                    // Reason being, yahoo will only search on "washington" and if the last word of the team name (in this case, "washington football team") is
+                    // removed, we're left with "washington football". All other teams have the last word being the team name and the other preceding words being
+                    // the city (los angeles rams, new england patriots, buffalo bills). So, we either need to put a special case when pulling out the search string
+                    // to change from "washington football team" to "washington" in the calling function, or we do it here.
+                    if ((position == Position.DEF) && (playerName.ToLower().Equals("washington")) && (playerFullName.ToLower().Equals("washington football team")))
                     {
                         player = (Player)serializer.Deserialize(xElement.CreateReader());
 
                         break;
                     }
+                    else if (playerFullName.ToLower().Equals(playerName.ToLower()))
+                    {
+                        player = (Player)serializer.Deserialize(xElement.CreateReader());
+
+                        break;
+                    }
+                    
                 }
             }
             else

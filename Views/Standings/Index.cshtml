@@ -3,28 +3,44 @@
 @{
     ViewData["Title"] = "Standings";
 }
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" />
 
-
-<table class="table" border="0" cellpadding="0" cellspacing="0">
-    <tr>
-        <td>Owner</td>
-        <td>Wins</td>
-        <td>Losses</td>
-        <td>Streak</td>
-        <td>Total Points</td>
-    </tr>
-    @foreach (var ownerStats in Model)
-    {
-        byte[] bytes = (byte[])ownerStats.OwnerLogo;
-        string base64String = Convert.ToBase64String(bytes, 0, bytes.Length);
-        var logoSource = "data:image/png;base64," + base64String;
-
-        <tr>
-            <td style="line-height:0;padding:5px;margin:5px;width:65px;height:75px;"><img style="display:block;width:100%;height:100%;padding:0px;margin:0px 0px 0px 0px;vertical-align: middle;" src=@logoSource /></td>
-            <td>@ownerStats.Wins</td>
-            <td>@ownerStats.Losses</td>
-            <td>@ownerStats.Streak</td>
-            <td>@ownerStats.TotalPoints.ToString("0.00")</td>
-        </tr>
+<style>
+    h2 {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
-</table>
+</style>
+
+<h2 class='text-center'>Standings</h2>
+
+<br />
+
+<div class="container">
+    <div class="row">
+        <div class="col-xs-12">
+            <table class="table table-condensed">
+                <tr class="active">
+                    <td>Owner</td>
+                    <td>Wins</td>
+                    <td>Losses</td>
+                    <td>Streak</td>
+                    <td>Total Points</td>
+                </tr>
+                @foreach (var ownerStats in Model)
+                {
+                    byte[] bytes = (byte[])ownerStats.OwnerLogo;
+                    string base64String = Convert.ToBase64String(bytes, 0, bytes.Length);
+                    var logoSource = "data:image/png;base64," + base64String;
+
+                    <tr>
+                        <td style="line-height:0;padding:5px;margin:5px;width:65px;height:75px;"><img style="display:block;width:100%;height:100%;padding:0px;margin:0px 0px 0px 0px;vertical-align: middle;" src=@logoSource /></td>
+                        <td>@ownerStats.Wins</td>
+                        <td>@ownerStats.Losses</td>
+                        <td>@ownerStats.Streak</td>
+                        <td>@ownerStats.TotalPoints.ToString("0.00")</td>
+                    </tr>
+                }
+            </table>
+        </div>
+    </div>
+</div>

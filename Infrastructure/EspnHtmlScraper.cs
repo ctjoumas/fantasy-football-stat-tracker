@@ -263,64 +263,67 @@
                     var teamNameNode = gamePackageNode.SelectSingleNode(".//div[@class='team-name']");
 
                     // find the last space in the team name so we can grab the stat
-                    // e.g. - "Lost Angeles Passing" or "Carolina Passing" should return "Passing"
+                    // e.g. - "Los Angeles Passing" or "Carolina Passing" should return "Passing"
                     string teamNameText = teamNameNode.InnerText;
                     int lastSpaceIndex = teamNameText.LastIndexOf(" ");
                     string stat = teamNameText.Substring(lastSpaceIndex + 1);
 
-                    // TODO: if stat is equal to "defensive", we can skip going through each individual player and just grab the last row which is the team total for sacks and TDs
-                    // which will save looping through a large number of rows
-
-                    // now we need to find the table row under the "mod-data" table, which contains the stats. In this
-                    // table, there are two rows of data under the <tbody> for each player. The first row will contain <td>s of all stats,
-                    // with the first td being the player id which we will need to check so we are pulling stats for the
-                    // right player.
-                    var statsNodes = gamePackageNode.SelectNodes(".//table[@class='mod-data']/tbody/tr");
-
-                    foreach (var statsNode in statsNodes)
+                    // if we are parsing the defensive stats ("Defensive" for sacks, "Interceptions" for interceptions, or "Returns" for kick/punt
+                    // returns, we can just check the last row which is the team total so we don't have to loop through each player on the team
+                    if (position.Equals(Position.DEF))
                     {
-                        // the stats node is a <tr> with <td>'s containing the stats we are looking for, which will be different
-                        // for each type of stat (passing, rushing, etc), so we will hand this node off to the helper function
-                        // after extracting the player id in a link tag
-                        var playerIdNode = statsNode.SelectSingleNode(".//a");
+                        var defensiveTeamStatsTotalNode = gamePackageNode.SelectSingleNode(".//tr[@class='highlight']");
 
-                        // if we are searching for           // team defense stats, so we we will fall into the else to do that. Otherwise, if there is a playerID coming
-                        // into this function and there isn't a player for this stat (e.g. this player has no interceptions), there will
-                        // not be a player ID Node, so we will just skip this stat
-                        if ((playerIdNode != null) && !position.Equals(Position.DEF))
+                        if (stat.Equals("Defensive"))
+                            fantasyPoints += handleDefensiveStats(defensiveTeamStatsTotalNode);
+                        else if (stat.Equals("Interceptions"))
+                            fantasyPoints += handleInterceptionStats(defensiveTeamStatsTotalNode);
+                        else if (stat.Equals("Returns"))
+                            fantasyPoints += handleReturnStats(defensiveTeamStatsTotalNode);
+                    }
+                    else
+                    {
+                        // now we need to find the table row under the "mod-data" table, which contains the stats. In this
+                        // table, there are two rows of data under the <tbody> for each player. The first row will contain <td>s of all stats,
+                        // with the first td being the player id which we will need to check so we are pulling stats for the
+                        // right player.
+                        var statsNodes = gamePackageNode.SelectNodes(".//table[@class='mod-data']/tbody/tr");
+
+                        foreach (var statsNode in statsNodes)
                         {
-                            string playerUid = playerIdNode.Attributes["data-player-uid"].Value;
+                            // the stats node is a <tr> with <td>'s containing the stats we are looking for, which will be different
+                            // for each type of stat (passing, rushing, etc), so we will hand this node off to the helper function
+                            // after extracting the player id in a link tag
+                            var playerIdNode = statsNode.SelectSingleNode(".//a");
 
-                            // the beginning part of the ID has a GUID, so we will remove that and just return the player id
-                            int index = playerUid.IndexOf(playerId);
-
-                            if (index != -1)
+                            // if there is a playerID coming into this function and there isn't a player for this stat (e.g. this
+                            // player has no interceptions), there will not be a player ID Node, so we will just skip this stat
+                            if (playerIdNode != null)
                             {
-                                string extractedPlayerId = playerUid.Substring(index);
+                                string playerUid = playerIdNode.Attributes["data-player-uid"].Value;
 
-                                if (extractedPlayerId.Equals(playerId))
+                                // the beginning part of the ID has a GUID, so we will remove that and just return the player id
+                                int index = playerUid.IndexOf(playerId);
+
+                                if (index != -1)
                                 {
-                                    if (stat.Equals("Passing"))
-                                        fantasyPoints += handlePassingStats(statsNode);
-                                    else if (stat.Equals("Rushing"))
-                                        fantasyPoints += handleRbStats(statsNode);
-                                    else if (stat.Equals("Receiving"))
-                                        fantasyPoints += handleWrStats(statsNode);
-                                    else if (stat.Equals("Fumbles"))
-                                        fantasyPoints += handleFumbleStats(statsNode);
-                                    else if (stat.Equals("Kicking"))
-                                        fantasyPoints += handleKickingStats(statsNode);
+                                    string extractedPlayerId = playerUid.Substring(index);
+
+                                    if (extractedPlayerId.Equals(playerId))
+                                    {
+                                        if (stat.Equals("Passing"))
+                                            fantasyPoints += handlePassingStats(statsNode);
+                                        else if (stat.Equals("Rushing"))
+                                            fantasyPoints += handleRbStats(statsNode);
+                                        else if (stat.Equals("Receiving"))
+                                            fantasyPoints += handleWrStats(statsNode);
+                                        else if (stat.Equals("Fumbles"))
+                                            fantasyPoints += handleFumbleStats(statsNode);
+                                        else if (stat.Equals("Kicking"))
+                                            fantasyPoints += handleKickingStats(statsNode);
+                                    }
                                 }
                             }
-                        }
-                        else if ((playerIdNode != null) && (position.Equals(Position.DEF)))
-                        {
-                            if (stat.Equals("Defensive"))
-                                fantasyPoints += handleDefensiveStats(statsNode);
-                            else if (stat.Equals("Interceptions"))
-                                fantasyPoints += handleInterceptionStats(statsNode);
-                            else if (stat.Equals("Returns"))
-                                fantasyPoints += handleReturnStats(statsNode);
                         }
                     }
                 }
@@ -506,14 +509,14 @@
         /// This will loop through all defense (and actually, special teams) kick or punt returns. The only thing we care about here are touchdowns:
         /// <td class="td"></td>
         /// </summary>
-        /// <param name="statsNode"></param>
+        /// <param name="defensiveTeamStatsTotalNode"></param>
         /// <returns></returns>
-        private int handleReturnStats(HtmlNode statsNode)
+        private int handleReturnStats(HtmlNode defensiveTeamStatsTotalNode)
         {
             int defensiveReturnPoints = 0;
             int touchdowns = 0;
 
-            foreach (var node in statsNode.ChildNodes)
+            foreach (var node in defensiveTeamStatsTotalNode.ChildNodes)
             {
                 string stat = node.Attributes[0].Value;
 
@@ -531,16 +534,16 @@
         /// <td class="int"></td>
         /// <td class="td"></td>
         /// </summary>
-        /// <param name="statsNode"></param>
+        /// <param name="defensiveTeamStatsTotalNode"></param>
         /// <returns></returns>
-        private int handleInterceptionStats(HtmlNode statsNode)
+        private int handleInterceptionStats(HtmlNode defensiveTeamStatsTotalNode)
         {
             int defensivePointsFromInterceptions = 0;
 
             int interceptions = 0;
             int touchdowns = 0;
 
-            foreach (var node in statsNode.ChildNodes)
+            foreach (var node in defensiveTeamStatsTotalNode.ChildNodes)
             {
                 string stat = node.Attributes[0].Value;
 
@@ -561,16 +564,16 @@
         /// <td class="sacks"></td>
         /// <td class="td"></td>
         /// </summary>
-        /// <param name="statsNode"></param>
+        /// <param name="defensiveTeamStatsTotalNode"></param>
         /// <returns></returns>
-        private double handleDefensiveStats(HtmlNode statsNode)
+        private double handleDefensiveStats(HtmlNode defensiveTeamStatsTotalNode)
         {
             double defensivePoints = 0;
 
             double sacks = 0;
             int touchdowns = 0;
 
-            foreach (var node in statsNode.ChildNodes)
+            foreach (var node in defensiveTeamStatsTotalNode.ChildNodes)
             {
                 string stat = node.Attributes[0].Value;
 

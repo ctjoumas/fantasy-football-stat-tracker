@@ -545,12 +545,15 @@
 
             foreach (var node in defensiveTeamStatsTotalNode.ChildNodes)
             {
-                string stat = node.Attributes[0].Value;
+                if (node != null)
+                {
+                    string stat = node.Attributes[0].Value;
 
-                // we will only check for int and not TD's since interceptions returned for TD's are accounted for in the
-                // main Defensive stats table
-                if (stat.Equals("int"))
-                    interceptions += int.Parse(node.InnerText);
+                    // we will only check for int and not TD's since interceptions returned for TD's are accounted for in the
+                    // main Defensive stats table
+                    if (stat.Equals("int"))
+                        interceptions += int.Parse(node.InnerText);
+                }
             }
 
             defensivePointsFromInterceptions += (interceptions * DEFENSIVE_INT_POINTS) + (touchdowns * DEFENSIVE_TD_POINTS);

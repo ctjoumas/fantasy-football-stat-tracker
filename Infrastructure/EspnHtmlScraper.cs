@@ -540,7 +540,7 @@
         {
             int defensivePointsFromInterceptions = 0;
 
-            int interceptions = 0;
+            /*int interceptions = 0;
             int touchdowns = 0;
 
             foreach (var node in defensiveTeamStatsTotalNode.ChildNodes)
@@ -556,7 +556,7 @@
                 }
             }
 
-            defensivePointsFromInterceptions += (interceptions * DEFENSIVE_INT_POINTS) + (touchdowns * DEFENSIVE_TD_POINTS);
+            defensivePointsFromInterceptions += (interceptions * DEFENSIVE_INT_POINTS) + (touchdowns * DEFENSIVE_TD_POINTS);*/
 
             return defensivePointsFromInterceptions;
         }

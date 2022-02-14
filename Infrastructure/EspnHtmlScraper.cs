@@ -514,7 +514,7 @@
         private int handleReturnStats(HtmlNode defensiveTeamStatsTotalNode)
         {
             int defensiveReturnPoints = 0;
-            /*int touchdowns = 0;
+            int touchdowns = 0;
 
             foreach (var node in defensiveTeamStatsTotalNode.ChildNodes)
             {
@@ -524,7 +524,7 @@
                     touchdowns += int.Parse(node.InnerText);
             }
 
-            defensiveReturnPoints += touchdowns * DEFENSIVE_TD_POINTS;*/
+            defensiveReturnPoints += touchdowns * DEFENSIVE_TD_POINTS;
 
             return defensiveReturnPoints;
         }
@@ -540,7 +540,7 @@
         {
             int defensivePointsFromInterceptions = 0;
 
-            /*int interceptions = 0;
+            int interceptions = 0;
             int touchdowns = 0;
 
             foreach (var node in defensiveTeamStatsTotalNode.ChildNodes)
@@ -556,7 +556,7 @@
                 }
             }
 
-            defensivePointsFromInterceptions += (interceptions * DEFENSIVE_INT_POINTS) + (touchdowns * DEFENSIVE_TD_POINTS);*/
+            defensivePointsFromInterceptions += (interceptions * DEFENSIVE_INT_POINTS) + (touchdowns * DEFENSIVE_TD_POINTS);
 
             return defensivePointsFromInterceptions;
         }
@@ -573,7 +573,7 @@
         {
             double defensivePoints = 0;
 
-            /*double sacks = 0;
+            double sacks = 0;
             int touchdowns = 0;
 
             foreach (var node in defensiveTeamStatsTotalNode.ChildNodes)
@@ -589,7 +589,7 @@
                     touchdowns += int.Parse(node.InnerText);
             }
 
-            defensivePoints += (sacks * DEFENSIVE_SACK_POINTS) + (touchdowns * DEFENSIVE_TD_POINTS);*/
+            defensivePoints += (sacks * DEFENSIVE_SACK_POINTS) + (touchdowns * DEFENSIVE_TD_POINTS);
 
             return defensivePoints;
         }

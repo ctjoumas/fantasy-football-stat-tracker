@@ -274,12 +274,16 @@
                     {
                         var defensiveTeamStatsTotalNode = gamePackageNode.SelectSingleNode(".//tr[@class='highlight']");
 
-                        if (stat.Equals("Defensive"))
-                            fantasyPoints += handleDefensiveStats(defensiveTeamStatsTotalNode);
-                        else if (stat.Equals("Interceptions"))
-                            fantasyPoints += handleInterceptionStats(defensiveTeamStatsTotalNode);
-                        else if (stat.Equals("Returns"))
-                            fantasyPoints += handleReturnStats(defensiveTeamStatsTotalNode);
+                        // Make sure this node isn't null; if there are no interceptions, this node will not exist
+                        if (defensiveTeamStatsTotalNode != null)
+                        {
+                            if (stat.Equals("Defensive"))
+                                fantasyPoints += handleDefensiveStats(defensiveTeamStatsTotalNode);
+                            else if (stat.Equals("Interceptions"))
+                                fantasyPoints += handleInterceptionStats(defensiveTeamStatsTotalNode);
+                            else if (stat.Equals("Returns"))
+                                fantasyPoints += handleReturnStats(defensiveTeamStatsTotalNode);
+                        }
                     }
                     else
                     {
@@ -545,15 +549,12 @@
 
             foreach (var node in defensiveTeamStatsTotalNode.ChildNodes)
             {
-                if (node != null)
-                {
-                    string stat = node.Attributes[0].Value;
+                string stat = node.Attributes[0].Value;
 
-                    // we will only check for int and not TD's since interceptions returned for TD's are accounted for in the
-                    // main Defensive stats table
-                    if (stat.Equals("int"))
-                        interceptions += int.Parse(node.InnerText);
-                }
+                // we will only check for int and not TD's since interceptions returned for TD's are accounted for in the
+                // main Defensive stats table
+                if (stat.Equals("int"))
+                    interceptions += int.Parse(node.InnerText);
             }
 
             defensivePointsFromInterceptions += (interceptions * DEFENSIVE_INT_POINTS) + (touchdowns * DEFENSIVE_TD_POINTS);

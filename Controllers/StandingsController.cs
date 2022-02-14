@@ -8,6 +8,7 @@
     using System.Collections;
     using System.Collections.Generic;
     using System.Data.SqlClient;
+    using System.Linq;
     using System.Threading.Tasks;
 
     public class StandingsController : Controller
@@ -71,6 +72,15 @@
             {
                 UpdateStandingsForWeek(sqlConnection, week);
             }
+
+            // sort the display so it's by wins or, if tied, total points
+            /*ownerStats.Sort(delegate (OwnerStats x, OwnerStats y)
+            {
+                return x.Wins.CompareTo(y.Wins);
+            });*/
+            ownerStats = ownerStats.OrderByDescending(x => x.Wins)
+                      .ThenByDescending(x => x.TotalPoints)
+                      .ToList();
 
             sqlConnection.Close();
 

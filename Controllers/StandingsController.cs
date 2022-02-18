@@ -2,11 +2,13 @@
 {
     using Azure.Core;
     using Azure.Identity;
+    using FantasyFootballStatTracker.Infrastructure;
     using FantasyFootballStatTracker.Models;
     using Microsoft.AspNetCore.Mvc;
     using System;
     using System.Collections;
     using System.Collections.Generic;
+    using System.Data;
     using System.Data.SqlClient;
     using System.Linq;
     using System.Threading.Tasks;
@@ -67,17 +69,9 @@
             // get the distinct weeks that have been played
             ArrayList weeksPlayed = GetWeeksCompleted(sqlConnection);
 
-            // loop through all weeks and get the details for each matchup
-            foreach (int week in weeksPlayed)
-            {
-                UpdateStandingsForWeek(sqlConnection, week);
-            }
+            UpdateStandingsForAllWeeksPlayed(sqlConnection, weeksPlayed);
 
             // sort the display so it's by wins or, if tied, total points
-            /*ownerStats.Sort(delegate (OwnerStats x, OwnerStats y)
-            {
-                return x.Wins.CompareTo(y.Wins);
-            });*/
             ownerStats = ownerStats.OrderByDescending(x => x.Wins)
                       .ThenByDescending(x => x.TotalPoints)
                       .ToList();
@@ -93,17 +87,31 @@
         /// <param name="sqlConnection">Connection to the SQL database.</param>
         private void PopulateOwnerLogos(SqlConnection sqlConnection)
         {
-            string sql = "select Logo from Owners";
-            using (SqlCommand command = new SqlCommand(sql, sqlConnection))
+            List<byte[]> OwnerLogos = HttpContext.Session.GetObjectFromJson<List<byte[]>>(SessionExtensions.SessionKeyLogos);
+
+            // if we haven't retrieved the owner logos yet, retrieve it and store it in the session
+            if (OwnerLogos == null)
             {
-                using (SqlDataReader reader = command.ExecuteReader())
+                using (SqlCommand command = new SqlCommand("GetOwnerLogos", sqlConnection))
                 {
-                    int i = 0;
-                    while (reader.Read())
+                    command.CommandType = CommandType.StoredProcedure;
+
+                    using (SqlDataReader reader = command.ExecuteReader())
                     {
-                        ownerStats[i].OwnerLogo = (byte[])reader.GetValue(reader.GetOrdinal("Logo"));
-                        i++;
+                        int i = 0;
+                        while (reader.Read())
+                        {
+                            ownerStats[i].OwnerLogo = (byte[])reader.GetValue(reader.GetOrdinal("Logo"));
+                            i++;
+                        }
                     }
+                }
+            }
+            else
+            {
+                for (int i=0; i<ownerStats.Count; i++)
+                {
+                    ownerStats[i].OwnerLogo = OwnerLogos[i];
                 }
             }
         }
@@ -118,10 +126,10 @@
         {
             ArrayList weeksPlayed = new ArrayList();
 
-            string sql = "select distinct week from CurrentRoster where Week not in (select week from CurrentRoster where GameEnded = 0)";
-
-            using (SqlCommand command = new SqlCommand(sql, sqlConnection))
+            using (SqlCommand command = new SqlCommand("GetWeeksCompleted", sqlConnection))
             {
+                command.CommandType = CommandType.StoredProcedure;
+
                 using (SqlDataReader reader = command.ExecuteReader())
                 {
                     while (reader.Read())
@@ -138,113 +146,132 @@
         /// Updates the standings for a given week, including total points, wins, losses, and win/loss streak for each owner.
         /// </summary>
         /// <param name="sqlConnection">Connection to the database</param>
-        /// <param name="week">The week we are updating the standings for</param>
-        private void UpdateStandingsForWeek(SqlConnection sqlConnection, int week)
+        /// <param name="weeks">All weeks we are updating the standings for</param>
+        private void UpdateStandingsForAllWeeksPlayed(SqlConnection sqlConnection, ArrayList weeks)
         {
             OwnerStats ownerOneStats = ownerStats[0];
             OwnerStats ownerTwoStats = ownerStats[1];
 
-            double ownerOneTotalScore = 0;
-            double ownerTwoTotalScore = 0;
+            // create a datatable to store the week numbers in
+            DataTable dataTable = new DataTable();
+            dataTable.Columns.Add(new DataColumn("Week", typeof(int)));
 
-            string sql = "select OwnerID, FinalPoints from CurrentRoster where week = " + week.ToString();
-
-            using (SqlCommand command = new SqlCommand(sql, sqlConnection))
+            // populate datatable from the list
+            foreach (int week in weeks)
             {
+                dataTable.Rows.Add(week);
+            }
+
+            using (SqlCommand command = new SqlCommand("GetTotalPointsForEachWeek", sqlConnection))
+            {
+                command.CommandType = CommandType.StoredProcedure;
+                command.Parameters.Add((new SqlParameter("@Weeks", SqlDbType.Structured) { Value = dataTable }));
+
                 using (SqlDataReader reader = command.ExecuteReader())
                 {
                     // go through all players on both rosters and tallyup the score
                     while (reader.Read())
                     {
+                        int week = (int)reader.GetValue(reader.GetOrdinal("Week"));
                         int ownerId = (int)reader.GetValue(reader.GetOrdinal("OwnerID"));
                         double score = (double)reader.GetValue(reader.GetOrdinal("FinalPoints"));
 
+                        // add the score to the appropriate owner's stats object
                         if (ownerId == 1)
                         {
-                            ownerOneTotalScore += score;
+                            ownerOneStats.WeeklyScores.Add(week, score);
+                            ownerOneStats.TotalPoints += score;
                         }
                         else
                         {
-                            ownerTwoTotalScore += score;
+                            ownerTwoStats.WeeklyScores.Add(week, score);
+                            ownerTwoStats.TotalPoints += score;
                         }
                     }
                 }
             }
 
-            bool ownerOneWeekWinner = ownerOneTotalScore > ownerTwoTotalScore;
+            double ownerOneScore, ownerTwoScore;
 
-            // update total points for each owner
-            ownerOneStats.TotalPoints += ownerOneTotalScore;
-            ownerTwoStats.TotalPoints += ownerTwoTotalScore;
-
-            // update wins/losses for each owner
-            if (ownerOneWeekWinner)
+            // Now that we have all scores for each week for both owners, let's go tally up the stats.
+            // We're starting off with week 1 and we'll pull each key based on the week, so we'll start
+            // i at 1
+            for (int i = 1; i<=ownerStats[0].WeeklyScores.Count; i++)
             {
-                ownerOneStats.Wins += 1;
-                ownerTwoStats.Losses += 1;
+                ownerOneScore = (double) ownerOneStats.WeeklyScores[i];
+                ownerTwoScore = (double) ownerTwoStats.WeeklyScores[i];
 
-                if (ownerOneStats.Streak.Equals(String.Empty))
+                bool ownerOneWeekWinner = ownerOneScore > ownerTwoScore;
+
+                // update wins/losses for each owner
+                if (ownerOneWeekWinner)
                 {
-                    ownerOneStats.Streak = "W1";
-                    ownerTwoStats.Streak = "L1";
-                }
-                else
-                {
-                    // pull out the streak and update accordingly
-                    if (ownerOneStats.Streak.StartsWith('W'))
+                    ownerOneStats.Wins += 1;
+                    ownerTwoStats.Losses += 1;
+
+                    if (ownerOneStats.Streak.Equals(String.Empty))
                     {
-                        // owner one has a win streak, so let's pull out the last part of this and increment it
-                        int streak = int.Parse(ownerOneStats.Streak.Substring(1));
-                        streak++;
-
-                        ownerOneStats.Streak = "W" + streak.ToString();
-
-                        // owner two is on a losing streak, so increment their losing streak
-                        streak = int.Parse(ownerTwoStats.Streak.Substring(1));
-                        streak++;
-
-                        ownerTwoStats.Streak = "L" + streak.ToString();
-                    }
-                    else
-                    {
-                        // owner one has a losing streak and just won, so update to W1 (and owner two to L1)
                         ownerOneStats.Streak = "W1";
                         ownerTwoStats.Streak = "L1";
                     }
-                }
-            }
-            else
-            {
-                ownerOneStats.Losses += 1;
-                ownerTwoStats.Wins += 1;
+                    else
+                    {
+                        // pull out the streak and update accordingly
+                        if (ownerOneStats.Streak.StartsWith('W'))
+                        {
+                            // owner one has a win streak, so let's pull out the last part of this and increment it
+                            int streak = int.Parse(ownerOneStats.Streak.Substring(1));
+                            streak++;
 
-                if (ownerOneStats.Streak.Equals(String.Empty))
-                {
-                    ownerOneStats.Streak = "L1";
-                    ownerTwoStats.Streak = "W1";
+                            ownerOneStats.Streak = "W" + streak.ToString();
+
+                            // owner two is on a losing streak, so increment their losing streak
+                            streak = int.Parse(ownerTwoStats.Streak.Substring(1));
+                            streak++;
+
+                            ownerTwoStats.Streak = "L" + streak.ToString();
+                        }
+                        else
+                        {
+                            // owner one has a losing streak and just won, so update to W1 (and owner two to L1)
+                            ownerOneStats.Streak = "W1";
+                            ownerTwoStats.Streak = "L1";
+                        }
+                    }
                 }
                 else
                 {
-                    // pull out the streak and update accordingly
-                    if (ownerTwoStats.Streak.StartsWith('W'))
+                    ownerOneStats.Losses += 1;
+                    ownerTwoStats.Wins += 1;
+
+                    if (ownerOneStats.Streak.Equals(String.Empty))
                     {
-                        // owner two has a win streak, so let's pull out the last part of this and increment it
-                        int streak = int.Parse(ownerTwoStats.Streak.Substring(1));
-                        streak++;
-
-                        ownerTwoStats.Streak = "W" + streak.ToString();
-
-                        // owner one is on a losing streak, so increment their losing streak
-                        streak = int.Parse(ownerOneStats.Streak.Substring(1));
-                        streak++;
-
-                        ownerOneStats.Streak = "L" + streak.ToString();
+                        ownerOneStats.Streak = "L1";
+                        ownerTwoStats.Streak = "W1";
                     }
                     else
                     {
-                        // owner two has a losing streak and just won, so update to W1 (and owner one to L1)
-                        ownerTwoStats.Streak = "W1";
-                        ownerOneStats.Streak = "L1";
+                        // pull out the streak and update accordingly
+                        if (ownerTwoStats.Streak.StartsWith('W'))
+                        {
+                            // owner two has a win streak, so let's pull out the last part of this and increment it
+                            int streak = int.Parse(ownerTwoStats.Streak.Substring(1));
+                            streak++;
+
+                            ownerTwoStats.Streak = "W" + streak.ToString();
+
+                            // owner one is on a losing streak, so increment their losing streak
+                            streak = int.Parse(ownerOneStats.Streak.Substring(1));
+                            streak++;
+
+                            ownerOneStats.Streak = "L" + streak.ToString();
+                        }
+                        else
+                        {
+                            // owner two has a losing streak and just won, so update to W1 (and owner one to L1)
+                            ownerTwoStats.Streak = "W1";
+                            ownerOneStats.Streak = "L1";
+                        }
                     }
                 }
             }

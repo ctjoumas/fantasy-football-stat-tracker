@@ -2,28 +2,14 @@
 {
     using Azure.Core;
     using Azure.Identity;
+    using FantasyFootballStatTracker.Infrastructure;
     using FantasyFootballStatTracker.Models;
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc;
-    using Newtonsoft.Json;
     using System;
     using System.Collections.Generic;
     using System.Data.SqlClient;
     using System.Linq;
-
-    public static class SessionExtensions
-    {
-        public static void SetObjectAsJson(this ISession session, string key, object value)
-        {
-            session.SetString(key, JsonConvert.SerializeObject(value));
-        }
-
-        public static T GetObjectFromJson<T>(this ISession session, string key)
-        {
-            string value = session.GetString(key);
-            return value == null ? default(T) : JsonConvert.DeserializeObject<T>(value);
-        }
-    }
 
     public class SelectTeam2Controller : Controller
     {
@@ -49,6 +35,13 @@
         }
 
         [HttpPost]
+
+
+        /// <summary>
+        /// Gets all players who have a game in a particular week and also are not already selected in the given week by the other owner.
+        /// This is called by the view via ajax.
+        /// </summary>
+        /// <returns>The list of all players playing in the current week, excluding any players drafted by the other owner</returns>
         public List<EspnPlayer> GetAllPlayers()
         {
             List<EspnPlayer> players = HttpContext.Session.GetObjectFromJson<List<EspnPlayer>>("Players");
@@ -62,24 +55,23 @@
 
                 // we want to look for the other owner when excluding their players; since there are only two owners (id 1 and id 2),
                 // we can just check the number and set the other owner's id accordingly
-                string otherOwnerId = "1";
+                int otherOwnerId = 1;
                 
                 if (ownerId == 1)
                 {
-                    otherOwnerId = "2";
+                    otherOwnerId = 2;
                 }
-
-                string sql = "select p.EspnPlayerId, p.PlayerName, p.Position from Players p " +
-                             "join TeamsSchedule ts on p.TeamId = ts.TeamId " +
-                             "where ts.Week = " + week.ToString() + " and p.EspnPlayerId not in " +
-                             "  (select EspnPlayerId from CurrentRoster where OwnerID = " + otherOwnerId + " and Week = " + week.ToString() + ")";
-
+               
                 SqlConnection sqlConnection = GetSqlConnection();
 
                 sqlConnection.Open();
 
-                using (SqlCommand command = new SqlCommand(sql, sqlConnection))
+                using (SqlCommand command = new SqlCommand("GetAvailablePlayersForWeek", sqlConnection))
                 {
+                    command.CommandType = System.Data.CommandType.StoredProcedure;
+                    command.Parameters.Add(new SqlParameter("@week", System.Data.SqlDbType.Int) { Value = week });
+                    command.Parameters.Add(new SqlParameter("@otherOwnerId", System.Data.SqlDbType.Int) { Value = otherOwnerId });
+
                     using (SqlDataReader reader = command.ExecuteReader())
                     {
                         while (reader.Read())
@@ -209,15 +201,15 @@
                         position = "K";
                     }
 
-                    // If there is an apostrophe in the player name (such as ' in Ja'Marr Chase), we need to add a double
-                    // apostrophe, if there is one in the name, so it inserts properly
-                    player.PlayerName = player.PlayerName.Replace("'", "''");
-
-                    string sql = "insert into CurrentRoster (OwnerID, Week, PlayerName, Position, GameEnded, FinalPoints, FinalPointsString, EspnPlayerId) " +
-                                 "values ('" + ownerId + "', '" + week + "', '" + player.PlayerName + "', '" + position + "', 0, 0, '', '" + player.EspnPlayerId + "')";
-
-                    using (SqlCommand command = new SqlCommand(sql, sqlConnection))
+                    using (SqlCommand command = new SqlCommand("AddRosterPlayer", sqlConnection))
                     {
+                        command.CommandType = System.Data.CommandType.StoredProcedure;
+                        command.Parameters.Add(new SqlParameter("@ownerId", System.Data.SqlDbType.Int) { Value = ownerId });
+                        command.Parameters.Add(new SqlParameter("@week", System.Data.SqlDbType.Int) { Value = week });
+                        command.Parameters.Add(new SqlParameter("@playerName", System.Data.SqlDbType.NVarChar) { Value = player.PlayerName });
+                        command.Parameters.Add(new SqlParameter("@position", System.Data.SqlDbType.NChar) { Value = position });
+                        command.Parameters.Add(new SqlParameter("@espnPlayerId", System.Data.SqlDbType.Int) { Value = player.EspnPlayerId });
+
                         command.ExecuteNonQuery();
                     }
                 }

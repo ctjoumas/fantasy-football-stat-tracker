@@ -40,7 +40,7 @@
         /// <summary>
         /// Stores the owner logos
         /// </summary>
-        private List<byte[]> OwnerLogos = new List<byte[]>();
+        private List<byte[]> OwnerLogos;// = new List<byte[]>();
 
         /// <summary>
         /// Injecting HttpClientFactory to set the HttpClient used for calling the yahoo API to get data for each
@@ -71,7 +71,7 @@
         {
             // Hashtable to store players grouped by espn game id so we can parse all players in the same doc, limiting
             // the number of times we need to download the doc
-            Hashtable testPlayers = new Hashtable();
+            Hashtable playersHashTable = new Hashtable();
 
             var connectionStringBuilder = new SqlConnectionStringBuilder
             {
@@ -96,224 +96,194 @@
 
             await sqlConnection.OpenAsync();
 
-            List<RosterPlayer> rosterPlayers = new List<RosterPlayer>();
+            OwnerLogos = HttpContext.Session.GetObjectFromJson<List<byte[]>>(Infrastructure.SessionExtensions.SessionKeyLogos);
 
-            // get the owner logos
-            string sql = "select Logo from Owners";
-            using (SqlCommand command = new SqlCommand(sql, sqlConnection))
+            // if we haven't retrieved the owner logos yet, retrieve it and store it in the session
+            if (OwnerLogos == null)
             {
-                using (SqlDataReader reader = command.ExecuteReader())
+                OwnerLogos = new List<byte[]>();
+
+                // call stored procedure to get the owner logos
+                using (SqlCommand command = new SqlCommand("GetOwnerLogos", sqlConnection))
                 {
-                    while (reader.Read())
+                    command.CommandType = System.Data.CommandType.StoredProcedure;
+
+                    using (SqlDataReader reader = command.ExecuteReader())
                     {
-                        OwnerLogos.Add((byte[])reader.GetValue(reader.GetOrdinal("Logo")));
+                        while (reader.Read())
+                        {
+                            OwnerLogos.Add((byte[])reader.GetValue(reader.GetOrdinal("Logo")));
+                        }
+
+                        HttpContext.Session.SetObjectAsJson(Infrastructure.SessionExtensions.SessionKeyLogos, OwnerLogos);
                     }
                 }
-            }
+            }            
 
-            // get all players for each team's roster for this week
-            sql = "select o.OwnerID, o.OwnerName, cr.Week, cr.PlayerName, cr.Position, cr.GameEnded, cr.FinalPoints, cr.FinalPointsString, cr.EspnPlayerId " +
-                         "from CurrentRoster cr " +
-                         "join Owners o on cr.OwnerID = o.OwnerID " +
-                         "where cr.Week in (select " + selectedWeek + " from CurrentRoster)";
-
-            using (SqlCommand command = new SqlCommand(sql, sqlConnection))
+            // call stored procedure to get all players for each team's roster for this week
+            using (SqlCommand command = new SqlCommand("GetTeamsForGivenWeek", sqlConnection))
             {
+                command.CommandType = System.Data.CommandType.StoredProcedure;
+                command.Parameters.Add(new SqlParameter("@week", System.Data.SqlDbType.Int) { Value = selectedWeek });
+
                 using (SqlDataReader reader = command.ExecuteReader())
                 {
                     while (reader.Read())
                     {
                         int ownerId = (int)reader.GetValue(reader.GetOrdinal("OwnerID"));
                         string ownerName = reader.GetValue(reader.GetOrdinal("OwnerName")).ToString();
-                        int week = (int)reader.GetValue(reader.GetOrdinal("Week"));
                         string playerName = reader.GetValue(reader.GetOrdinal("PlayerName")).ToString();
-                        string position = reader.GetValue(reader.GetOrdinal("Position")).ToString().Trim();
+                        Position position = (Position)Enum.Parse(typeof(Position),reader.GetValue(reader.GetOrdinal("Position")).ToString().Trim());
                         bool gameEnded = (bool)reader.GetValue(reader.GetOrdinal("GameEnded"));
                         double finalPoints = (double)reader.GetValue(reader.GetOrdinal("FinalPoints"));
-                        string finalScoreString = reader.GetValue(reader.GetOrdinal("FinalPointsString")).ToString();
+                        string finalScoreString = reader.GetValue(reader.GetOrdinal("FinalScoreString")).ToString();
                         string espnPlayerId = reader.GetValue(reader.GetOrdinal("EspnPlayerId")).ToString();
 
-                        // add this player to the current roster
-                        rosterPlayers.Add(new RosterPlayer()
+
+                        // keep track of number of WRs, RBs, and TEs, so we know if we are adding a FLEX or not
+                        int rosterOneWrCount = 0;
+                        int rosterTwoWrCount = 0;
+                        int rosterOneRbCount = 0;
+                        int rosterTwoRbCount = 0;
+                        int rosterOneTeCount = 0;
+                        int rosterTwoTeCount = 0;
+
+                        string espnGameId = ((int)reader.GetValue(reader.GetOrdinal("EspnGameId"))).ToString();
+                        string homeOrAway = reader.GetValue(reader.GetOrdinal("HomeOrAway")).ToString();
+                        string teamAbbreviation = reader.GetValue(reader.GetOrdinal("TeamAbbreviation")).ToString();
+                        string opponentAbbreviation = reader.GetValue(reader.GetOrdinal("OpponentAbbreviation")).ToString();
+                        DateTime gameDate = DateTime.Parse((reader.GetValue(reader.GetOrdinal("GameDate")).ToString()));
+
+                        // we need to save the full player name into a search string so we don't modify the full name. This is mostly
+                        // due to a defense such as "los angeles rams" and "los angeles chargers" only able to be searched by "los angeles",
+                        // so we cannot lose the full name. We will cut off the "rams" or "chargers" part in the DEF case below
+                        string playerNameSearchString = playerName;
+
+                        SelectedPlayer player;
+
+                        Position positionType = Position.FLEX;
+
+                        switch (position)
                         {
-                            OwnerId = ownerId,
-                            OwnerName = ownerName,
-                            Week = week,
-                            PlayerName = playerName,
-                            Position = (Position)Enum.Parse(typeof(Position), position),
-                            GameEnded = gameEnded,
-                            FinalPoints = finalPoints,
-                            FinalScoreString = finalScoreString,
-                            EspnPlayerId = espnPlayerId
-                        });
-                    }
-                }
-            }
+                            case Position.QB:
+                                positionType = Position.QB;
+                                break;
 
-            // keep track of number of WRs, RBs, and TEs, so we know if we are adding a FLEX or not
-            int rosterOneWrCount = 0;
-            int rosterTwoWrCount = 0;
-            int rosterOneRbCount = 0;
-            int rosterTwoRbCount = 0;
-            int rosterOneTeCount = 0;
-            int rosterTwoTeCount = 0;
-
-            // go through each player on the roster and create the player and add them to the hashtable
-            foreach (RosterPlayer rosterPlayer in rosterPlayers)
-            {
-                sql = "SELECT ts.EspnGameId, p.EspnPlayerId, ts.HomeOrAway, p.PlayerName, p.TeamAbbreviation, ts.OpponentAbbreviation, p.Position, ts.GameDate " +
-                        "from Players p " +
-                        "join TeamsSchedule ts on ts.TeamId = p.TeamId " +
-                        "where p.EspnPlayerId = '" + rosterPlayer.EspnPlayerId + "' and ts.Week = " + rosterPlayer.Week;
-
-                using (SqlCommand command = new SqlCommand(sql, sqlConnection))
-                {
-                    using (SqlDataReader reader = command.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            string espnGameId = ((int)reader.GetValue(reader.GetOrdinal("EspnGameId"))).ToString();
-                            string espnPlayerId = ((int)reader.GetValue(reader.GetOrdinal("EspnPlayerId"))).ToString();
-                            string homeOrAway = reader.GetValue(reader.GetOrdinal("HomeOrAway")).ToString();
-                            string teamAbbreviation = reader.GetValue(reader.GetOrdinal("TeamAbbreviation")).ToString();
-                            string opponentAbbreviation = reader.GetValue(reader.GetOrdinal("OpponentAbbreviation")).ToString();
-                            DateTime gameDate = DateTime.Parse((reader.GetValue(reader.GetOrdinal("GameDate")).ToString()));
-
-                            // we need to save the full player name into a search string so we don't modify the full name. This is mostly
-                            // due to a defense such as "los angeles rams" and "los angeles chargers" only able to be searched by "los angeles",
-                            // so we cannot lose the full name. We will cut off the "rams" or "chargers" part in the DEF case below
-                            string playerNameSearchString = rosterPlayer.PlayerName;
-
-                            SelectedPlayer player;
-
-                            Position positionType = Position.FLEX;
-
-                            switch (rosterPlayer.Position)
-                            {
-                                case Position.QB:
-                                    positionType = Position.QB;
-                                    break;
-
-                                case Position.RB:
-                                    if (rosterPlayer.OwnerId == 1)
+                            case Position.RB:
+                                if (ownerId == 1)
+                                {
+                                    if (rosterOneRbCount == 2)
                                     {
-                                        if (rosterOneRbCount == 2)
-                                        {
-                                            positionType = Position.FLEX;
-                                        }
-                                        else
-                                        {
-                                            positionType = Position.RB;
-                                            rosterOneRbCount++;
-                                        }
+                                        positionType = Position.FLEX;
                                     }
-                                    else if (rosterPlayer.OwnerId == 2)
+                                    else
                                     {
-                                        if (rosterTwoRbCount == 2)
-                                        {
-                                            positionType = Position.FLEX;
-                                        }
-                                        else
-                                        {
-                                            positionType = Position.RB;
-                                            rosterTwoRbCount++;
-                                        }
+                                        positionType = Position.RB;
+                                        rosterOneRbCount++;
                                     }
-
-                                    break;
-
-                                case Position.WR:
-                                    if (rosterPlayer.OwnerId == 1)
+                                }
+                                else if (ownerId == 2)
+                                {
+                                    if (rosterTwoRbCount == 2)
                                     {
-                                        if (rosterOneWrCount == 2)
-                                        {
-                                            positionType = Position.FLEX;
-                                        }
-                                        else
-                                        {
-                                            positionType = Position.WR;
-                                            rosterOneWrCount++;
-                                        }
+                                        positionType = Position.FLEX;
                                     }
-                                    else if (rosterPlayer.OwnerId == 2)
+                                    else
                                     {
-                                        if (rosterTwoWrCount == 2)
-                                        {
-                                            positionType = Position.FLEX;
-                                        }
-                                        else
-                                        {
-                                            positionType = Position.WR;
-                                            rosterTwoWrCount++;
-                                        }
+                                        positionType = Position.RB;
+                                        rosterTwoRbCount++;
                                     }
-                                    break;
+                                }
 
-                                case Position.TE:
-                                    if (rosterPlayer.OwnerId == 1)
+                                break;
+
+                            case Position.WR:
+                                if (ownerId == 1)
+                                {
+                                    if (rosterOneWrCount == 2)
                                     {
-                                        if (rosterOneTeCount == 1)
-                                        {
-                                            positionType = Position.FLEX;
-                                        }
-                                        else
-                                        {
-                                            positionType = Position.TE;
-                                            rosterOneTeCount++;
-                                        }
+                                        positionType = Position.FLEX;
                                     }
-                                    else if (rosterPlayer.OwnerId == 2)
+                                    else
                                     {
-                                        if (rosterTwoTeCount == 1)
-                                        {
-                                            positionType = Position.FLEX;
-                                        }
-                                        else
-                                        {
-                                            positionType = Position.TE;
-                                            rosterTwoTeCount++;
-                                        }
+                                        positionType = Position.WR;
+                                        rosterOneWrCount++;
                                     }
-                                    break;
-
-                                case Position.K:
-                                    positionType = Position.K;
-                                    break;
-
-                                case Position.DEF:
-                                    // if this is a defense, we need to strip off the last part of the team name (so buffalo instead of buffalo bills)
-                                    int lastSpaceIndex = playerNameSearchString.LastIndexOf(" ");
-
-                                    // in the case of "washington", there is no space so we need to check for that
-                                    if (lastSpaceIndex != -1)
+                                }
+                                else if (ownerId == 2)
+                                {
+                                    if (rosterTwoWrCount == 2)
                                     {
-                                        playerNameSearchString = playerNameSearchString.Substring(0, lastSpaceIndex);
+                                        positionType = Position.FLEX;
                                     }
+                                    else
+                                    {
+                                        positionType = Position.WR;
+                                        rosterTwoWrCount++;
+                                    }
+                                }
+                                break;
 
-                                    positionType = Position.DEF;
-                                    break;
+                            case Position.TE:
+                                if (ownerId == 1)
+                                {
+                                    if (rosterOneTeCount == 1)
+                                    {
+                                        positionType = Position.FLEX;
+                                    }
+                                    else
+                                    {
+                                        positionType = Position.TE;
+                                        rosterOneTeCount++;
+                                    }
+                                }
+                                else if (ownerId == 2)
+                                {
+                                    if (rosterTwoTeCount == 1)
+                                    {
+                                        positionType = Position.FLEX;
+                                    }
+                                    else
+                                    {
+                                        positionType = Position.TE;
+                                        rosterTwoTeCount++;
+                                    }
+                                }
+                                break;
 
-                                default:
-                                    // TODO: ADD SOME ERROR STATE
-                                    positionType = Position.FLEX;
-                                    break;
-                            }
+                            case Position.K:
+                                positionType = Position.K;
+                                break;
 
-                            // if the name contains an apostraphe, replace all occurences with the URL encoding of an apostrophe (%27),
-                            // then encode the result, which will change the %27 into %2527
-                            playerNameSearchString = HttpUtility.UrlEncode(playerNameSearchString.Replace("'", HttpUtility.UrlEncode("'")));
+                            case Position.DEF:
+                                // if this is a defense, we need to strip off the last part of the team name (so buffalo instead of buffalo bills)
+                                int lastSpaceIndex = playerNameSearchString.LastIndexOf(" ");
 
-                            player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerNameSearchString + "/stats", rosterPlayer.Position, positionType, espnPlayerId, espnGameId, gameDate, homeOrAway, rosterPlayer.PlayerName, teamAbbreviation, opponentAbbreviation, rosterPlayer.OwnerId, rosterPlayer.OwnerName, rosterPlayer.Logo, rosterPlayer.GameEnded, rosterPlayer.FinalPoints, rosterPlayer.FinalScoreString, rosterPlayer.Week);
+                                playerNameSearchString = playerNameSearchString.Substring(0, lastSpaceIndex);
 
-                            addPlayerToHashtable(testPlayers, espnGameId, player);
+                                positionType = Position.DEF;
+                                break;
+
+                            default:
+                                // TODO: ADD SOME ERROR STATE
+                                positionType = Position.FLEX;
+                                break;
                         }
+
+                        // if the name contains an apostraphe, replace all occurences with the URL encoding of an apostrophe (%27),
+                        // then encode the result, which will change the %27 into %2527
+                        playerNameSearchString = HttpUtility.UrlEncode(playerNameSearchString.Replace("'", HttpUtility.UrlEncode("'")));
+
+                        player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerNameSearchString + "/stats", position, positionType, espnPlayerId, espnGameId, gameDate, homeOrAway, playerName, teamAbbreviation, opponentAbbreviation, ownerId, ownerName, gameEnded, finalPoints, finalScoreString, int.Parse(selectedWeek));
+
+                        addPlayerToHashtable(playersHashTable, espnGameId, player);
                     }
                 }
             }
 
             await sqlConnection.CloseAsync();
 
-            return testPlayers;
+            return playersHashTable;
         }
 
         /// <summary>
@@ -393,7 +363,7 @@
 
                 // Get the Hashtable which will store players grouped by espn game id so we can parse all players in the same doc, limiting
                 // the number of times we need to download the doc
-                Hashtable testPlayers = await createPlayersHashtable(week);
+                Hashtable playersHashTable = await createPlayersHashtable(week);
 
                 // each thread will need a done event signifying when the thread has completed, so create a list of
                 // done events for each thread (for each espn game id)
@@ -402,13 +372,13 @@
                 // counter for the doneEvents array
                 int i = 0;
 
-                var tasks = new Task[testPlayers.Keys.Count];
+                var tasks = new Task[playersHashTable.Keys.Count];
 
                 // loop through each key (espn game id) and parse the points for each player in that game,
                 // adding each SelectedPlayer in the hashtable to the approprate list of teams (team one or team two)
-                foreach (string key in testPlayers.Keys)
+                foreach (string key in playersHashTable.Keys)
                 {
-                    List<SelectedPlayer> playersInGame = (List<SelectedPlayer>)testPlayers[key];
+                    List<SelectedPlayer> playersInGame = (List<SelectedPlayer>)playersHashTable[key];
                     tasks[i] = Task.Factory.StartNew(() => scrapeStatsFromGame(key, playersInGame));
                     //scrapeStatsFromGame(key, playersInGame);
 
@@ -434,7 +404,7 @@
 
                 // The values of each hashtable are lists of List<SelectedPlayer> so we need to get this list of lists and flatten
                 // the list
-                List<List<SelectedPlayer>> listOfPlayerLists = testPlayers.Values.OfType<List<SelectedPlayer>>().ToList();
+                List<List<SelectedPlayer>> listOfPlayerLists = playersHashTable.Values.OfType<List<SelectedPlayer>>().ToList();
                 List<SelectedPlayer> players = listOfPlayerLists.SelectMany(x => x).ToList();
 
                 // Pull out the players for team one and sort by position
@@ -450,7 +420,7 @@
                 {
                     OwnerId = 1,
                     Week = int.Parse(week),
-                    OwnerLogo = OwnerLogos[0],//teamOnePlayers[0].OwnerLogo,
+                    OwnerLogo = OwnerLogos[0],
                     TotalFantasyPoints = Math.Round(points, 2),
                     Players = teamOnePlayers
                 };
@@ -601,12 +571,12 @@
 
             sqlConnection.Open();
 
-            string sql = "select distinct week from CurrentRoster";
-
             string week = "";
 
-            using (SqlCommand command = new SqlCommand(sql, sqlConnection))
+            using (SqlCommand command = new SqlCommand("GetAllWeeksPlayed", sqlConnection))
             {
+                command.CommandType = System.Data.CommandType.StoredProcedure;
+
                 using (SqlDataReader reader = command.ExecuteReader())
                 {
                     while (reader.Read())
@@ -684,17 +654,19 @@
             // We also need to check to make sure there is a game scheduled the next week; if not, then even if this last week has completed
             // more than a day ago, this is still the latest week selected for the owners. If there isn't a next week, the SQL statement will
             // return null (TODO: there is probably a better way of doing this)
-            //string sql = "select max(GameDate) from TeamsSchedule where week = " + latestWeek;
             string nextWeek = (int.Parse(latestWeek) + 1).ToString();
-            string sql = "select max(GameDate) from TeamsSchedule where week = " + latestWeek + " and (select max(GameDate) from TeamsSchedule where week = " + nextWeek + ") is not null";
 
             DateTime lastGameDateForLatestSelectedRosterWeek = new DateTime();
 
             // flag to determine if there is a next week scheduled or not
             bool isNextWeekScheduled = false;
 
-            using (SqlCommand command = new SqlCommand(sql, sqlConnection))
+            using (SqlCommand command = new SqlCommand("GetLastGameDatePlayed", sqlConnection))
             {
+                command.CommandType = System.Data.CommandType.StoredProcedure;
+                command.Parameters.Add(new SqlParameter("@LatestWeek", System.Data.SqlDbType.Int) { Value = int.Parse(latestWeek) });
+                command.Parameters.Add(new SqlParameter("@NextWeek", System.Data.SqlDbType.Int) { Value = int.Parse(nextWeek) });
+
                 using (SqlDataReader reader = command.ExecuteReader())
                 {
                     reader.Read();
@@ -768,16 +740,17 @@
 
             sqlConnection.AccessToken = azureSqlToken;
 
-            // TODO: RENAME DB FinalPointsString to FinalScoreString
-            string sql = "update CurrentRoster " +
-                         "SET GameEnded = 'true', FinalPoints = " + playerFinalScore + ", FinalPointsString = '" + finalScoreString + "' " +
-                         "FROM CurrentRoster " +
-                         "INNER JOIN Owners on Owners.OwnerId ='" + ownerId + "' and EspnPlayerId = '" + espnPlayerId + "'" + " and Week = '" + week.ToString() + "'";
-
             sqlConnection.Open();
 
-            using (SqlCommand command = new SqlCommand(sql, sqlConnection))
+            using (SqlCommand command = new SqlCommand("UpdatePlayerFinalScore", sqlConnection))
             {
+                command.CommandType = System.Data.CommandType.StoredProcedure;
+                command.Parameters.Add(new SqlParameter("@PlayerFinalScore", System.Data.SqlDbType.Float) { Value = playerFinalScore });
+                command.Parameters.Add(new SqlParameter("@FinalScoreString", System.Data.SqlDbType.NVarChar) { Value = finalScoreString });
+                command.Parameters.Add(new SqlParameter("@OwnerId", System.Data.SqlDbType.Int) { Value = ownerId });
+                command.Parameters.Add(new SqlParameter("@EspnPlayerId", System.Data.SqlDbType.Int) { Value = int.Parse(espnPlayerId) });
+                command.Parameters.Add(new SqlParameter("@Week", System.Data.SqlDbType.Int) { Value = week });
+
                 command.ExecuteNonQuery();
             }
 
@@ -828,7 +801,7 @@
         /// <param name="finalScoreString">If this player's game has ended, they'll have a final score string to display such as "(W) 45 - 30")</param>
         /// <param name="week">The week this player is playing in</param>
         /// <returns></returns>
-        private async Task<SelectedPlayer> CreatePlayer(string apiQuery, Position truePosition, Position position, string espnPlayerId, string espnGameId, DateTime gameTime, string homeOrAway, string playerName, string teamAbbreviation, string opponentAbbreviation, int ownerId, string ownerName, byte[] logo, bool gameEnded, double finalPoints, string finalScoreString, int week)
+        private async Task<SelectedPlayer> CreatePlayer(string apiQuery, Position truePosition, Position position, string espnPlayerId, string espnGameId, DateTime gameTime, string homeOrAway, string playerName, string teamAbbreviation, string opponentAbbreviation, int ownerId, string ownerName, bool gameEnded, double finalPoints, string finalScoreString, int week)
         {
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", AuthModel.AccessToken);
 
@@ -872,8 +845,6 @@
                     // </name>
                     // <editorial_team_full_name>Los Angeles Rams</editorial_team_full_name>
 
-                    
-
                     // the player or defense full name
                     string playerFullName;
 
@@ -887,18 +858,7 @@
                         playerFullName = (xElement.Descendants(YahooXml.XMLNS + "editorial_team_full_name").ToList())[0].FirstNode.ToString();
                     }
 
-                    // THIS IS A SPECIAL CASE AND CAN BE REMOVED ONCE WASHINGTON HAS A TEAM NAME
-                    // Reason being, yahoo will only search on "washington" and if the last word of the team name (in this case, "washington football team") is
-                    // removed, we're left with "washington football". All other teams have the last word being the team name and the other preceding words being
-                    // the city (los angeles rams, new england patriots, buffalo bills). So, we either need to put a special case when pulling out the search string
-                    // to change from "washington football team" to "washington" in the calling function, or we do it here.
-                    if ((position == Position.DEF) && (playerName.ToLower().Equals("washington")) && (playerFullName.ToLower().Equals("washington football team")))
-                    {
-                        player = (Player)serializer.Deserialize(xElement.CreateReader());
-
-                        break;
-                    }
-                    else if (playerFullName.ToLower().Equals(playerName.ToLower()))
+                    if (playerFullName.ToLower().Equals(playerName.ToLower()))
                     {
                         player = (Player)serializer.Deserialize(xElement.CreateReader());
 
@@ -928,7 +888,6 @@
             selectedPlayer.HomeOrAway = homeOrAway;
             selectedPlayer.OwnerId = ownerId;
             selectedPlayer.OwnerName = ownerName;
-            selectedPlayer.OwnerLogo = logo;
             selectedPlayer.GameEnded = gameEnded;
             selectedPlayer.Points = finalPoints;
             selectedPlayer.FinalScoreString = finalScoreString;

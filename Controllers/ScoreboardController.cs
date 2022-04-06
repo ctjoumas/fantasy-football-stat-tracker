@@ -318,7 +318,7 @@
             // is attempted to be refreshed on the scoreboard, it will be null
             if (AuthModel.AccessToken != null)
             {
-                _logger.LogInformation("Access Token Expiration: ", AuthModel.ExpiresAt.ToString());
+                _logger.LogInformation("Access Token Expiration: " + AuthModel.ExpiresAt.ToString());
 
                 string week = Microsoft.AspNetCore.Http.SessionExtensions.GetString(HttpContext.Session, SessionKeyWeek);
 

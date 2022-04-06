@@ -23,6 +23,8 @@ namespace FantasyFootballStatTracker
             services.AddControllersWithViews();
 
             services.AddHttpClient();
+            
+            //services.AddLogging();
 
             services.Configure<YahooConfiguration>(Configuration.GetSection("YahooConfiguration"));
 

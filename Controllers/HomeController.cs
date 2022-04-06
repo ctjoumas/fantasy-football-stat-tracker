@@ -106,7 +106,7 @@
                 // response can be sent in JSON format. Token expires in an hour at which point you'd need to use the refresh token
                 AuthModel.AccessToken = JObject.Parse(testResponse).SelectToken("access_token").ToString();
                 AuthModel.TokenType = JObject.Parse(testResponse).SelectToken("token_type").ToString();
-                //Auth.ExpiresAt = JObject.Parse(testResponse).SelectToken("expires_in").ToString();
+                AuthModel.ExpiresAt = DateTime.Now.AddSeconds(int.Parse(JObject.Parse(testResponse).SelectToken("expires_in").ToString()));
                 AuthModel.RefreshToken = JObject.Parse(testResponse).SelectToken("refresh_token").ToString();
                 AuthModel.TokenId = JObject.Parse(testResponse).SelectToken("id_token")?.ToString();
             }
@@ -114,10 +114,10 @@
             {
                 // or it can be in "query string" format (param1=val1&param2=val2)
                 var collection = System.Web.HttpUtility.ParseQueryString(testResponse);
-                var token = collection["access_token"];
+                //var token = collection["access_token"];
                 AuthModel.AccessToken = collection["access_token"];
                 AuthModel.TokenType = collection["token_type"];
-                //Auth.ExpiresAt = JObject.Parse(testResponse).SelectToken("expires_in").ToString();
+                AuthModel.ExpiresAt = DateTime.Now.AddSeconds(int.Parse(JObject.Parse(testResponse).SelectToken("expires_in").ToString()));
                 AuthModel.RefreshToken = collection["refresh_token"];
             }
         }

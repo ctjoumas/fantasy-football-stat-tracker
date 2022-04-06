@@ -19,9 +19,12 @@
     using System.Xml.Serialization;
     using FantasyFootballStatTracker.Configuration;
     using FantasyFootballStatTracker.Infrastructure;
+    using Microsoft.Extensions.Logging;
 
     public class ScoreboardController : Controller
     {
+        private readonly ILogger<ScoreboardController> _logger;
+
         /// <summary>
         /// HttpClient used for getting data for each player from the Yahoo API
         /// </summary>
@@ -47,8 +50,9 @@
         /// player in the scoreboard.
         /// </summary>
         /// <param name="factory"></param>
-        public ScoreboardController(IHttpClientFactory factory)
+        public ScoreboardController(ILogger<ScoreboardController> logger, IHttpClientFactory factory)
         {
+            _logger = logger;
             client = factory.CreateClient();
         }
 
@@ -314,6 +318,8 @@
             // is attempted to be refreshed on the scoreboard, it will be null
             if (AuthModel.AccessToken != null)
             {
+                _logger.LogInformation("Access Token Expiration: ", AuthModel.ExpiresAt.ToString());
+
                 string week = Microsoft.AspNetCore.Http.SessionExtensions.GetString(HttpContext.Session, SessionKeyWeek);
 
                 // populate the week dropdown with all weeks a matchup has been played

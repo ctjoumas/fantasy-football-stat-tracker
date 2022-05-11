@@ -577,7 +577,7 @@
 
             sqlConnection.Open();
 
-            string week = "";
+            string week = "0";
 
             using (SqlCommand command = new SqlCommand("GetAllWeeksPlayed", sqlConnection))
             {
@@ -610,7 +610,7 @@
 
             // the latest week is stored in the week variable and we can check this to see if this week has completed and
             // new week needs to be added
-            if (!IsLatestWeekSelectedForEitherOwner(sqlConnection, week))
+            if ((week == "0") || !IsLatestWeekSelectedForEitherOwner(sqlConnection, week))
             {
                 int intWeek = int.Parse(week);
                 intWeek++;

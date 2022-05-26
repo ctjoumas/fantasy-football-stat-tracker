@@ -17,5 +17,6 @@
         public int EspnPlayerId { get; set; }
         public string PlayerName { get; set; }
         public string Position { get; set; }
+        public string TeamAbbreviation { get; set; }
     }
 }

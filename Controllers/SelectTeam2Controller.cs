@@ -27,7 +27,7 @@
             ViewData["Week"] = week;
             ViewData["OwnerId"] = ownerId;
 
-            List <EspnPlayer> players = GetAllPlayers();
+            List<EspnPlayer> players = GetAllPlayers();
 
             HttpContext.Session.SetObjectAsJson("Players", players);
 
@@ -81,7 +81,8 @@
                                 {
                                     EspnPlayerId = int.Parse(reader["EspnPlayerId"].ToString()),
                                     PlayerName = reader["PlayerName"].ToString(),
-                                    Position = reader["Position"].ToString()
+                                    Position = reader["Position"].ToString(),
+                                    TeamAbbreviation = reader["TeamAbbreviation"].ToString()
                                 }
                             );
                         }

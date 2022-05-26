@@ -97,13 +97,11 @@
 
         .qb {
             background-color: peru;
-            border: none;
             color: white;
             width: 30px;
             font-weight: bold;
-            position: absolute;
             text-align: center;
-            padding: 2px;
+            padding: 1% 3%;
             font-size: 12px;
             border-radius: 20%;
         }
@@ -113,9 +111,8 @@
             color: white;
             width: 30px;
             font-weight: bold;
-            position: absolute;
             text-align: center;
-            padding: 2px;
+            padding: 1% 3%;
             font-size: 12px;
             border-radius: 20%;
         }
@@ -125,9 +122,8 @@
             color: white;
             width: 30px;
             font-weight: bold;
-            position: absolute;
             text-align: center;
-            padding: 2px;
+            padding: 1% 3%;
             font-size: 12px;
             border-radius: 20%;
         }
@@ -137,9 +133,8 @@
             color: white;
             width: 30px;
             font-weight: bold;
-            position: absolute;
             text-align: center;
-            padding: 2px;
+            padding: 1% 3%;
             font-size: 12px;
             border-radius: 20%;
         }
@@ -149,9 +144,8 @@
             color: white;
             width: 30px;
             font-weight: bold;
-            position: absolute;
             text-align: center;
-            padding: 2px;
+            padding: 1% 3%;
             font-size: 12px;
             border-radius: 20%;
         }
@@ -161,11 +155,17 @@
             color: white;
             width: 30px;
             font-weight: bold;
-            position: absolute;
+            text-align: center;
+            padding: 1% 3%;
+            font-size: 12px;
+            border-radius: 20%;
+        }
+
+        .abbr {
+            width: 30px;
             text-align: center;
             padding: 2px;
             font-size: 12px;
-            border-radius: 20%;
         }
     </style>
 </head>
@@ -224,7 +224,7 @@
                 $("#txtFilter").focus();
 
                 // add the item to the selected players list
-                $("#selectedPlayersUL").append('<li id="' + $(this).attr('id') + '" playerName="' + $(this).attr('playerName') + '" position = "' + $(this).attr('position') + '"><span class="' + $(this).attr('position').toLowerCase() + '">' + $(this).attr('position') + '</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#">' + $(this).attr('playerName') + '</a><span class="remove" style="float: right;" onclick="removeSelectedPlayer(' + $(this).attr('id') + ')">x</span></li>');
+                $("#selectedPlayersUL").append('<li id="' + $(this).attr('id') + '" playerName="' + $(this).attr('playerName') + '" position = "' + $(this).attr('position') + '" teamAbbreviation = "' + $(this).attr('teamAbbreviation') + '"><span class="' + $(this).attr('position').toLowerCase() + '">' + $(this).attr('position') + '</span>&nbsp;&nbsp;<a href="#">' + $(this).attr('playerName') + '</a>&nbsp;&nbsp;<span class="abbr">' + $(this).attr('teamAbbreviation').toUpperCase() + '</span><span class="remove" style="float: right;" onclick="removeSelectedPlayer(' + $(this).attr('id') + ')">x</span></li>');
             });
 
             // handle when the roster is submitted
@@ -240,7 +240,7 @@
                 if ($(item).attr('id') == playerId) {
                     $(item).remove();
 
-                    $("#allPlayersUL").append('<li style="display: none;" id="' + playerId + '" playerName="' + $(item).attr('playerName') + '" position="' + $(item).attr('position') + '"><span class="' + $(item).attr('position').toLowerCase() + '">' + $(item).attr('position') + '</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#">' + $(item).attr('playerName') + '</a></li>');
+                    $("#allPlayersUL").append('<li style="display: none;" id="' + playerId + '" playerName="' + $(item).attr('playerName') + '" position="' + $(item).attr('position') + '" teamAbbreviation = "' + $(item).attr('teamAbbreviation') + '"><span class="' + $(item).attr('position').toLowerCase() + '">' + $(item).attr('position') + '</span>&nbsp;&nbsp;<a href="#">' + $(item).attr('playerName') + '</a>&nbsp;&nbsp;<span class="abbr">' + $(item).attr('teamAbbreviation').toUpperCase() + '</span></li>');
                 }
             });
         }
@@ -286,7 +286,7 @@
                         var allPlayersUl = $('#allPlayersUL');
 
                         $.each(players, function (i, player) {
-                            $(allPlayersUl).append('<li style="display: none;" id="' + player.espnPlayerId + '" playerName="' + player.playerName + '" position="' + player.position + '"><span class="' + player.position.toLowerCase() + '">' + player.position + '</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#">' + player.playerName + '</a></li>');
+                            $(allPlayersUl).append('<li style="display: none;" id="' + player.espnPlayerId + '" playerName="' + player.playerName + '" position="' + player.position + '" teamAbbreviation="' + player.teamAbbreviation + '"><span class="' + player.position.toLowerCase() + '">' + player.position + '</span>&nbsp;&nbsp;&nbsp;<a href="#">' + player.playerName + '</a>&nbsp;&nbsp;<span class="abbr">' + player.teamAbbreviation.toUpperCase() + '</span></li>');
                         });
                     }
                 }

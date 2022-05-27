@@ -2,10 +2,12 @@
 {
     using Azure.Core;
     using Azure.Identity;
+    using FantasyFootballStatTracker.Configuration;
     using FantasyFootballStatTracker.Infrastructure;
     using FantasyFootballStatTracker.Models;
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc;
+    using Microsoft.Extensions.Options;
     using System;
     using System.Collections.Generic;
     using System.Data.SqlClient;
@@ -17,6 +19,16 @@
         /// Session key for the Azure SQL Access token
         /// </summary>
         public const string SessionKeyAzureSqlAccessToken = "_Token";
+
+        /// <summary>
+        /// 
+        /// </summary>
+        private readonly IOptions<AppConfiguration> _config;
+
+        public SelectTeam2Controller(IOptions<AppConfiguration> config)
+        {
+            _config = config;
+        }
 
         public IActionResult Index(int week, int ownerId)
         {
@@ -210,6 +222,7 @@
                         command.Parameters.Add(new SqlParameter("@playerName", System.Data.SqlDbType.NVarChar) { Value = player.PlayerName });
                         command.Parameters.Add(new SqlParameter("@position", System.Data.SqlDbType.NChar) { Value = position });
                         command.Parameters.Add(new SqlParameter("@espnPlayerId", System.Data.SqlDbType.Int) { Value = player.EspnPlayerId });
+                        command.Parameters.Add(new SqlParameter("@Season", System.Data.SqlDbType.Int) { Value = _config.Value.Season });
 
                         command.ExecuteNonQuery();
                     }

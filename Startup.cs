@@ -27,6 +27,7 @@ namespace FantasyFootballStatTracker
             //services.AddLogging();
 
             services.Configure<YahooConfiguration>(Configuration.GetSection("YahooConfiguration"));
+            services.Configure<AppConfiguration>(Configuration.GetSection("AppConfiguration"));
 
             services.AddDistributedMemoryCache();
             services.AddSession(options =>

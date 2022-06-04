@@ -173,6 +173,11 @@
     <!--<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></>-->
     <script type="text/javascript" src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-3.6.0.min.js"></script>
 
+    <!-- these values will be set when the select team page is opened so they can be referenced when the roster is submitted rather than 
+    using ViewData when the session may be expired throw a null reference exception -->
+    <input type="hidden" id="week">
+    <input type="hidden" id="ownerId">
+
     <table style="border-collapse:inherit;margin: 0;margin-left: auto;margin-right: auto;float: none;width: 75%;vertical-align: middle;padding: 2px;border-spacing: 20px;">
         <tr>
             <td style="text-align: left">Search for player:</td>
@@ -209,6 +214,11 @@
 
     <script type="text/javascript">
         $(document).ready(function () {
+            // set the week and owner id values in the hidden fields so we can access them here even if the session expires rather
+            // than through the ViewData
+            $("#week").val(@ViewData["Week"]);
+            $("#ownerId").val(@ViewData["OwnerId"]);
+
             // load the initial list of all players, which will be stored into a cached session variable
             GetAllPlayers();
 
@@ -276,9 +286,13 @@
             }
         }
         function GetAllPlayers() {
+            let week = $("#week").val();
+            let ownerId = $("#ownerId").val();
+
             $.ajax({
                 type: "POST",
                 url: "@Url.Action("GetAllPlayers")",
+                data: { week: week, ownerId: ownerId },
                 dataType: "json",
                 success: function (players) {
 
@@ -294,6 +308,9 @@
             });
         }
         function submitRoster() {
+            let week = $("#week").val();
+            let ownerId = $("#ownerId").val();
+
             // get all selected player id's so this can be sent to the SaveRoster action in the SelectTeam controller
             let selectedPlayerIds = [];
 
@@ -305,7 +322,7 @@
             $.ajax({
                 type: "POST",
                 url: "@Url.Action("SaveRoster")",
-                data: { week: @ViewData["Week"], ownerId: @ViewData["OwnerId"], selectedPlayerIds: selectedPlayerIds },
+                data: { week: week, ownerId: ownerId, selectedPlayerIds: selectedPlayerIds },
                 dataType: "json",
                 success: function (response) {
                     if (response.success == true) {

@@ -1,81 +1,39 @@
 ﻿namespace FantasyFootballStatTracker.Controllers
 {
-    using Microsoft.AspNetCore.Http.Extensions;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.Extensions.Logging;
-    using Microsoft.Extensions.Options;
-    using Newtonsoft.Json;
-    using Newtonsoft.Json.Linq;
-    using System;
-    using System.Collections.Generic;
     using System.Diagnostics;
     using System.Net.Http;
-    using System.Threading.Tasks;
-    using FantasyFootballStatTracker.Configuration;
     using FantasyFootballStatTracker.Models;
 
     public class HomeController : Controller
     {
-        private static HttpClient client = new HttpClient();
-
         private readonly ILogger<HomeController> _logger;
 
-        private readonly IOptions<YahooConfiguration> _config;
-
-        /// <summary>
-        /// Authentication model that stores auth data (Tokens, Grant Type)
-        /// </summary>
-        //public AuthModel Auth { get; set; }
-
-        public HomeController(ILogger<HomeController> logger, IOptions<YahooConfiguration> config)
+        public HomeController(ILogger<HomeController> logger)
         {
             _logger = logger;
-            _config = config;
-            //Auth = new AuthModel();
         }
 
         public IActionResult Index()
         {
-            // if we already have an Auth token skip loging in and directly go to the scoreboard
-            if (AuthModel.AccessToken == null)
-            {
-                string key = _config.Value.ClientId;
-                string returnUrl = _config.Value.RedirectUri;
-
-                //string url = "https://api.login.yahoo.com/oauth2/request_auth?client_id=" + key + $"&redirect_uri={UriHelper.Encode(new Uri("https://localhost:44376/Home/Login"))}&response_type=code&language=en-us";
-                string url = "https://api.login.yahoo.com/oauth2/request_auth?client_id=" + key + $"&redirect_uri={UriHelper.Encode(new Uri(returnUrl))}&response_type=code&language=en-us";
-
-                Response.Redirect(url);
-
-                return View();
-            }
-            else
-            {
-                return RedirectToAction("Index", "Scoreboard");
-            }
-        }
-
-        public async Task<IActionResult> Login(string code)
-        {
-            // now that we have the authorization code, exchange it for an access token using a call to the /get_token endpoint
-            await GetAccessToken(code);
-
             return RedirectToAction("Index", "Scoreboard");
         }
+
 
         /// <summary>
         /// This will request the Access Token from yahoo making an HTTP POST request.
         /// This method should be moved somewhere else; just testing here.
         /// </summary>
-        private async Task GetAccessToken(string code)
+        /*private async Task GetAccessToken(string code)
         {
             string consumerKey = _config.Value.ClientId;
             string consumerSecret = _config.Value.ClientSecret;
 
-            //string returnUrl = "https://localhost:44376/Home/Login";
-            string returnUrl = "https://tjoumasfantasyfootball.azurewebsites.net/Home/Login";
+            string returnUrl = "https://localhost:44376/Home/Login";
+            //string returnUrl = "https://tjoumasfantasyfootball.azurewebsites.net/Home/Login";
 
-            /*Exchange authorization code for Access Token by sending Post Request*/
+            //Exchange authorization code for Access Token by sending Post Request
             Uri address = new Uri("https://api.login.yahoo.com/oauth2/get_token");
 
             //HttpClient client = new HttpClient();
@@ -120,7 +78,7 @@
                 AuthModel.ExpiresAt = DateTime.Now.AddSeconds(int.Parse(JObject.Parse(testResponse).SelectToken("expires_in").ToString()));
                 AuthModel.RefreshToken = collection["refresh_token"];
             }
-        }
+        }*/
 
         public IActionResult Privacy()
         {

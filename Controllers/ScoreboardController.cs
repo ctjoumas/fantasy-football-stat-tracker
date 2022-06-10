@@ -11,24 +11,13 @@
     using System.Collections.Generic;
     using System.Data.SqlClient;
     using System.Linq;
-    using System.Net.Http;
-    using System.Net.Http.Headers;
     using System.Threading.Tasks;
-    using System.Web;
-    using System.Xml.Linq;
-    using System.Xml.Serialization;
-    using FantasyFootballStatTracker.Configuration;
     using FantasyFootballStatTracker.Infrastructure;
     using Microsoft.Extensions.Logging;
-
+    
     public class ScoreboardController : Controller
     {
         private readonly ILogger<ScoreboardController> _logger;
-
-        /// <summary>
-        /// HttpClient used for getting data for each player from the Yahoo API
-        /// </summary>
-        private readonly HttpClient client;
 
         /// <summary>
         /// Session key for the currently selected scoreboard week
@@ -43,17 +32,16 @@
         /// <summary>
         /// Stores the owner logos
         /// </summary>
-        private List<byte[]> OwnerLogos;// = new List<byte[]>();
+        private List<byte[]> OwnerLogos;
 
         /// <summary>
         /// Injecting HttpClientFactory to set the HttpClient used for calling the yahoo API to get data for each
         /// player in the scoreboard.
         /// </summary>
         /// <param name="factory"></param>
-        public ScoreboardController(ILogger<ScoreboardController> logger, IHttpClientFactory factory)
+        public ScoreboardController(ILogger<ScoreboardController> logger)
         {
             _logger = logger;
-            client = factory.CreateClient();
         }
 
         private static async Task<string> GetAzureSqlAccessToken()
@@ -142,7 +130,12 @@
                         double finalPoints = (double)reader.GetValue(reader.GetOrdinal("FinalPoints"));
                         string finalScoreString = reader.GetValue(reader.GetOrdinal("FinalScoreString")).ToString();
                         string espnPlayerId = reader.GetValue(reader.GetOrdinal("EspnPlayerId")).ToString();
-
+                        string headshotUrl = reader.GetValue(reader.GetOrdinal("HeadshotUrl")).ToString();
+                        string espnGameId = ((int)reader.GetValue(reader.GetOrdinal("EspnGameId"))).ToString();
+                        string homeOrAway = reader.GetValue(reader.GetOrdinal("HomeOrAway")).ToString();
+                        string teamAbbreviation = reader.GetValue(reader.GetOrdinal("TeamAbbreviation")).ToString();
+                        string opponentAbbreviation = reader.GetValue(reader.GetOrdinal("OpponentAbbreviation")).ToString();
+                        DateTime gameDate = DateTime.Parse((reader.GetValue(reader.GetOrdinal("GameDate")).ToString()));
 
                         // keep track of number of WRs, RBs, and TEs, so we know if we are adding a FLEX or not
                         int rosterOneWrCount = 0;
@@ -150,20 +143,12 @@
                         int rosterOneRbCount = 0;
                         int rosterTwoRbCount = 0;
                         int rosterOneTeCount = 0;
-                        int rosterTwoTeCount = 0;
-
-                        string espnGameId = ((int)reader.GetValue(reader.GetOrdinal("EspnGameId"))).ToString();
-                        string homeOrAway = reader.GetValue(reader.GetOrdinal("HomeOrAway")).ToString();
-                        string teamAbbreviation = reader.GetValue(reader.GetOrdinal("TeamAbbreviation")).ToString();
-                        string opponentAbbreviation = reader.GetValue(reader.GetOrdinal("OpponentAbbreviation")).ToString();
-                        DateTime gameDate = DateTime.Parse((reader.GetValue(reader.GetOrdinal("GameDate")).ToString()));
+                        int rosterTwoTeCount = 0;                        
 
                         // we need to save the full player name into a search string so we don't modify the full name. This is mostly
                         // due to a defense such as "los angeles rams" and "los angeles chargers" only able to be searched by "los angeles",
                         // so we cannot lose the full name. We will cut off the "rams" or "chargers" part in the DEF case below
                         string playerNameSearchString = playerName;
-
-                        SelectedPlayer player;
 
                         Position positionType = Position.FLEX;
 
@@ -274,11 +259,23 @@
                                 break;
                         }
 
-                        // if the name contains an apostraphe, replace all occurences with the URL encoding of an apostrophe (%27),
-                        // then encode the result, which will change the %27 into %2527
-                        playerNameSearchString = HttpUtility.UrlEncode(playerNameSearchString.Replace("'", HttpUtility.UrlEncode("'")));
-
-                        player = await CreatePlayer("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=" + playerNameSearchString + "/stats", position, positionType, espnPlayerId, espnGameId, gameDate, homeOrAway, playerName, teamAbbreviation, opponentAbbreviation, ownerId, ownerName, gameEnded, finalPoints, finalScoreString, int.Parse(selectedWeek));
+                        SelectedPlayer player = new SelectedPlayer();
+                        player.Name = playerName;
+                        player.Headshot = headshotUrl;
+                        player.TruePosition = position;
+                        player.Position = positionType;
+                        player.EspnGameId = espnGameId;
+                        player.GameTime = gameDate;
+                        player.EspnPlayerId = espnPlayerId;
+                        player.TeamAbbreviation = teamAbbreviation;
+                        player.OpponentAbbreviation = opponentAbbreviation;
+                        player.HomeOrAway = homeOrAway;
+                        player.OwnerId = ownerId;
+                        player.OwnerName = ownerName;
+                        player.GameEnded = gameEnded;
+                        player.Points = finalPoints;
+                        player.FinalScoreString = finalScoreString;
+                        player.Week = int.Parse(selectedWeek);
 
                         addPlayerToHashtable(playersHashTable, espnGameId, player);
                     }
@@ -314,151 +311,106 @@
         /// <returns>The view with data from the selected week in the dropdown list</returns>
         public async Task<IActionResult> Index()
         {
-            // we need to first check to make sure the token isn't null (if the site hasn't been refreshed in a while and
-            // is attempted to be refreshed on the scoreboard, it will be null
-            if (AuthModel.AccessToken != null)
+            string week = Microsoft.AspNetCore.Http.SessionExtensions.GetString(HttpContext.Session, SessionKeyWeek);
+
+            // populate the week dropdown with all weeks a matchup has been played
+            ViewBag.weeks = GetGameWeeks(week);
+
+            // there may be a better way of doing this, but the GetGameWeeks call will update the session variable to the latest
+            // week if no week was selected, whether it's the latest week or the new week which a team needs to be selected for
+            if (week == null)
             {
-                _logger.LogInformation("Access Token Expiration: " + AuthModel.ExpiresAt.ToString());
-
-                string week = Microsoft.AspNetCore.Http.SessionExtensions.GetString(HttpContext.Session, SessionKeyWeek);
-
-                // populate the week dropdown with all weeks a matchup has been played
-                ViewBag.weeks = GetGameWeeks(week);
-
-                // there may be a better way of doing this, but the GetGameWeeks call will update the session variable to the latest
-                // week if no week was selected, whether it's the latest week or the new week which a team needs to be selected for
-                if (week == null)
-                {
-                    week = Microsoft.AspNetCore.Http.SessionExtensions.GetString(HttpContext.Session, SessionKeyWeek);
-                }
-
-                List<Team> teams = new List<Team>();
-
-                // TESTING pulling multiple players back from Yahoo API
-                /*client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", AuthModel.AccessToken);
-                HttpRequestMessage request = new HttpRequestMessage();
-                request.RequestUri = new Uri("https://fantasysports.yahooapis.com/fantasy/v2/league/nfl.l.434497/players;player_keys={30123},{30977}");
-                request.Method = HttpMethod.Get;
-                var response2 = client.GetAsync(request.RequestUri);
-                string testResponse = await response2.Result.Content.ReadAsStringAsync();*/
-
-                // TESTING
-                //client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Auth.AccessToken);
-                //string LoginString = ";use_login=1";
-                //request = new HttpRequestMessage();
-                //request.RequestUri = new Uri("https://fantasysports.yahooapis.com/fantasy/v2/game/nfl");
-
-                // My league ID, which can only be retrieved manually from going to League-->settings, is 434497
-                //request.RequestUri = new Uri("https://fantasysports.yahooapis.com/fantasy/v2/league/nfl.l.434497");
-
-                // Request all teams owned by loggedin user
-                // Within a team, there is a <team> element with a <team_key> and <team_id> which can be used later to get information on the team
-                //request.RequestUri = new Uri("https://fantasysports.yahooapis.com/fantasy/v2/users;use_login=1/games;game_keys=nfl/teams");
-
-                //request.RequestUri = new Uri("https://fantasysports.yahooapis.com/fantasy/v2/game/nfl");
-
-                // team/<team_key>/roster
-                // this will return a list of players and their <player_key>'s and <player_id>'s
-                //request.RequestUri = new Uri("https://fantasysports.yahooapis.com/fantasy/v2/team/406.l.244561.t.5/roster");
-
-                // request from the current league <league_id is 406.l.244561> and current player <this is a specific player id>
-                //request.RequestUri = new Uri("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;player_keys=406.p.33391/stats");
-
-                // reqeusting player status in a league using a search query for player name (trey lance as an example)
-                //request.RequestUri = new Uri("https://fantasysports.yahooapis.com/fantasy/v2/league/406.l.244561/players;search=trey lance/stats");
-
-                // Get the Hashtable which will store players grouped by espn game id so we can parse all players in the same doc, limiting
-                // the number of times we need to download the doc
-                Hashtable playersHashTable = await createPlayersHashtable(week);
-
-                // each thread will need a done event signifying when the thread has completed, so create a list of
-                // done events for each thread (for each espn game id)
-                //var doneEvents = new ManualResetEvent[testPlayers.Keys.Count];
-
-                // counter for the doneEvents array
-                int i = 0;
-
-                var tasks = new Task[playersHashTable.Keys.Count];
-
-                // loop through each key (espn game id) and parse the points for each player in that game,
-                // adding each SelectedPlayer in the hashtable to the approprate list of teams (team one or team two)
-                foreach (string key in playersHashTable.Keys)
-                {
-                    List<SelectedPlayer> playersInGame = (List<SelectedPlayer>)playersHashTable[key];
-                    tasks[i] = Task.Factory.StartNew(() => scrapeStatsFromGame(key, playersInGame));
-                    //scrapeStatsFromGame(key, playersInGame);
-
-                    // create the done event for this thread
-                    /*doneEvents[i] = new ManualResetEvent(false);
-
-                    // setup the state parameters which are passed into the method being executed in the thread
-                    State stateInfo = new State();
-                    stateInfo.EspnGameId = key;
-                    stateInfo.players = testPlayers;
-                    stateInfo.DoneEvent = doneEvents[i];
-
-                    ThreadPool.QueueUserWorkItem(scrapeStatsFromGame, stateInfo);*/
-
-                    i++;
-                }
-
-                // wait for all threads to complete
-                Task.WaitAll(tasks);
-
-                // wait for all threads to have reported that they have completed their work
-                //WaitHandle.WaitAll(doneEvents);
-
-                // The values of each hashtable are lists of List<SelectedPlayer> so we need to get this list of lists and flatten
-                // the list
-                List<List<SelectedPlayer>> listOfPlayerLists = playersHashTable.Values.OfType<List<SelectedPlayer>>().ToList();
-                List<SelectedPlayer> players = listOfPlayerLists.SelectMany(x => x).ToList();
-
-                // Pull out the players for team one and sort by position
-                //List<SelectedPlayer> teamOnePlayers = players.Where(x => x.Owner.Equals("Liz")).ToList();
-                List<SelectedPlayer> teamOnePlayers = players.Where(x => x.OwnerId == 1).ToList();
-                teamOnePlayers = teamOnePlayers.OrderBy(x => (int)(x.Position)).ToList();
-
-                // Total up the scores from this team
-                List<double> pointsList = teamOnePlayers.Select(x => x.Points).ToList();
-                double points = pointsList.Sum();
-
-                Team team = new Team
-                {
-                    OwnerId = 1,
-                    Week = int.Parse(week),
-                    OwnerLogo = OwnerLogos[0],
-                    TotalFantasyPoints = Math.Round(points, 2),
-                    Players = teamOnePlayers
-                };
-
-                teams.Add(team);
-
-                // Pull out the players for team two and sort by position
-                List<SelectedPlayer> teamTwoPlayers = players.Where(x => x.OwnerId == 2).ToList();
-                teamTwoPlayers = teamTwoPlayers.OrderBy(x => (int)(x.Position)).ToList();
-
-                // Total up the scores from this team
-                pointsList = teamTwoPlayers.Select(x => x.Points).ToList();
-                points = pointsList.Sum();
-
-                team = new Team
-                {
-                    OwnerId = 2,
-                    Week = int.Parse(week),
-                    OwnerLogo = OwnerLogos[1],
-                    TotalFantasyPoints = Math.Round(points, 2),
-                    Players = teamTwoPlayers
-                };
-
-                teams.Add(team);
-
-                return View(teams);
+                week = Microsoft.AspNetCore.Http.SessionExtensions.GetString(HttpContext.Session, SessionKeyWeek);
             }
-            else
+
+            List<Team> teams = new List<Team>();
+
+            // Get the Hashtable which will store players grouped by espn game id so we can parse all players in the same doc, limiting
+            // the number of times we need to download the doc
+            Hashtable playersHashTable = await createPlayersHashtable(week);
+
+            // each thread will need a done event signifying when the thread has completed, so create a list of
+            // done events for each thread (for each espn game id)
+            //var doneEvents = new ManualResetEvent[testPlayers.Keys.Count];
+
+            // counter for the doneEvents array
+            int i = 0;
+
+            var tasks = new Task[playersHashTable.Keys.Count];
+
+            // loop through each key (espn game id) and parse the points for each player in that game,
+            // adding each SelectedPlayer in the hashtable to the approprate list of teams (team one or team two)
+            foreach (string key in playersHashTable.Keys)
             {
-                // redirect to the home controller's index action so we can get a new token
-                return RedirectToAction("Index", "Home");
+                List<SelectedPlayer> playersInGame = (List<SelectedPlayer>)playersHashTable[key];
+                tasks[i] = Task.Factory.StartNew(() => scrapeStatsFromGame(key, playersInGame));
+                //scrapeStatsFromGame(key, playersInGame);
+
+                // create the done event for this thread
+                /*doneEvents[i] = new ManualResetEvent(false);
+
+                // setup the state parameters which are passed into the method being executed in the thread
+                State stateInfo = new State();
+                stateInfo.EspnGameId = key;
+                stateInfo.players = testPlayers;
+                stateInfo.DoneEvent = doneEvents[i];
+
+                ThreadPool.QueueUserWorkItem(scrapeStatsFromGame, stateInfo);*/
+
+                i++;
             }
+
+            // wait for all threads to complete
+            Task.WaitAll(tasks);
+
+            // wait for all threads to have reported that they have completed their work
+            //WaitHandle.WaitAll(doneEvents);
+
+            // The values of each hashtable are lists of List<SelectedPlayer> so we need to get this list of lists and flatten
+            // the list
+            List<List<SelectedPlayer>> listOfPlayerLists = playersHashTable.Values.OfType<List<SelectedPlayer>>().ToList();
+            List<SelectedPlayer> players = listOfPlayerLists.SelectMany(x => x).ToList();
+
+            // Pull out the players for team one and sort by position
+            //List<SelectedPlayer> teamOnePlayers = players.Where(x => x.Owner.Equals("Liz")).ToList();
+            List<SelectedPlayer> teamOnePlayers = players.Where(x => x.OwnerId == 1).ToList();
+            teamOnePlayers = teamOnePlayers.OrderBy(x => (int)(x.Position)).ToList();
+
+            // Total up the scores from this team
+            List<double> pointsList = teamOnePlayers.Select(x => x.Points).ToList();
+            double points = pointsList.Sum();
+
+            Team team = new Team
+            {
+                OwnerId = 1,
+                Week = int.Parse(week),
+                OwnerLogo = OwnerLogos[0],
+                TotalFantasyPoints = Math.Round(points, 2),
+                Players = teamOnePlayers
+            };
+
+            teams.Add(team);
+
+            // Pull out the players for team two and sort by position
+            List<SelectedPlayer> teamTwoPlayers = players.Where(x => x.OwnerId == 2).ToList();
+            teamTwoPlayers = teamTwoPlayers.OrderBy(x => (int)(x.Position)).ToList();
+
+            // Total up the scores from this team
+            pointsList = teamTwoPlayers.Select(x => x.Points).ToList();
+            points = pointsList.Sum();
+
+            team = new Team
+            {
+                OwnerId = 2,
+                Week = int.Parse(week),
+                OwnerLogo = OwnerLogos[1],
+                TotalFantasyPoints = Math.Round(points, 2),
+                Players = teamTwoPlayers
+            };
+
+            teams.Add(team);
+
+            return View(teams);
         }
 
         /// <summary>
@@ -504,7 +456,7 @@
                     //p.Points += scraper.parseGameTrackerPage(stateInfo.EspnGameId, p.EspnPlayerId, p.HomeOrAway, p.OpponentAbbreviation);
                     p.Points += scraper.parseGameTrackerPage(espnGameId, p.EspnPlayerId, p.Position, p.HomeOrAway, p.OpponentAbbreviation);
                     //p.Points += scraper.parseTwoPointConversionsForPlayer(stateInfo.EspnGameId, p.RawPlayerName);
-                    p.Points += scraper.parseTwoPointConversionsForPlayer(p.RawPlayerName);
+                    p.Points += scraper.parseTwoPointConversionsForPlayer(p.Name);
                     p.TimeRemaining = scraper.parseTimeRemaining();
                     p.CurrentScoreString = scraper.parseCurrentScore(p.HomeOrAway);
 
@@ -512,7 +464,7 @@
                     if (p.Position == Position.K)
                     {
                         //p.Points += scraper.parseFieldGoals(stateInfo.EspnGameId, p.RawPlayerName);
-                        p.Points += scraper.parseFieldGoals(p.RawPlayerName);
+                        p.Points += scraper.parseFieldGoals(p.Name);
                     }
 
                     // check the scraper to see if the game has ended and update this player row
@@ -784,122 +736,6 @@
                 playerList.Add(player);
                 playerTable.Add(espnGameId, playerList);
             }
-        }
-
-        /// <summary>
-        /// Creates the player based on the api Query for the player. THe other details for espn are supplied
-        /// so that we can scrape the espn boxscore and playbyplay pages to get live stats.
-        /// </summary>
-        /// <param name="apiQuery">Yahoo API query for the player</param>
-        /// <param name="truePosition">The true position which will not be a WR/RB/TE changed to a FLEX. This is used so the
-        /// players true position can be displayed under their name in the FLEX row of the UI</param>
-        /// <param name="position">Position of the player (QB, RB, WR, TE, FLEX, K, DEF), which includes FLEX and is used so the players
-        /// can be sorted according to the Position enum and the FLEX player is displayed in the proper row in the UI</param>
-        /// <param name="espnPlayerId">Player ID on ESPN so we can parse stats for this player on ESPNs pages</param>
-        /// <param name="espnGameId">Game ID on ESPN so we can parse the correct game to get stats for this player</param>
-        /// <param name="gameTime">Time the game is starting</param>
-        /// <param name="homeOrAway">"home" or "away" game, which is needed to find the correct stats on ESPN for the player</param>
-        /// <param name="playerName">Player's name which is only used to search for 2-point conversions in the ESPN play by play page</param>
-        /// <param name="teamAbbreviation">Player's team abbreviation</param>
-        /// <param name="opponentAbbreviation">If this palyer is a defense, this parameter is the abbreviation of their opponent</param>
-        /// <param name="gameEnded">The db will have a GameEnded flag set whether the player's game has ended or not</param>
-        /// <param name="finalPoints">If this player's game has ended, they'll have final points, otherwise they'll have 0</param>
-        /// <param name="finalScoreString">If this player's game has ended, they'll have a final score string to display such as "(W) 45 - 30")</param>
-        /// <param name="week">The week this player is playing in</param>
-        /// <returns></returns>
-        private async Task<SelectedPlayer> CreatePlayer(string apiQuery, Position truePosition, Position position, string espnPlayerId, string espnGameId, DateTime gameTime, string homeOrAway, string playerName, string teamAbbreviation, string opponentAbbreviation, int ownerId, string ownerName, bool gameEnded, double finalPoints, string finalScoreString, int week)
-        {
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", AuthModel.AccessToken);
-
-            HttpRequestMessage request = new HttpRequestMessage();
-            request.RequestUri = new Uri(apiQuery);
-            request.Method = HttpMethod.Get;
-            var response = client.GetAsync(request.RequestUri);
-            string testResponse = await response.Result.Content.ReadAsStringAsync();
-
-            XDocument document = XDocument.Parse(testResponse);
-
-            XmlSerializer serializer = new XmlSerializer(typeof(Player));
-            List<XElement> xElements = document.Descendants(YahooXml.XMLNS + "player").ToList();
-            //List<XElement> xElements = document.Descendants().ToList();
-            //List<Player> collection = new List<Player>();
-            // we are only looking at one player, so commenting out for now
-            /*foreach (var element in xElements)
-            {
-                collection.Add((Player)serializer.Deserialize(element.CreateReader()));
-            }*/
-
-            // Player object pulled from the Yahoo API request
-            Player player = null;
-
-            // if we have a player (or defense, such as Los Angeles) with the same name, we need
-            // to check the player name in each xElement to select the right team. However, a
-            // defense needs a special check since the "full" name for the Los Angeles Rams and the Los
-            // Angeles Chargers is "Los Angeles", so we will need to check the editorial_team_full_name node
-            // for a defense
-            if (xElements.Count > 1)
-            {
-                foreach (XElement xElement in xElements)
-                {
-                    // this element will contain the player name (or defense team name) in the format of
-                    // <player_key>key</player_key>
-                    // <player_id>1</player_id>
-                    // <name>
-                    //   <full>Dwayne Washington</full> *** NOTE: Rams and Chargers will have "Los Angeles" here
-                    //   <first>First name</first> *** NOTE: Rams and Chargers will have "Los Angeles" here
-                    //   ...
-                    // </name>
-                    // <editorial_team_full_name>Los Angeles Rams</editorial_team_full_name>
-
-                    // the player or defense full name
-                    string playerFullName;
-
-                    // If this is a player, we are only interested in the full name and this will only return one node
-                    if (position != Position.DEF)
-                    {
-                        playerFullName = (xElement.Descendants(YahooXml.XMLNS + "full").ToList())[0].FirstNode.ToString();
-                    }
-                    else
-                    {
-                        playerFullName = (xElement.Descendants(YahooXml.XMLNS + "editorial_team_full_name").ToList())[0].FirstNode.ToString();
-                    }
-
-                    if (playerFullName.ToLower().Equals(playerName.ToLower()))
-                    {
-                        player = (Player)serializer.Deserialize(xElement.CreateReader());
-
-                        break;
-                    }
-                    
-                }
-            }
-            else
-            {
-                player = (Player)serializer.Deserialize(xElements.First().CreateReader());
-            }
-
-            // Player we create from the data returned from Yahoo's API as well as fantasy points we scrape from the espn grametracker
-            // and play by play pages
-            SelectedPlayer selectedPlayer = new SelectedPlayer();
-            selectedPlayer.Name = player.Name.First + " " + player.Name.Last;
-            selectedPlayer.Headshot = player.Headshot.Url;
-            selectedPlayer.TruePosition = truePosition;
-            selectedPlayer.Position = position;
-            selectedPlayer.EspnGameId = espnGameId;
-            selectedPlayer.GameTime = gameTime;
-            selectedPlayer.EspnPlayerId = espnPlayerId;
-            selectedPlayer.TeamAbbreviation = teamAbbreviation;
-            selectedPlayer.OpponentAbbreviation = opponentAbbreviation;
-            selectedPlayer.RawPlayerName = playerName;
-            selectedPlayer.HomeOrAway = homeOrAway;
-            selectedPlayer.OwnerId = ownerId;
-            selectedPlayer.OwnerName = ownerName;
-            selectedPlayer.GameEnded = gameEnded;
-            selectedPlayer.Points = finalPoints;
-            selectedPlayer.FinalScoreString = finalScoreString;
-            selectedPlayer.Week = week;
-
-            return selectedPlayer;
         }
 
         // Maintain state to pass to the scrapeStatsFromGame method

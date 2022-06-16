@@ -7,6 +7,7 @@
     using FantasyFootballStatTracker.Models;
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc;
+    using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.Options;
     using System;
     using System.Collections.Generic;
@@ -16,6 +17,11 @@
     public class SelectTeam2Controller : Controller
     {
         /// <summary>
+        /// App setting for the Season.
+        /// </summary>
+        public const string APP_SETTINGS_SEASON_NAME = "AppConfiguration:Season";
+
+        /// <summary>
         /// Session key for the Azure SQL Access token
         /// </summary>
         public const string SessionKeyAzureSqlAccessToken = "_Token";
@@ -23,9 +29,11 @@
         /// <summary>
         /// 
         /// </summary>
-        private readonly IOptions<AppConfiguration> _config;
+        //private readonly IOptions<AppConfiguration> _config;
+        private readonly IConfiguration _config;
 
-        public SelectTeam2Controller(IOptions<AppConfiguration> config)
+        //public SelectTeam2Controller(IOptions<AppConfiguration> config)
+        public SelectTeam2Controller(IConfiguration config)
         {
             _config = config;
         }
@@ -224,7 +232,7 @@
                         command.Parameters.Add(new SqlParameter("@playerName", System.Data.SqlDbType.NVarChar) { Value = player.PlayerName });
                         command.Parameters.Add(new SqlParameter("@position", System.Data.SqlDbType.NChar) { Value = position });
                         command.Parameters.Add(new SqlParameter("@espnPlayerId", System.Data.SqlDbType.Int) { Value = player.EspnPlayerId });
-                        command.Parameters.Add(new SqlParameter("@Season", System.Data.SqlDbType.Int) { Value = _config.Value.Season });
+                        command.Parameters.Add(new SqlParameter("@Season", System.Data.SqlDbType.Int) { Value = _config[APP_SETTINGS_SEASON_NAME] });
 
                         command.ExecuteNonQuery();
                     }

@@ -4,8 +4,6 @@
     ViewData["Title"] = "Scoreboard";
 }
 
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <table class="table" border="0" cellpadding="0" cellspacing="0">
     <tr>
         <td>
@@ -81,10 +79,10 @@
                             var boldOrNormal = player.GameInProgress ? "bold" : "normal";
 
                             <tr style="background-color:@color" height="100px">
-                                <td style="vertical-align:middle">
+                                <td style="vertical-align:middle;width: 70px">
                                     <img style="object-fit:fill;height:70px;padding:0px;margin:0px 0px 0px 0px;vertical-align: middle;" src="@Html.DisplayFor(modelItem => player.Headshot)" alt="" headshot" />
                                 </td>
-                                <td style="vertical-align:middle">
+                                <td style="vertical-align:middle;width:fit-content">
                                     <span style="font-weight:@boldOrNormal;">
                                         @Html.DisplayFor(modelItem => player.Name)
                                         <br />

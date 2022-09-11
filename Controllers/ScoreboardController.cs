@@ -120,6 +120,14 @@
 
                 using (SqlDataReader reader = command.ExecuteReader())
                 {
+                    // keep track of number of WRs, RBs, and TEs, so we know if we are adding a FLEX or not
+                    int rosterOneWrCount = 0;
+                    int rosterTwoWrCount = 0;
+                    int rosterOneRbCount = 0;
+                    int rosterTwoRbCount = 0;
+                    int rosterOneTeCount = 0;
+                    int rosterTwoTeCount = 0;
+
                     while (reader.Read())
                     {
                         int ownerId = (int)reader.GetValue(reader.GetOrdinal("OwnerID"));
@@ -137,13 +145,7 @@
                         string opponentAbbreviation = reader.GetValue(reader.GetOrdinal("OpponentAbbreviation")).ToString();
                         DateTime gameDate = DateTime.Parse((reader.GetValue(reader.GetOrdinal("GameDate")).ToString()));
 
-                        // keep track of number of WRs, RBs, and TEs, so we know if we are adding a FLEX or not
-                        int rosterOneWrCount = 0;
-                        int rosterTwoWrCount = 0;
-                        int rosterOneRbCount = 0;
-                        int rosterTwoRbCount = 0;
-                        int rosterOneTeCount = 0;
-                        int rosterTwoTeCount = 0;                        
+                                                
 
                         // we need to save the full player name into a search string so we don't modify the full name. This is mostly
                         // due to a defense such as "los angeles rams" and "los angeles chargers" only able to be searched by "los angeles",
@@ -245,11 +247,6 @@
                                 break;
 
                             case Position.DEF:
-                                // if this is a defense, we need to strip off the last part of the team name (so buffalo instead of buffalo bills)
-                                int lastSpaceIndex = playerNameSearchString.LastIndexOf(" ");
-
-                                playerNameSearchString = playerNameSearchString.Substring(0, lastSpaceIndex);
-
                                 positionType = Position.DEF;
                                 break;
 
@@ -393,7 +390,7 @@
 
             // Pull out the players for team two and sort by position
             List<SelectedPlayer> teamTwoPlayers = players.Where(x => x.OwnerId == 2).ToList();
-            teamTwoPlayers = teamTwoPlayers.OrderBy(x => (int)(x.Position)).ToList();
+            teamTwoPlayers = teamTwoPlayers.OrderBy(x => (int) x.Position).ToList();
 
             // Total up the scores from this team
             pointsList = teamTwoPlayers.Select(x => x.Points).ToList();

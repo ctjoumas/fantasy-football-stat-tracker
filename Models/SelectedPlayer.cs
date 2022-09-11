@@ -20,7 +20,7 @@
         public Position TruePosition { get; set; }
 
         /// <summary>
-        /// THis will include the FLEX position, which is used for displaying the flex position (RB/WR/TE) in the
+        /// This will include the FLEX position, which is used for displaying the flex position (RB/WR/TE) in the
         /// flex row in the UI
         /// </summary>
         public Position Position { get; set; }

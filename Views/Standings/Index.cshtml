@@ -33,11 +33,11 @@
                     var logoSource = "data:image/png;base64," + base64String;
 
                     <tr>
-                        <td style="line-height:0;padding:10px;margin:5px;width:65px;height:75px;"><img style="display:block;width:100%;height:100%;padding:0px;margin:0px 0px 0px 0px;vertical-align: middle;" src=@logoSource /></td>
-                        <td>@ownerStats.Wins</td>
-                        <td>@ownerStats.Losses</td>
-                        <td>@ownerStats.Streak</td>
-                        <td>@ownerStats.TotalPoints.ToString("0.00")</td>
+                        <td style="line-height: 0; padding: 15px; margin: 5px; width: 90px; height: 90px; vertical-align: middle;"><img class="img-responsive" style="padding:0px;margin:0px 0px 0px 0px" src=@logoSource /></td>
+                        <td style="vertical-align: middle">@ownerStats.Wins</td>
+                        <td style="vertical-align: middle">@ownerStats.Losses</td>
+                        <td style="vertical-align: middle">@ownerStats.Streak</td>
+                        <td style="vertical-align: middle">@ownerStats.TotalPoints.ToString("0.00")</td>
                     </tr>
                 }
             </table>

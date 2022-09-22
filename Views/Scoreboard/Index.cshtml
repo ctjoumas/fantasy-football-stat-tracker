@@ -4,162 +4,178 @@
     ViewData["Title"] = "Scoreboard";
 }
 
-<table class="table" border="0" cellpadding="0" cellspacing="0">
-    <tr>
-        <td>
-            <label>Select Week</label>
-            <form asp-controller="Scoreboard" asp-action="Index" method="post">
-                <select name="week" class="form-control" asp-items="@ViewBag.weeks" new { onchange="this.form.submit();" }></select>
-            </form>
-        </td>
-    </tr>
-    <tr>
-        @{
-            int i = 0;
-        }
-        @foreach (var team in Model)
-        {
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" />
+
+<style>
+    body {
+        background: url('/css/FieldBackground.png') no-repeat center center fixed;
+        -webkit-background-size: cover;
+        -moz-background-size: cover;
+        background-size: cover;
+        -o-background-size: cover;
+    }
+</style>
+
+<!--<div class="card-body p-5"-->
+<div class="table-responsive">
+    <table class="table" border="0" cellpadding="0" cellspacing="0">
+        <tr>
             <td>
-                <table style="min-width:300px;border-collapse: collapse;" class="table">
-                    <tr style="height:75px;">
-                        <td style="background-color:#C6C6C6;line-height:0;padding:0px;margin:0px;width:65px;height:75px;vertical-align:middle">
-                            @{
-                                byte[] bytes = (byte[])team.OwnerLogo;
-                                string base64String = Convert.ToBase64String(bytes, 0, bytes.Length);
-                                var logoSource = "data:image/png;base64," + base64String;
-                                <img style="object-fit:contain;width:85%;height:85%;padding:5px;margin:0px 0px 0px 0px;vertical-align: middle;" src=@logoSource />
-                            }
-                        </td>
-                        <td colspan="2" align="right" style="background-color:#C6C6C6;vertical-align:middle;height:75px;">
-                            @{
-                                var totalTeamPoints = team.TotalFantasyPoints.ToString("0.00");
-                            }
-                            <strong>@totalTeamPoints</strong>
-                        </td>
-                    </tr>
-                    <tr height="30">
-                        <td colspan="3"></td>
-                    </tr>
-
-                    @if (team.Players.Count == 0)
-                    {
-                        <tr style="vertical-align:middle;" height="900px">
-                            <td style="text-align:center;" colspan="3">@Html.ActionLink("Click here to select this week's roster", "Index", "SelectTeam2", new { week = team.Week, ownerId = team.OwnerId })</td>
-                        </tr>
-                    }
-                    else
-                    {
-                        @foreach (var player in team.Players)
-                        {
-                            // this will display either the date / time of the matchup or "Final"
-                            var matchupDisplay = "";
-                            var day = player.GameTime.DayOfWeek.ToString().Substring(0, 3);
-
-                            var hour = Convert.ToInt32(player.GameTime.ToString("hh"));
-                            var minute = player.GameTime.ToString("mm");
-                            var pmOrAm = player.GameTime.ToString("tt", System.Globalization.CultureInfo.InvariantCulture);
-                            var opponentAbbreviation = player.OpponentAbbreviation.ToUpper();
-                            var gameLocation = player.HomeOrAway.Equals("home") ? "vs" : "@";
-
-                            // if the game has ended, we will display "Final"
-                            if (player.GameEnded)
-                            {
-                                matchupDisplay = "Final " + player.FinalScoreString + " " + gameLocation + " " + opponentAbbreviation;
-                            }
-                            else if (player.GameInProgress)
-                            {
-                                matchupDisplay = player.TimeRemaining + " " + player.CurrentScoreString + " " + gameLocation + " " + opponentAbbreviation;
-                            }
-                            else
-                            {
-                                matchupDisplay = day + " " + hour + ":" + minute + pmOrAm + " " + gameLocation + " " + opponentAbbreviation;
-                            }
-
-                            var color = player.GameInProgress ? "#F9F9CD" : "#FFFFFF";
-                            var boldOrNormal = player.GameInProgress ? "bold" : "normal";
-
-                            <tr style="background-color:@color" height="100px">
-                                <td style="vertical-align:middle;width: 70px">
-                                    <img style="object-fit:fill;height:70px;padding:0px;margin:0px 0px 0px 0px;vertical-align: middle;" src="@Html.DisplayFor(modelItem => player.Headshot)" alt="" headshot" />
-                                </td>
-                                <td style="vertical-align:middle;width:fit-content">
-                                    <span style="font-weight:@boldOrNormal;">
-                                        @Html.DisplayFor(modelItem => player.Name)
-                                        <br />
-                                        <font size="2">
-                                            @player.TeamAbbreviation.ToUpper() - @player.TruePosition
-                                            <br />
-                                            @matchupDisplay
-                                        </font>
-                                    </span>
-                                </td>
-                                <td align="right" style="vertical-align:middle">
-                                    @{
-                                        var playerPoints = player.Points.ToString("0.00");
-
-                                        // if the game hasn't started, display a "-" so it's easy to see which game hasn't started when none are in progress
-                                        if (!player.GameEnded && !player.GameInProgress)
-                                        {
-                                            playerPoints = "-";
-                                        }
-                                    }
-
-                                    @if (player.GameInProgress)
-                                    {
-
-                                        <strong>@playerPoints</strong>
-                                    }
-                                    else
-                                    {
-                                        @playerPoints
-                                    }
-                                </td>
-                            </tr>
-                        }
-                    }
-                    @{i++;}
-                </table>
+                <label>Select Week</label>
+                <form asp-controller="Scoreboard" asp-action="Index" method="post">
+                    <select name="week" class="form-control" asp-items="@ViewBag.weeks" new { onchange="this.form.submit();" }></select>
+                </form>
             </td>
-            @if (i == 1)
+        </tr>
+        <tr>
+            @{
+                int i = 0;
+            }
+            @foreach (var team in Model)
             {
                 <td>
-                    <table class="table" border="0" cellpadding="0" cellspacing="0">
+                    <table style="min-width:300px;border-collapse: collapse;" class="table">
                         <tr style="height:75px;">
-                            <td align="center" style="vertical-align:middle; background-color:#C6C6C6"></td>
+                            <td style="background-color:#C6C6C6;line-height:0;padding:0px;margin:0px;width:65px;height:75px;vertical-align:middle">
+                                @{
+                                    byte[] bytes = (byte[])team.OwnerLogo;
+                                    string base64String = Convert.ToBase64String(bytes, 0, bytes.Length);
+                                    var logoSource = "data:image/png;base64," + base64String;
+                                    <img style="object-fit:contain;width:85%;height:85%;padding:5px;margin:0px 0px 0px 0px;vertical-align: middle;" src=@logoSource />
+                                }
+                            </td>
+                            <td colspan="2" align="right" style="background-color:#C6C6C6;vertical-align:middle;height:75px;">
+                                @{
+                                    var totalTeamPoints = team.TotalFantasyPoints.ToString("0.00");
+                                }
+                                <strong>@totalTeamPoints</strong>
+                            </td>
                         </tr>
                         <tr height="30">
-                            <td align="center" style="vertical-align:middle; background-color:#C6C6C6"></td>
+                            <td colspan="3"></td>
                         </tr>
-                        <tr height="100px">
-                            <td align="center" style="vertical-align:middle; background-color:#C6C6C6">QB</td>
-                        </tr>
-                        <tr height="100px">
-                            <td align="center" style="vertical-align:middle; background-color:#C6C6C6">RB</td>
-                        </tr>
-                        <tr height="100px">
-                            <td align="center" style="vertical-align:middle; background-color:#C6C6C6">RB</td>
-                        </tr>
-                        <tr height="100px">
-                            <td align="center" style="vertical-align:middle; background-color:#C6C6C6">WR</td>
-                        </tr>
-                        <tr height="100px">
-                            <td align="center" style="vertical-align:middle; background-color:#C6C6C6">WR</td>
-                        </tr>
-                        <tr height="100px">
-                            <td align="center" style="vertical-align:middle; background-color:#C6C6C6">FLEX</td>
-                        </tr>
-                        <tr height="100px">
-                            <td align="center" style="vertical-align:middle; background-color:#C6C6C6">TE</td>
-                        </tr>
-                        <tr height="100px">
-                            <td align="center" style="vertical-align:middle; background-color:#C6C6C6">K</td>
-                        </tr>
-                        <tr height="100px">
-                            <td align="center" style="vertical-align:middle; background-color:#C6C6C6">DEF</td>
-                        </tr>
+
+                        @if (team.Players.Count == 0)
+                        {
+                            <tr style="vertical-align:middle;" height="900px">
+                                <td style="text-align:center;" colspan="3">@Html.ActionLink("Click here to select this week's roster", "Index", "SelectTeam2", new { week = team.Week, ownerId = team.OwnerId })</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var player in team.Players)
+                            {
+                                // this will display either the date / time of the matchup or "Final"
+                                var matchupDisplay = "";
+                                var day = player.GameTime.DayOfWeek.ToString().Substring(0, 3);
+
+                                var hour = Convert.ToInt32(player.GameTime.ToString("hh"));
+                                var minute = player.GameTime.ToString("mm");
+                                var pmOrAm = player.GameTime.ToString("tt", System.Globalization.CultureInfo.InvariantCulture);
+                                var opponentAbbreviation = player.OpponentAbbreviation.ToUpper();
+                                var gameLocation = player.HomeOrAway.Equals("home") ? "vs" : "@";
+
+                                // if the game has ended, we will display "Final"
+                                if (player.GameEnded)
+                                {
+                                    matchupDisplay = "Final " + player.FinalScoreString + " " + gameLocation + " " + opponentAbbreviation;
+                                }
+                                else if (player.GameInProgress)
+                                {
+                                    matchupDisplay = player.TimeRemaining + " " + player.CurrentScoreString + " " + gameLocation + " " + opponentAbbreviation;
+                                }
+                                else
+                                {
+                                    matchupDisplay = day + " " + hour + ":" + minute + pmOrAm + " " + gameLocation + " " + opponentAbbreviation;
+                                }
+
+                                var color = player.GameInProgress ? "#F9F9CD" : "#FFFFFF";
+                                var boldOrNormal = player.GameInProgress ? "bold" : "normal";
+
+                                <tr style="background-color:@color" height="100px">
+                                    <td style="vertical-align:middle;width: 70px">
+                                        <img style="object-fit:fill;height:70px;padding:0px;margin:0px 0px 0px 0px;vertical-align: middle;" src="@Html.DisplayFor(modelItem => player.Headshot)" alt="" headshot" />
+                                    </td>
+                                    <td style="vertical-align:middle;width:fit-content">
+                                        <span style="font-weight:@boldOrNormal;">
+                                            @Html.DisplayFor(modelItem => player.Name)
+                                            <br />
+                                            <font size="2">
+                                                @player.TeamAbbreviation.ToUpper() - @player.TruePosition
+                                                <br />
+                                                @matchupDisplay
+                                            </font>
+                                        </span>
+                                    </td>
+                                    <td align="right" style="vertical-align:middle">
+                                        @{
+                                            var playerPoints = player.Points.ToString("0.00");
+
+                                            // if the game hasn't started, display a "-" so it's easy to see which game hasn't started when none are in progress
+                                            if (!player.GameEnded && !player.GameInProgress)
+                                            {
+                                                playerPoints = "-";
+                                            }
+                                        }
+
+                                        @if (player.GameInProgress)
+                                        {
+
+                                            <strong>@playerPoints</strong>
+                                        }
+                                        else
+                                        {
+                                            @playerPoints
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        @{i++;}
                     </table>
                 </td>
+                @if (i == 1)
+                {
+                    <td>
+                        <table class="table" border="0" cellpadding="0" cellspacing="0">
+                            <tr style="height:75px;">
+                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6"></td>
+                            </tr>
+                            <tr height="30">
+                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6"></td>
+                            </tr>
+                            <tr height="100px">
+                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6">QB</td>
+                            </tr>
+                            <tr height="100px">
+                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6">RB</td>
+                            </tr>
+                            <tr height="100px">
+                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6">RB</td>
+                            </tr>
+                            <tr height="100px">
+                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6">WR</td>
+                            </tr>
+                            <tr height="100px">
+                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6">WR</td>
+                            </tr>
+                            <tr height="100px">
+                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6">FLEX</td>
+                            </tr>
+                            <tr height="100px">
+                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6">TE</td>
+                            </tr>
+                            <tr height="100px">
+                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6">K</td>
+                            </tr>
+                            <tr height="100px">
+                                <td align="center" style="vertical-align:middle; background-color:#C6C6C6">DEF</td>
+                            </tr>
+                        </table>
+                    </td>
+                }
             }
-        }
-    </tr>
-</table>
+        </tr>
+    </table>
+</div>
+<!--</div>-->

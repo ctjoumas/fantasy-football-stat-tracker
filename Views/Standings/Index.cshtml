@@ -3,7 +3,6 @@
 @{
     ViewData["Title"] = "Standings";
 }
-<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" />
 
 <style>
     h2 {
@@ -11,36 +10,44 @@
     }
 </style>
 
-<h2 class='text-center'>Standings</h2>
-
 <br />
 
 <div class="container">
-    <div class="row">
-        <div class="col-xs-12">
-            <table class="table table-condensed">
-                <tr class="active">
-                    <td>Owner</td>
-                    <td>Wins</td>
-                    <td>Losses</td>
-                    <td>Streak</td>
-                    <td>Total Points</td>
-                </tr>
-                @foreach (var ownerStats in Model)
-                {
-                    byte[] bytes = (byte[])ownerStats.OwnerLogo;
-                    string base64String = Convert.ToBase64String(bytes, 0, bytes.Length);
-                    var logoSource = "data:image/png;base64," + base64String;
-
+    <div class="card border-0 shadow my-5">
+        <div class="card-body p-5">
+            <!--div class="col-xs-12"-->
+            <h2 class="heading-section text-center">Standings</h2>
+            <br>
+            <table class="table table-sm">
+                <thead class="table-dark">
                     <tr>
-                        <td style="line-height: 0; padding: 15px; margin: 5px; width: 90px; height: 90px; vertical-align: middle;"><img class="img-responsive" style="padding:0px;margin:0px 0px 0px 0px" src=@logoSource /></td>
-                        <td style="vertical-align: middle">@ownerStats.Wins</td>
-                        <td style="vertical-align: middle">@ownerStats.Losses</td>
-                        <td style="vertical-align: middle">@ownerStats.Streak</td>
-                        <td style="vertical-align: middle">@ownerStats.TotalPoints.ToString("0.00")</td>
+                        <th>Owner</th>
+                        <th>Wins</th>
+                        <th>Losses</th>
+                        <th>Streak</th>
+                        <th>Total Points</th>
                     </tr>
-                }
+                </thead>
+                <tbody>
+                    @foreach (var ownerStats in Model)
+                    {
+                        byte[] bytes = (byte[])ownerStats.OwnerLogo;
+                        string base64String = Convert.ToBase64String(bytes, 0, bytes.Length);
+                        var logoSource = "data:image/png;base64," + base64String;
+
+                        <tr>
+                            <td style="line-height: 0; padding: 15px; margin: 5px; vertical-align: middle;">
+                                <img class="img-fluid" style="width: 90px; height: 90px" src=@logoSource />
+                            </td>
+                            <td style="vertical-align: middle">@ownerStats.Wins</td>
+                            <td style="vertical-align: middle">@ownerStats.Losses</td>
+                            <td style="vertical-align: middle">@ownerStats.Streak</td>
+                            <td style="vertical-align: middle">@ownerStats.TotalPoints.ToString("0.00")</td>
+                        </tr>
+                    }
+                </tbody>
             </table>
+            <!--/div-->
         </div>
     </div>
 </div>

@@ -16,11 +16,10 @@
 
 <html lang="en">
 
-<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" />
-
 <head>
+    <!--link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" /-->
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@ViewData["Title"] - Head to Head Fantasy Football</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
     <!--link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-iYQeCzEYFbKjA/T2uDLTpkwGzCiq6soy8tYaI1GyVh/UjpbCx/TYkiZhlZB6+fzT" crossorigin="anonymous"-->
@@ -42,10 +41,10 @@
             <div class="navbar-collapse collapse d-sm-inline-flex flex-sm-row-reverse">
                 <ul class="navbar-nav flex-grow-1">
                     <li class="nav-item">
-                        <a class="nav-link text-dark" asp-area="" asp-controller="Scoreboard" asp-action="Index">Scoreboard</a>
+                        <a class="nav-link text-dark" style="font-weight:normal; font-size:12px" asp-controller="Scoreboard" asp-action="Index">Scoreboard</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link text-dark" asp-area="" asp-controller="Standings" asp-action="Index">Standings</a>
+                        <a class="nav-link text-dark" style="font-weight:normal; font-size:12px" asp-area="" asp-controller="Standings" asp-action="Index">Standings</a>
                     </li>
                 </ul>
             </div>
@@ -53,11 +52,17 @@
         </nav>
     </header>
 
-    <main role="main" class="pb-3">
-        @RenderBody()
-    </main>
+    <div class="container" style="width:100%">
+        <!--div class="card border-0 shadow my-5"-->
+            <div class="card-body pb-3">
+                <main role="main" class="pb-3">
+                    @RenderBody()
+                </main>
+            </div>
+        <!--/div-->
+    </div>
 
-    <div class="container">
+    <div class="container" style="width:100%">
         <footer class="border-top footer text-muted">
             <div class="card border-0 shadow my-5">
                 <div class="card-body pb-3">
@@ -69,5 +74,9 @@
 
     <!--script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script-->
     <!--script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script-->
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+
 </body>
 </html>

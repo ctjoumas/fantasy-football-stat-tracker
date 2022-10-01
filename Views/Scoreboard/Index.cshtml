@@ -5,7 +5,8 @@
 }
 
 <div class="table border-0">
-    <table class="table border-0" style="width:100%">
+    <center>
+    <table class="table border-0" style="border-collapse:collapse">
         <tr>
             <td colspan="3">
                 <label>Select Week</label>
@@ -21,14 +22,14 @@
         @foreach (var team in Model)
         {
             <td colspan="3">
-                <table class="table border-0" style="width:100%">
+                <table class="table border-0">
                     <tr style="height:75px;">
                         <td style="background-color:#C6C6C6;line-height:0;padding:0px;margin:0px;height:75px;vertical-align:middle">
                             @{
                                 byte[] bytes = (byte[])team.OwnerLogo;
                                 string base64String = Convert.ToBase64String(bytes, 0, bytes.Length);
                                 var logoSource = "data:image/png;base64," + base64String;
-                                <img style="object-fit:contain;height:85%;padding:5px;margin:0px 0px 0px 0px;vertical-align: middle;" src=@logoSource />
+                                <img style="object-fit:fill;height:70px;padding:5px;margin:0px 0px 0px 0px;vertical-align: middle;" src=@logoSource />
                             }
                         </td>
                         <td colspan="2" align="right" style="background-color:#C6C6C6;vertical-align:middle;height:75px;">
@@ -165,4 +166,5 @@
             }
         </tr>
     </table>
+    </center>
 </div>

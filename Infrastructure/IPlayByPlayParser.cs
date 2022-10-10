@@ -15,6 +15,8 @@
 
         public int parseFieldGoals(string playerName);
 
+        public int handleSafeties(string opponentAbbreviation);
+
         public int handleBlockedKicksAndPunts(string opponentAbbreviation);
 
         public int handleDefenseTeamPointsWithTwoPointConversions(string playerName);

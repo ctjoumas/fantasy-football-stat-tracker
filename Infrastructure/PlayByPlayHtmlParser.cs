@@ -13,6 +13,69 @@
         }
 
         /// <summary>
+        /// Safeties only show up in the play by play, so we need to check to see if a defense
+        /// gets 2 points for each safety.
+        /// </summary>
+        /// <param name="opponentAbbreviation">The three letter abbreviation of the defense's opponent</param>
+        /// <returns></returns>
+        public int handleSafeties(string opponentAbbreviation)
+        {
+            int safetyPoints = 0;
+
+            // We are looking for the <li class="accordion-item"> nodes which contain two div's, the first of which is the header showing the
+            // outcome of the drive and the logo of the team, and the second of which is the play by plays. In the second div with the play
+            // by plays, we'll search for the "blocked" text; if it's there, we will use the first div to get the team name from the logo,
+            // such as:
+            // <span class="home-logo">
+            //    < img class="team-logo" src="https://a.espncdn.com/combiner/i?img=/i/teamlogos/nfl/500/cle.png&h=100&w=100"/>
+            // </span>
+            // The "cle" would be the opponent abbreviation
+            var driveNodes = _playByPlayDoc.DocumentNode.SelectNodes("//li[@class='accordion-item']");
+
+            // if the game hasn't started, there will be no data, so check for null
+            if (driveNodes != null)
+            {
+                int i = 0;
+                foreach (var driveNode in driveNodes)
+                {
+                    // first check the second div which has the drives to see if "blocked" text is there:
+                    // <div id="gp-playbyplay-4013264237" class="accordion-content collapse">
+                    //     <div class="content">
+                    //         <ul class="drive-list">
+                    //             <li class=""> (all plays in the drive will look like this node
+                    //                 <h3>4th & 13 at DEN 23</h3>
+                    //                 <p>
+                    //                     <span class="post-play">
+                    //                         (1:55 - 2nd)  C.McLaughlin 41 yard field goal is BLOCKED (S.Harris), Center-C.Hughlett, Holder-J.Gillan.
+                    //                     </span>
+                    //                 </p>
+                    //             </li>
+                    // Check the div nodes with the playbyplay for this drive has the "blocked" test
+                    var safetyNodes = driveNode.Descendants("span").Where(node => node.InnerText.ToLower().Contains("safety"));
+
+                    // TODO: We may need to check for more than one in case there is a penalty and the block is taken back
+                    if (safetyNodes.Count() > 0)
+                    {
+                        // we need to go back to the first div of the drive node and get the logo to pull out
+                        // the opponent name
+                        string teamLogoUrl = driveNode.SelectSingleNode(".//span[@class='home-logo']/img").Attributes["src"].Value;
+
+                        // the logo will be in the format of:
+                        // https://a.espncdn.com/combiner/i?img=/i/teamlogos/nfl/500/cle.png&h=100&w=100
+                        if (teamLogoUrl.Contains(opponentAbbreviation + ".png"))
+                        {
+                            safetyPoints += 2;
+                        }
+                    }
+
+                    i++;
+                }
+            }
+
+            return safetyPoints;
+        }
+
+        /// <summary>
         /// Blocked kicks and punts only show up in the play by play, so we need to check to see if a defense
         /// gets 2 points for each blocked kick and punt.
         /// </summary>

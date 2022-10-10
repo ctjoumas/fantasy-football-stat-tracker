@@ -339,6 +339,7 @@
             {
                 fantasyPoints += handleDefenseTeamPoints(gameTrackerDoc, homeOrAway, gameId, opponentAbbreviation);
                 fantasyPoints += handleBlockedKicksAndPunts(opponentAbbreviation);
+                fantasyPoints += handleSafeties(opponentAbbreviation);
             }
 
             return Math.Round(fantasyPoints, 2);
@@ -481,6 +482,19 @@
             }
 
             return defensivePoints;
+        }
+
+        /// <summary>
+        /// This method will check to see if the JSON should be used to parse the game or HTML. When a game ends, at some point
+        /// the JSON is removed and all data exists in the HTML; this would only happen if the scoreboard is not viewed until
+        /// after a game ends, so this is here just in case that edge case happens.
+        /// </summary>
+        /// <returns></returns>
+        public int handleSafeties(string playerName)
+        {
+            int safetyPoints = playByPlayParser.handleSafeties(playerName);
+
+            return safetyPoints;
         }
 
         /// <summary>

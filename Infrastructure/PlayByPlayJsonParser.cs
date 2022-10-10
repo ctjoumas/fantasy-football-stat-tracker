@@ -12,6 +12,51 @@
         }
 
         /// <summary>
+        /// Safeties only show up in the play by play, so we need to check the JSON to see if a defense
+        /// gets 2 points for each safety.
+        /// </summary>
+        /// <param name="opponentAbbreviation">The three letter abbreviation of the defense's opponent</param>
+        /// <returns></returns>
+        public int handleSafeties(string opponentAbbreviation)
+        {
+            int safetyPoints = 0;
+
+            // each play token is a drive, so we will go through this to parse all player stats
+            JToken driveTokens = _playByPlayJsonObject.SelectToken("drives.previous");
+
+            // if the game started and there are no drives yet
+            if (driveTokens != null)
+            {
+                foreach (JToken driveToken in driveTokens)
+                {
+                    JToken driveResultValue = driveToken.SelectToken("displayResult");
+
+                    if (driveResultValue != null)
+                    {
+                        // if parsing blocked punts and kicks, we can check to see if there is a block in this drive, otherwise, we don't need to parse this
+                        string driveResult = ((JValue)driveToken.SelectToken("displayResult")).Value.ToString();
+
+                        // only parse the plays in this drive if this drive resulted in a safety
+                        // TODO: guessing that this is what the drive result would say; have not been able to see this yet during live game
+                        if (driveResult.ToLower().Contains(("safety")))
+                        {
+                            // get the team who just got the safety
+                            string teamAbbreviation = (string)((JValue)driveToken.SelectToken("team.abbreviation")).Value;
+
+                            // if the team abbreviation on this drive is the opponent, we'll give 2 points
+                            if (teamAbbreviation.ToLower().Equals(opponentAbbreviation.ToLower()))
+                            {
+                                safetyPoints += 2;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return safetyPoints;
+        }
+
+        /// <summary>
         /// Blocked kicks and punts only show up in the play by play, so we need to check the JSON to see if a defense
         /// gets 2 points for each blocked kick and punt.
         /// </summary>

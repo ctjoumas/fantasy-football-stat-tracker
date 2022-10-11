@@ -14,7 +14,8 @@
     using System.Threading.Tasks;
     using FantasyFootballStatTracker.Infrastructure;
     using Microsoft.Extensions.Logging;
-    
+    using System.Globalization;
+
     public class ScoreboardController : Controller
     {
         private readonly ILogger<ScoreboardController> _logger;
@@ -246,6 +247,10 @@
 
                             case Position.DEF:
                                 positionType = Position.DEF;
+
+                                // the defense comes in from ESPN with all lowercase, so change first letters of each word to uppercase
+                                playerName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(playerName);
+
                                 break;
 
                             default:

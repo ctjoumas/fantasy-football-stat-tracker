@@ -146,11 +146,6 @@
                         string opponentAbbreviation = reader.GetValue(reader.GetOrdinal("OpponentAbbreviation")).ToString();
                         DateTime gameDate = DateTime.Parse((reader.GetValue(reader.GetOrdinal("GameDate")).ToString()));
 
-                        // we need to save the full player name into a search string so we don't modify the full name. This is mostly
-                        // due to a defense such as "los angeles rams" and "los angeles chargers" only able to be searched by "los angeles",
-                        // so we cannot lose the full name. We will cut off the "rams" or "chargers" part in the DEF case below
-                        string playerNameSearchString = playerName;
-
                         Position positionType = Position.FLEX;
 
                         switch (position)

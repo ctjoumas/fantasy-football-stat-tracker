@@ -222,7 +222,7 @@
             {
                 // if the field goal was good, check if the player's name was invovled (pass
                 // or reception, it's 2 points either way)
-                if (!fieldGoalNode.InnerText.ToLower().Contains("no good") && !fieldGoalNode.InnerText.ToLower().Contains("nullified") &&
+                if (!fieldGoalNode.InnerText.ToLower().Contains("no good") && !fieldGoalNode.InnerText.ToLower().Contains("blocked")  && !fieldGoalNode.InnerText.ToLower().Contains("nullified") &&
                     (fieldGoalNode.InnerText.ToLower().Contains(playerName.ToLower()) || fieldGoalNode.InnerText.ToLower().Contains(abbreviatedPlayerName.ToLower())))
                 {
                     // this player successfully kicked a FG, so we need to parse out the length.

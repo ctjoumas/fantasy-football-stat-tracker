@@ -175,7 +175,7 @@
             if (currentDriveTokens != null)
             {
                 int currentPlayTokens = ((JArray)currentDriveTokens).Count;
-
+                
                 string homeScore = (string)_playByPlayJsonObject.SelectToken("drives.current.plays[" + (currentPlayTokens - 1).ToString() + "].homeScore");
                 string awayScore = (string)_playByPlayJsonObject.SelectToken("drives.current.plays[" + (currentPlayTokens - 1).ToString() + "].awayScore");
 

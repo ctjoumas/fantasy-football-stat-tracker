@@ -300,7 +300,7 @@
             string timeRemaining = "";
 
             // we are looking for all <span class="post-play"> nodes
-            var postPlayNodes = _playByPlayDoc.DocumentNode.SelectNodes("//span[@class='post-play']");
+            /*var postPlayNodes = _playByPlayDoc.DocumentNode.SelectNodes("//span[@class='post-play']");
 
             // get the last play by play node and parse out the time remaining and current quarter
             var lastPostPlayNode = postPlayNodes[postPlayNodes.Count - 1];
@@ -315,7 +315,7 @@
                 timeRemaining = lastPostPlayNode.InnerText.Substring(indexOfFirstParenthesis + 1, (indexOfLastParenthesis - indexOfFirstParenthesis - 1));
                 string[] timeRemainingElements = timeRemaining.Split("-");
                 timeRemaining = string.Join("", timeRemainingElements);
-            }
+            }*/
 
             return timeRemaining;
         }

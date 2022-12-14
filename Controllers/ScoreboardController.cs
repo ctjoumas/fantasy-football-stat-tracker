@@ -142,6 +142,7 @@
                         string headshotUrl = reader.GetValue(reader.GetOrdinal("HeadshotUrl")).ToString();
                         string espnGameId = ((int)reader.GetValue(reader.GetOrdinal("EspnGameId"))).ToString();
                         string homeOrAway = reader.GetValue(reader.GetOrdinal("HomeOrAway")).ToString();
+                        string teamName = reader.GetValue(reader.GetOrdinal("TeamName")).ToString();
                         string teamAbbreviation = reader.GetValue(reader.GetOrdinal("TeamAbbreviation")).ToString();
                         string opponentAbbreviation = reader.GetValue(reader.GetOrdinal("OpponentAbbreviation")).ToString();
                         DateTime gameDate = DateTime.Parse((reader.GetValue(reader.GetOrdinal("GameDate")).ToString()));
@@ -262,6 +263,7 @@
                         player.EspnGameId = espnGameId;
                         player.GameTime = gameDate;
                         player.EspnPlayerId = espnPlayerId;
+                        player.TeamName = teamName;
                         player.TeamAbbreviation = teamAbbreviation;
                         player.OpponentAbbreviation = opponentAbbreviation;
                         player.HomeOrAway = homeOrAway;
@@ -338,8 +340,8 @@
             foreach (string key in playersHashTable.Keys)
             {
                 List<SelectedPlayer> playersInGame = (List<SelectedPlayer>)playersHashTable[key];
-                tasks[i] = Task.Factory.StartNew(() => scrapeStatsFromGame(key, playersInGame));
-                //scrapeStatsFromGame(key, playersInGame);
+//                tasks[i] = Task.Factory.StartNew(() => scrapeStatsFromGame(key, playersInGame));
+                scrapeStatsFromGame(key, playersInGame);
 
                 // create the done event for this thread
                 /*doneEvents[i] = new ManualResetEvent(false);
@@ -356,7 +358,7 @@
             }
 
             // wait for all threads to complete
-            Task.WaitAll(tasks);
+//            Task.WaitAll(tasks);
 
             // wait for all threads to have reported that they have completed their work
             //WaitHandle.WaitAll(doneEvents);
@@ -449,11 +451,12 @@
                     p.GameInProgress = true;
 
                     //p.Points += scraper.parseGameTrackerPage(stateInfo.EspnGameId, p.EspnPlayerId, p.HomeOrAway, p.OpponentAbbreviation);
-                    p.Points += scraper.parseGameTrackerPage(espnGameId, p.EspnPlayerId, p.Position, p.HomeOrAway, p.OpponentAbbreviation);
+                    p.Points += scraper.parseGameTrackerPage(espnGameId, p.EspnPlayerId, p.Position, p.TeamName, p.TeamAbbreviation, p.OpponentAbbreviation);
                     //p.Points += scraper.parseTwoPointConversionsForPlayer(stateInfo.EspnGameId, p.RawPlayerName);
+                    p.Points += scraper.parseOffensivePlayerFumbleRecoveryForTouchdown(p.Name);
                     p.Points += scraper.parseTwoPointConversionsForPlayer(p.Name);
                     p.TimeRemaining = scraper.parseTimeRemaining();
-                    p.CurrentScoreString = scraper.parseCurrentScore(p.HomeOrAway);
+                    p.CurrentScoreString = scraper.parseCurrentScore(p.TeamAbbreviation);
 
                     // calculate kicker FGs if this player is a kicker
                     if (p.Position == Position.K)

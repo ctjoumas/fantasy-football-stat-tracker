@@ -43,8 +43,7 @@
 
         public string HomeOrAway { get; set; }
 
-        // this can probably be removed; this was initially from entering player name manually
-        //public string RawPlayerName { get; set; }
+        public string TeamName { get; set; }
 
         public string TeamAbbreviation { get; set; }
 

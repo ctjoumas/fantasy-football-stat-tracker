@@ -117,6 +117,10 @@
                 {
                     timeRemaining = "Final";
                 }
+                else if (strTimeRemaining.ToLower().Equals("halftime"))
+                {
+                    timeRemaining = "Half";
+                }
                 else
                 {
                     int indexOfDash = strTimeRemaining.IndexOf("-");

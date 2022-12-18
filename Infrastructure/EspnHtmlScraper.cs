@@ -113,7 +113,7 @@
             {
                 string strTimeRemaining = ((JValue)timeRemainingToken).Value.ToString();
 
-                if (strTimeRemaining.ToLower().Equals("final"))
+                if (strTimeRemaining.ToLower().Equals("final") || strTimeRemaining.ToLower().Equals("final/ot"))
                 {
                     timeRemaining = "Final";
                 }

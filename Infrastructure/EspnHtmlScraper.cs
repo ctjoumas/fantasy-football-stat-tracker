@@ -121,6 +121,10 @@
                 {
                     timeRemaining = "Half";
                 }
+                else if (strTimeRemaining.ToLower().Equals("postponed"))
+                {
+                    timeRemaining = "Postponed";
+                }
                 else
                 {
                     int indexOfDash = strTimeRemaining.IndexOf("-");

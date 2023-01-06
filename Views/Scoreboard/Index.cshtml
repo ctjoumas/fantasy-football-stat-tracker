@@ -68,6 +68,10 @@
                             {
                                 matchupDisplay = "Final " + player.FinalScoreString + " " + gameLocation + " " + opponentAbbreviation;
                             }
+                            else if (player.GameCanceled)
+                            {
+                                matchupDisplay = "Canceled";
+                            }
                             else if (player.GameInProgress)
                             {
                                 matchupDisplay = player.TimeRemaining + " " + player.CurrentScoreString + " " + gameLocation + " " + opponentAbbreviation;
@@ -93,7 +97,16 @@
                                         <br />
                                         @player.TeamAbbreviation.ToUpper() - @player.TruePosition
                                         <br />
-                                        @matchupDisplay
+                                        @{
+                                            if (player.GameCanceled)
+                                            {
+                                                <div style="color:#FF7F7F">@matchupDisplay</div>
+                                            }
+                                            else
+                                            {
+                                                @matchupDisplay
+                                            }
+                                        }
                                     </span>
                                 </td>
                                 <td align="right" style="vertical-align:middle">
@@ -101,7 +114,7 @@
                                         var playerPoints = player.Points.ToString("0.00");
 
                                         // if the game hasn't started, display a "-" so it's easy to see which game hasn't started when none are in progress
-                                        if (!player.GameEnded && !player.GameInProgress)
+                                        if (!player.GameEnded && !player.GameCanceled && !player.GameInProgress)
                                         {
                                             playerPoints = "-";
                                         }

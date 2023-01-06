@@ -43,6 +43,11 @@
         public bool GameEnded { get; set; } = false;
 
         /// <summary>
+        /// Stores whether the game has been canceled and will update the CurrentRoster table just as the GameEnded flag does.
+        /// </summary>
+        public bool GameCanceled { get; set; } = false;
+
+        /// <summary>
         /// Sets the gametracker and play by play HTML documents which will be used to gather stats for every player playing
         /// in the same game.
         /// </summary>
@@ -124,6 +129,10 @@
                 else if (strTimeRemaining.ToLower().Equals("postponed"))
                 {
                     timeRemaining = "Postponed";
+                }
+                else if (strTimeRemaining.ToLower().Equals("canceled"))
+                {
+                    timeRemaining = "Canceled";
                 }
                 else
                 {
@@ -503,6 +512,10 @@
             if (txtStatusToken.ToLower().Equals("final"))
             {
                 GameEnded = true;
+            }
+            else if (txtStatusToken.ToLower().Equals("canceled"))
+            {
+                GameCanceled = true;
             }
 
             // Keeps track of the points allowed for a defense

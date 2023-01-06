@@ -54,6 +54,11 @@
 
         public bool GameEnded { get; set; } = false;
 
+        /// <summary>
+        /// Added for the case when a game is canceled.
+        /// </summary>
+        public bool GameCanceled { get; set; } = false;
+
         // Holds the current score string such as "17 - 20"
         public string CurrentScoreString { get; set; }
 

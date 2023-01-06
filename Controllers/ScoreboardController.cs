@@ -136,6 +136,7 @@
                         string playerName = reader.GetValue(reader.GetOrdinal("PlayerName")).ToString();
                         Position position = (Position)Enum.Parse(typeof(Position),reader.GetValue(reader.GetOrdinal("Position")).ToString().Trim());
                         bool gameEnded = (bool)reader.GetValue(reader.GetOrdinal("GameEnded"));
+                        bool gameCanceled = (bool)reader.GetValue(reader.GetOrdinal("GameCanceled"));
                         double finalPoints = (double)reader.GetValue(reader.GetOrdinal("FinalPoints"));
                         string finalScoreString = reader.GetValue(reader.GetOrdinal("FinalScoreString")).ToString();
                         string espnPlayerId = reader.GetValue(reader.GetOrdinal("EspnPlayerId")).ToString();
@@ -270,6 +271,7 @@
                         player.OwnerId = ownerId;
                         player.OwnerName = ownerName;
                         player.GameEnded = gameEnded;
+                        player.GameCanceled = gameCanceled;
                         player.Points = finalPoints;
                         player.FinalScoreString = finalScoreString;
                         player.Week = int.Parse(selectedWeek);
@@ -340,8 +342,7 @@
             foreach (string key in playersHashTable.Keys)
             {
                 List<SelectedPlayer> playersInGame = (List<SelectedPlayer>)playersHashTable[key];
-//                tasks[i] = Task.Factory.StartNew(() => scrapeStatsFromGame(key, playersInGame));
-                scrapeStatsFromGame(key, playersInGame);
+                tasks[i] = Task.Factory.StartNew(() => scrapeStatsFromGame(key, playersInGame));
 
                 // create the done event for this thread
                 /*doneEvents[i] = new ManualResetEvent(false);
@@ -358,7 +359,7 @@
             }
 
             // wait for all threads to complete
-//            Task.WaitAll(tasks);
+            Task.WaitAll(tasks);
 
             // wait for all threads to have reported that they have completed their work
             //WaitHandle.WaitAll(doneEvents);
@@ -433,12 +434,8 @@
             DateTime currentEasterStandardTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, easternZone);
             TimeSpan difference = player.GameTime.Subtract(currentEasterStandardTime);
 
-            // Also check if the first player's game has ended, which is set to true in the CurrentRoster table when the scraper
-            // determines that the game has ended.
-            bool gameEnded = player.GameEnded;
-
-            // if the game hasn't started or the game has ended, don't load the HtmlDoc to parse stats since we've already done that
-            if ((difference.TotalDays < 0) && (!gameEnded))
+            // if the game hasn't started or the game has ended or is canceled, don't load the HtmlDoc to parse stats since we've already done that
+            if ((difference.TotalDays < 0) && !player.GameEnded && !player.GameCanceled)
             {
                 //EspnHtmlScraper scraper = new EspnHtmlScraper(stateInfo.EspnGameId);
                 EspnHtmlScraper scraper = new EspnHtmlScraper(espnGameId);
@@ -466,21 +463,24 @@
                     }
 
                     // check the scraper to see if the game has ended and update this player row
-                    if (scraper.GameEnded)
+                    if (scraper.GameEnded || scraper.GameCanceled)
                     {
                         // set the flag to false since this game is no longer in progress
                         p.GameInProgress = false;
 
-                        // set flag to true that the game ended, used for the final score string (a game can be not start - therefore
-                        // not in progress - and also not ended, so we wouldn't want to display the final score in this case)
-                        p.GameEnded = true;
+                        // Sets the appropriate flag to true depending on the situation.  If the game ended, the view will check this and
+                        // update the final score string (a game can be not started - therefore not in progress - and also not ended, so we
+                        // wouldn't want to display the final score in this case); if the game was canceled, the view will not print the
+                        // final score string since there will not be a score for a canceled game.
+                        p.GameEnded = scraper.GameEnded;
+                        p.GameCanceled = scraper.GameCanceled;
 
                         // Get the final score string (such as "(W) 45 - 30") and store this in the database
                         string finalScoreString = scraper.parseFinalScore(p.TeamAbbreviation);
 
                         p.FinalScoreString = finalScoreString;
 
-                        updateCurrentRosterWithFinalScore(p.OwnerId, p.EspnPlayerId, p.Points, finalScoreString, p.Week);
+                        updateCurrentRosterWithFinalScore(p.GameEnded, p.GameCanceled, p.OwnerId, p.EspnPlayerId, p.Points, finalScoreString, p.Week);
                     }
                 }
             }
@@ -659,17 +659,20 @@
         }
 
         /// <summary>
-        /// Within the thread that updates the player points, if the scraper determins the game has ended, this
-        /// method is called to update the CurrentRoster table for this particular player setting GameEnded to true
-        /// and updating the FinalPoints field, so we can grab this the next time the app displays the scores rather
-        /// than scrap the gametracker page again.
+        /// Within the thread that updates the player points, if the scraper determines the game has ended or has
+        /// been canceled, this method is called to update the CurrentRoster table for this particular player, setting
+        /// GameEnded to true if the game has ended or GameCanceled to true if the game was canceled, and updating
+        /// the FinalPoints field, so we can grab this the next time the app displays the scores rather than scrape the
+        /// gametracker page again.
         /// </summary>
+        /// <param name="gameEnded">Determines if the game ended normally</param>
+        /// <param name="gameCanceled">Determines if the game was canceled</param>
         /// <param name="ownerId">The owner id of the team</param>
         /// <param name="espnPlayerId">The id of the player whose points we are updating in the CurrentRoster table</param>
         /// <param name="playerFinalScore">The final score the player got in the game</param>
         /// <param name="finalScoreString">The final score string for the player's team, which is displayed in the UI</param>
         /// <param name="week">The week we are updating</param>
-        private void updateCurrentRosterWithFinalScore(int ownerId, string espnPlayerId, double playerFinalScore, string finalScoreString, int week)
+        private void updateCurrentRosterWithFinalScore(bool gameEnded, bool gameCanceled, int ownerId, string espnPlayerId, double playerFinalScore, string finalScoreString, int week)
         {
             var connectionStringBuilder = new SqlConnectionStringBuilder
             {
@@ -701,6 +704,8 @@
             using (SqlCommand command = new SqlCommand("UpdatePlayerFinalScore", sqlConnection))
             {
                 command.CommandType = System.Data.CommandType.StoredProcedure;
+                command.Parameters.Add(new SqlParameter("@GameEnded", System.Data.SqlDbType.Bit) { Value = gameEnded });
+                command.Parameters.Add(new SqlParameter("@GameCanceled", System.Data.SqlDbType.Bit) { Value = gameCanceled });
                 command.Parameters.Add(new SqlParameter("@PlayerFinalScore", System.Data.SqlDbType.Float) { Value = playerFinalScore });
                 command.Parameters.Add(new SqlParameter("@FinalScoreString", System.Data.SqlDbType.NVarChar) { Value = finalScoreString });
                 command.Parameters.Add(new SqlParameter("@OwnerId", System.Data.SqlDbType.Int) { Value = ownerId });

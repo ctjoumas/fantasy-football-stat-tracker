@@ -426,7 +426,6 @@
             // Check the date time of the game for the first player (it is the same for all players in this list
             // since they belong to the same game) and if it hasn't started, just set the points equal to 0
             // and don't load the document.
-            //SelectedPlayer player = selectedPlayers[0];
             SelectedPlayer player = players[0];
 
             // Get current EST time - If this is run on a machine with a differnet local time, DateTime.Now will not return the proper time
@@ -441,7 +440,6 @@
                 EspnHtmlScraper scraper = new EspnHtmlScraper(espnGameId);
 
                 // calculate points for each of these players
-                //foreach (SelectedPlayer p in selectedPlayers)
                 foreach (SelectedPlayer p in players)
                 {
                     // set flag to true to indicate this player's game is in progress

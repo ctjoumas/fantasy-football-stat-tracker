@@ -570,17 +570,6 @@
                                     fantasyPoints += handleInterceptionStats(interceptionsStatsTotalNode);
                                 }
                             }
-                            else if (stat.Equals("Returns"))
-                            {
-                                var returnStatsTotalNodes = boxscoreTeamNode.SelectNodes(".//tr[@class='Boxscore__Totals Table__TR Table__TR--sm Table__even']");
-
-                                // if therea re no returns, this node will be null
-                                if (returnStatsTotalNodes != null)
-                                {
-                                    var returnStatsTotalNode = returnStatsTotalNodes[1];
-                                    fantasyPoints += handleReturnStats(returnStatsTotalNode);
-                                }
-                            }
                         }
                         else
                         {
@@ -980,31 +969,6 @@
             }
 
             return twoPointConversionPoints;
-        }
-
-        /// <summary>
-        /// This will loop through all defense (and actually, special teams) kick or punt returns. The only thing we care about here are touchdowns:
-        /// Based on a new change in the HTML, there are no longer attributes to show which stat the node corresponds to, so we'll need to map it such that
-        /// column 0: total number of kick or punt returns
-        /// column 1: total yards for kick or punt returns
-        /// column 2: total average yards for kick or punt returns
-        /// column 3: long for kick or punt returns
-        /// column 4: total touchdowns for kick or punt returns
-        /// This will be used for both Kick Returns and Punt Returns tables
-        /// <td class="td"></td>
-        /// </summary>
-        /// <param name="defensiveTeamStatsTotalNode"></param>
-        /// <returns></returns>
-        private int handleReturnStats(HtmlNode defensiveTeamStatsTotalNode)
-        {
-            int defensiveReturnPoints = 0;
-            int touchdowns = 0;
-
-            touchdowns += int.Parse(defensiveTeamStatsTotalNode.ChildNodes[4].InnerText);
-
-            defensiveReturnPoints += touchdowns * DEFENSIVE_TD_POINTS;
-
-            return defensiveReturnPoints;
         }
 
         /// <summary>

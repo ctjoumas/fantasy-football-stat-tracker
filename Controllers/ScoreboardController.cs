@@ -68,7 +68,7 @@
 
             var connectionStringBuilder = new SqlConnectionStringBuilder
             {
-                DataSource = "tcp:playersandscheduledetails.database.windows.net,1433",
+                DataSource = "tcp:playersandschedulesdetails.database.windows.net,1433",
                 InitialCatalog = "PlayersAndSchedulesDetails",
                 TrustServerCertificate = false,
                 Encrypt = true
@@ -500,7 +500,7 @@
 
             var connectionStringBuilder = new SqlConnectionStringBuilder
             {
-                DataSource = "tcp:playersandscheduledetails.database.windows.net,1433",
+                DataSource = "tcp:playersandschedulesdetails.database.windows.net,1433",
                 InitialCatalog = "PlayersAndSchedulesDetails",
                 TrustServerCertificate = false,
                 Encrypt = true
@@ -674,7 +674,7 @@
         {
             var connectionStringBuilder = new SqlConnectionStringBuilder
             {
-                DataSource = "tcp:playersandscheduledetails.database.windows.net,1433",
+                DataSource = "tcp:playersandschedulesdetails.database.windows.net,1433",
                 InitialCatalog = "PlayersAndSchedulesDetails",
                 TrustServerCertificate = false,
                 Encrypt = true

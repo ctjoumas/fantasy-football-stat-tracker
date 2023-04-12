@@ -1,34 +1,136 @@
-# ASP.NET
-# Build and test ASP.NET projects.
-# Add steps that publish symbols, save build artifacts, deploy, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/apps/aspnet/build-aspnet-4
-
-trigger:
-- master
-
 pool:
-  vmImage: 'windows-latest'
+  name: Azure Pipelines
+#Your build pipeline references the ‘BuildConfiguration’ variable, which you’ve selected to be settable at queue time. Create or edit the build pipeline for this YAML file, define the variable on the Variables tab, and then select the option to make it settable at queue time. See https://go.microsoft.com/fwlink/?linkid=865971
 
-variables:
-  solution: '**/*.sln'
-  buildPlatform: 'Any CPU'
-  buildConfiguration: 'Release'
+parameters:
+  - name: RunOWASP
+    type: boolean
+    default: false
+  
 
 steps:
-- task: NuGetToolInstaller@1
-
-- task: NuGetCommand@2
+- task: DotNetCoreCLI@2
+  displayName: 'dotnet restore'
   inputs:
-    restoreSolution: '$(solution)'
+    command: restore
+    projects: '**/*.csproj'
 
-- task: VSBuild@1
+- task: DotNetCoreCLI@2
+  displayName: 'dotnet build'
   inputs:
-    solution: '$(solution)'
-    msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(build.artifactStagingDirectory)"'
-    platform: '$(buildPlatform)'
-    configuration: '$(buildConfiguration)'
+    projects: '**/*.csproj'
 
-- task: VSTest@2
+- task: DotNetCoreCLI@2
+  displayName: 'dotnet publish'
   inputs:
-    platform: '$(buildPlatform)'
-    configuration: '$(buildConfiguration)'
+    command: publish
+    arguments: '--configuration $(BuildConfiguration) --output $(Build.ArtifactStagingDirectory)'
+
+- task: PublishSymbols@2
+  displayName: 'Publish symbols path'
+  inputs:
+    SearchPattern: '**\bin\**\*.pdb'
+    PublishSymbols: false
+  enabled: false
+  continueOnError: true
+
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Artifact: drop'
+  inputs:
+    PathtoPublish: '$(build.artifactstagingdirectory)'
+  condition: succeededOrFailed()
+
+- task: AzureWebApp@1
+  displayName: 'Azure Web App Deploy: fantasyfootballstattracker'
+  inputs:
+    azureSubscription: 'MCAPS-Hybrid-REQ-48771-2022-chtjouma (dc260a42-f9db-45cb-9feb-cfc082d05f62)'
+    appType: webApp
+    appName: fantasyfootballstattracker
+    package: '$(build.artifactstagingdirectory)/**/*.zip'
+
+- task: CSE-DevOps.zap-scanner.custom-build-release-task.owaspzap@1
+  displayName: 'ZAP Scanner'
+  inputs:
+    threshold: 250
+    scantype: targetedScan
+    url: 'https://fantasyfootballstattracker.azurewebsites.net/'
+  condition: and(succeeded(), eq('${{ parameters.RunOWASP }}'', true))
+
+- task: CopyFiles@2
+  displayName: 'Copy Files to: $(Build.ArtifactStagingDirectory)/owaspzap'
+  inputs:
+    SourceFolder: owaspzap/
+    TargetFolder: '$(Build.ArtifactStagingDirectory)/owaspzap'
+  condition: always()
+
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Artifact: owasp_zap_reports'
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)/owaspzap'
+    ArtifactName: 'owasp_zap_reports'
+  condition: always()
+
+- bash: |
+   sudo npm install -g handlebars-cmd
+   
+   cat <<EOF > owaspzap/nunit-template.hbs
+   
+   <test-run
+          id="2"
+          name="Owasp test"
+          start-time="{{@generated}}">
+          {{#each site}}<test-suite
+              id="{{@index}}"
+              type="Assembly"
+              name="{{[@name]}}"
+              result="Failed"
+              failed="{{alerts.length}}">
+              <attachments>
+                  <attachment>
+                      <filePath>$(Build.ArtifactStagingDirectory)/owaspzap/report.html</filePath>
+                  </attachment>
+              </attachments>
+              {{#each alerts}}<test-case
+                  id="{{@index}}"
+                  name="{{alert}}"
+                  result="Failed"
+                  fullname="{{alert}}"
+                  time="1">
+                  <failure>
+                      <message>
+                          <![CDATA[{{{desc}}}]]>
+                      </message>
+                      <stack-trace>
+                          <![CDATA[
+   Solution:
+   {{{solution}}}
+   
+   Reference:
+   {{{reference}}}
+   
+   instances:{{#each instances}}
+   * {{uri}}
+        - {{method}}
+        {{#if evidence}}- {{{evidence}}}{{/if}}
+                          {{/each}}]]>
+                      </stack-trace>
+                  </failure>
+              </test-case>
+              {{/each}}
+          </test-suite>
+          {{/each}}
+   </test-run>
+   EOF
+  displayName: 'owasp nunit template'
+  condition: always()
+
+- bash: ' handlebars owaspzap/report.json < owaspzap/nunit-template.hbs > owaspzap/test-results.xml'
+  displayName: 'Generate nunit type file'
+  condition: always()
+
+- task: PublishTestResults@2
+  displayName: 'Publish Test Results owaspzap/test-results.xml'
+  inputs:
+    testResultsFormat: NUnit
+    testResultsFiles: 'owaspzap/test-results.xml'
+  condition: always()

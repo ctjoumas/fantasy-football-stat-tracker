@@ -54,7 +54,7 @@ steps:
     threshold: 250
     scantype: targetedScan
     url: 'https://fantasyfootballstattracker.azurewebsites.net/'
-  condition: and(succeeded(), eq('${{ parameters.RunOWASP }}'', true))
+  condition: and(succeeded(), eq('${{ parameters.RunOWASP }}', true))
 
 - task: CopyFiles@2
   displayName: 'Copy Files to: $(Build.ArtifactStagingDirectory)/owaspzap'

@@ -9,6 +9,13 @@ parameters:
   
 
 steps:
+- task: ManualValidation@0
+  timeoutInMinutes: 1440 # task times out in 1 day
+  inputs:
+    notifyUsers: '[FantasyFootballStatTracker]\FantasyFootballStatTracker Team'
+    instructions: 'Please validate the build configuration.'
+    onTimeout: 'resume'
+    
 - task: DotNetCoreCLI@2
   displayName: 'dotnet restore'
   inputs:

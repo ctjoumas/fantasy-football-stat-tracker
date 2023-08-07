@@ -126,15 +126,16 @@ class DraftBoard extends React.Component {
     }
 
     render() {
+        const MAX_AVAILABLE_PLAYERS_TO_DISPLAY = 10;
         const availablePlayers = this.state.availablePlayers;
         const filterText = this.state.filterText;
 
-        // player count to determine if we've displayed our preferred number of players on the screen (10 in this case)
+        // player count to determine if we've displayed our preferred number of players on the screen
         let playerCount = 0;
 
         const availablePlayersMap = availablePlayers.map((player, index) => {
             // get the index of the filtered player in the available players list so we can render the correct player
-            if (player.name.toLowerCase().includes(filterText.toLowerCase()) && playerCount < 10) {
+            if (player.name.toLowerCase().includes(filterText.toLowerCase()) && playerCount < MAX_AVAILABLE_PLAYERS_TO_DISPLAY) {
                 playerCount++;
 
                 return (                
@@ -209,12 +210,90 @@ const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(<DraftBoard />);
 
 function validateRoster(roster) {
-    let isValidRoster = false;
+    let isValidRoster = true;
 
-    for (let i = 0; i < roster.length; i++) {
-        if (roster[i].name.toLowerCase() === 'tom brady') {
-            isValidRoster = true;
+    // a valid roster includes QB, WR, WR, RB, RB, Flex, TE, K, DEF
+    let numQbs = 0;
+    let numWrs = 0;
+    let numRbs = 0;
+    let numTes = 0;
+    let numKs = 0;
+    let numDefs = 0;
+
+    // check if there are 9 players selected for the roster
+    if (roster.length === 9) {
+
+        for (let i = 0; i < roster.length; i++) {
+
+            switch (roster[i].position) {
+                case 'QB':
+                    if (numQbs < 1) {
+                        numQbs++;
+                    }
+                    else {
+                        // a 2nd QB is trying to be added, so return false and skip the rest of the roster
+                        return false;
+                    }
+                    break;
+
+                case 'WR':
+                    // if there are not yet 2 WRs or if a 3rd WR is being added as a flex and there aren't already 3 RBs or 2 TEs
+                    if ((numWrs < 2) || ((numWrs === 2) && (numRbs < 3) && (numTes < 2))) {
+                        numWrs++;
+                    }
+                    else {
+                        // a 3rd WR is trying to be added as a FLEX and there is already a 3rd RB or 2nd TE as a FLEX
+                        return false;
+                    }
+                    break;
+
+                case 'RB':
+                    // if there are not yet 2 RBs or if a 3rd RB is being added as a flex and there aren't already 3 WRs or 2 TEs
+                    if ((numRbs < 2) || ((numRbs === 2) && (numWrs < 3) && (numTes < 2))) {
+                        numRbs++;
+                    }
+                    else {
+                        // a 3rd WR is trying to be added as a FLEX and there is already a 3rd RB or 2nd TE as a FLEX
+                        return false;
+                    }
+                    break;
+
+                case 'TE':
+                    // if there is not yet 1 TE or if a 2nd TE is being added as a flex and there aren't already 3 WRs or 3 WRs
+                    if ((numTes < 1) || ((numTes === 1) && (numRbs < 3) && (numWrs < 3))) {
+                        numTes++;
+                    }
+                    else {
+                        // a 3rd WR is trying to be added as a FLEX and there is already a 3rd RB or 2nd TE as a FLEX
+                        return false;
+                    }
+                    break;
+
+                case 'K':
+                    if (numKs < 1) {
+                        numKs++;
+                    }           
+                    else {
+                        return false;
+                    }     
+                    break;
+
+                case 'DEF':
+                    if (numDefs < 1) {
+                        numDefs++;
+                    }
+                    else {
+                        return false;
+                    }
+                    break;
+
+                default:
+                    return false;
+            }
         }
+    }
+    else {
+        isValidRoster = false;
     }
 
     return isValidRoster;

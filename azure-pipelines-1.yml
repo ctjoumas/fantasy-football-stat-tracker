@@ -1,0 +1,68 @@
+pool:
+  name: Azure Pipelines
+#Your build pipeline references the ‘BuildConfiguration’ variable, which you’ve selected to be settable at queue time. Create or edit the build pipeline for this YAML file, define the variable on the Variables tab, and then select the option to make it settable at queue time. See https://go.microsoft.com/fwlink/?linkid=865971
+
+jobs:
+
+  - job: waitForValidation
+    displayName: "Wait for validation"
+    pool: server
+    timeoutInMinutes: 4320 # job times out in 3 days
+    steps:  
+    - task: ManualValidation@0
+      timeoutInMinutes: 1440 # task times out in 1 day
+      inputs:
+        notifyUsers: '[FantasyFootballStatTracker]\FantasyFootballStatTracker Team'
+        instructions: 'Please validate the build configuration.'
+        onTimeout: 'resume'
+
+  - job: dotNetRestore
+    displayName: 'dotnet restore'
+    steps:
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: restore
+        projects: '**/*.csproj'
+
+  - job: dotNetBuild
+    displayName: 'dotnet build'
+    steps:
+    - task: DotNetCoreCLI@2
+      inputs:
+        projects: '**/*.csproj'
+
+  - job: dotNetPublish
+    displayName: 'dotnet publish'
+    steps:
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: publish
+        arguments: '--configuration $(BuildConfiguration) --output $(Build.ArtifactStagingDirectory)'
+
+  - job: publishSymbols
+    displayName: 'Publish symbols path'
+    steps:
+    - task: PublishSymbols@2
+      inputs:
+        SearchPattern: '**\bin\**\*.pdb'
+        PublishSymbols: false
+      enabled: false
+      continueOnError: true
+
+  - job: publishBuildArtifacts
+    displayName: 'Publish Artifact: drop'
+    steps:
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: '$(build.artifactstagingdirectory)'
+      condition: succeededOrFailed()
+
+#  - job: azureWebAppDeploy
+#    displayName: 'Azure Web App Deploy: fantasyfootballstattracker'
+#    steps:
+#    - task: AzureWebApp@1
+#      inputs:
+#        azureSubscription: 'MCAPS-Hybrid-REQ-48771-2022-chtjouma (dc260a42-f9db-45cb-9feb-cfc082d05f62)'
+#        appType: webApp
+#        appName: fantasyfootballstattracker
+#        package: '$(build.artifactstagingdirectory)/**/*.zip'

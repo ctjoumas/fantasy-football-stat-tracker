@@ -7,51 +7,51 @@ on:
   push:
     branches:
       - master
-  workflow_dispatch:
 
+# CONFIGURATION
+# For help, go to https://github.com/Azure/Actions
+#
+# 1. Paste the RBAC json into the following secret in your repository:
+#   AZURE_RBAC_CREDENTIALS
+#
+# 2. Change these variables for your configuration:
+env:
+  AZURE_WEBAPP_NAME: 'fantasyfootballstattracker'
+  AZURE_WEBAPP_PACKAGE_PATH: 'FantasyFootballStatTracker\published'
+  CONFIGURATION: Release
+  DOTNET_CORE_VERSION: '6.0.x'                   # set this to the dotnet version to use (e.g. '2.1.x', '3.1.x', '5.0.x')
+  WORKING_DIRECTORY: FantasyFootballStatTracker
+  
 jobs:
-  build:
+  build-and-deploy:
     runs-on: windows-latest
-
     steps:
-      - uses: actions/checkout@v2
+      - name: 'Checkout GitHub Action'
+        uses: actions/checkout@v3
 
-      - name: Set up .NET Core
-        uses: actions/setup-dotnet@v1
+      - name: Set up .NET Core ${{ env.DOTNET_VERSION }} Environment
+        uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '6.0.x'
-          include-prerelease: true
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Build with dotnet
-        run: dotnet build --configuration Release
+      - name: Restore
+        run: dotnet restore "${{ env.WORKING_DIRECTORY }}"
+        
+      - name: Build
+        run: dotnet build "${{ env.WORKING_DIRECTORY }}" --configuration ${{ env.CONFIGURATION }} --no-restore
 
-      - name: dotnet publish
-        run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
+      - name: Publish
+        run: dotnet publish "${{ env.WORKING_DIRECTORY }}" --configuration ${{ env.CONFIGURATION }} --no-build --output "${{ env.AZURE_WEBAPP_PACKAGE_PATH }}"
 
-      - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v2
+      - name: Publish Artifacts
+        uses: actions/upload-artifact@v3
         with:
           name: .net-app
-          path: ${{env.DOTNET_ROOT}}/myapp
-
-  deploy:
-    runs-on: windows-latest
-    needs: build
-    environment:
-      name: 'Production'
-      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
-
-    steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v2
-        with:
-          name: .net-app
+          path: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
 
       - name: Deploy to Azure Web App
-        id: deploy-to-webapp
         uses: azure/webapps-deploy@v2
         with:
-          app-name: 'fantasyfootballstattracker'
-          slot-name: 'Production'
+          app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_09BEEE031D9A44179121C17C728B9100 }}
-          package: .
+          package: '${{ env.AZURE_WEBAPP_PACKAGE_PATH }}'

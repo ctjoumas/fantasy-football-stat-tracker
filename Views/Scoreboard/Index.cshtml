@@ -9,7 +9,7 @@
     <table class="table border-0" style="border-collapse:collapse">
         <tr>
             <td colspan="3">
-                <label>Choose Week</label>
+                <label>Select Week</label>
                 <form asp-controller="Scoreboard" asp-action="Index" method="post">
                     <select style="width: 45%;" name="week" class="form-control" asp-items="@ViewBag.weeks" new { onchange="this.form.submit();" }></select>
                 </form>

@@ -18,6 +18,7 @@ jobs:
 
   - job: dotNetRestore
     displayName: 'dotnet restore'
+    dependsOn: waitForValidation
     steps:
     - task: DotNetCoreCLI@2
       inputs:
@@ -26,12 +27,14 @@ jobs:
 
   - job: dotNetBuild
     displayName: 'dotnet build'
+    dependsOn: waitForValidation
     steps:
     - task: DotNetCoreCLI@2
       inputs:
         projects: '**/*.csproj'
 
   - job: dotNetPublish
+    dependsOn: waitForValidation
     displayName: 'dotnet publish'
     steps:
     - task: DotNetCoreCLI@2
@@ -40,6 +43,7 @@ jobs:
         arguments: '--configuration $(BuildConfiguration) --output $(Build.ArtifactStagingDirectory)'
 
   - job: publishSymbols
+    dependsOn: waitForValidation
     displayName: 'Publish symbols path'
     steps:
     - task: PublishSymbols@2
@@ -50,6 +54,7 @@ jobs:
       continueOnError: true
 
   - job: publishBuildArtifacts
+    dependsOn: waitForValidation
     displayName: 'Publish Artifact: drop'
     steps:
     - task: PublishBuildArtifacts@1

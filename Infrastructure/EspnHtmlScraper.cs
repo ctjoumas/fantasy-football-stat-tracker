@@ -77,7 +77,7 @@
         {
             JObject playByPlayJsonObject = null;
 
-            var playByPlayJavaScriptNodes = playByPlayDoc.DocumentNode.SelectNodes("//script[@type='text/javascript']");
+            var playByPlayJavaScriptNodes = playByPlayDoc.DocumentNode.SelectNodes("//script");
 
             foreach (var scriptNode in playByPlayJavaScriptNodes)
             {
@@ -85,8 +85,10 @@
                 // window['__espnfitt__'] = { "app": {.... <all json> }
                 if (scriptNode.InnerText.Contains("window['__espnfitt__']"))
                 {
+                    // as of August 2023, the first part of the JSON will have a node before the window['__espnfitt__']=,
+                    // so we need to start the search for the JSON where this element starts
                     string content = scriptNode.InnerText.Trim();
-                    int equalIndex = content.IndexOf("=");
+                    int equalIndex = content.IndexOf("=", content.IndexOf("window['__espnfitt__']"));
 
                     // there is a trailing ;, so pull that off
                     string jsonContent = content.Substring(equalIndex + 1, content.Length - (equalIndex + 2));

@@ -458,22 +458,23 @@
                                         if (playText.ToLower().Contains(abbreviatedPlayerName.ToLower()) ||
                                             playText.ToLower().Contains(playerName.ToLower()))
                                         {
-                                            int indexOfSpaceAfterPlayerName;
+                                            int indexOfSpaceBeforeFgYardage;
                                             int playerNameIndex = playText.IndexOf(abbreviatedPlayerName);
 
-                                            // if the abbreviated player name isn't found, we need to check for the full player name
+                                            // If the abbreviated player name isn't found, we need to check for the full player name.
+                                            // The format will then be (7:33 - 4th) Justin Tucker Made 50 Yd Field Goal, so we need to account for the word "Made"
                                             if (playerNameIndex == -1)
                                             {
-                                                playerNameIndex = playText.IndexOf(playerName.ToLower());
-                                                indexOfSpaceAfterPlayerName = playText.IndexOf(" ", playerNameIndex + playerName.Length);
+                                                playerNameIndex = playText.IndexOf(playerName);
+                                                indexOfSpaceBeforeFgYardage = playText.IndexOf("Made") + "Made".Length;
                                             }
                                             else
                                             {
-                                                indexOfSpaceAfterPlayerName = playText.IndexOf(" ", playerNameIndex + abbreviatedPlayerName.Length);
+                                                indexOfSpaceBeforeFgYardage = playText.IndexOf(" ", playerNameIndex + abbreviatedPlayerName.Length);
                                             }
 
-                                            int indexOfSpaceAfterFgDistance = playText.IndexOf(" ", indexOfSpaceAfterPlayerName + 1);
-                                            int fgDistance = int.Parse(playText.Substring(indexOfSpaceAfterPlayerName, (indexOfSpaceAfterFgDistance - indexOfSpaceAfterPlayerName)));
+                                            int indexOfSpaceAfterFgDistance = playText.IndexOf(" ", indexOfSpaceBeforeFgYardage + 1);
+                                            int fgDistance = int.Parse(playText.Substring(indexOfSpaceBeforeFgYardage, (indexOfSpaceAfterFgDistance - indexOfSpaceBeforeFgYardage)));
 
                                             if (fgDistance < 40)
                                                 fieldGoalPoints += 3;

@@ -463,15 +463,17 @@
 
                                             // If the abbreviated player name isn't found, we need to check for the full player name.
                                             // The format will then be (7:33 - 4th) Justin Tucker Made 50 Yd Field Goal, so we need to account for the word "Made"
+                                            // As of September 2024, the text with a full name now shows up as: "(11:39 - 2nd) Brandon Aubrey 38 Yd Field Goal"
                                             if (playerNameIndex == -1)
                                             {
                                                 playerNameIndex = playText.IndexOf(playerName);
-                                                indexOfSpaceBeforeFgYardage = playText.IndexOf("Made") + "Made".Length;
+                                                //indexOfSpaceBeforeFgYardage = playText.IndexOf("Made") + "Made".Length;
                                             }
-                                            else
-                                            {
-                                                indexOfSpaceBeforeFgYardage = playText.IndexOf(" ", playerNameIndex + abbreviatedPlayerName.Length);
-                                            }
+                                            //else
+                                            //{
+                                            //    indexOfSpaceBeforeFgYardage = playText.IndexOf(" ", playerNameIndex + abbreviatedPlayerName.Length);
+                                            //}
+                                            indexOfSpaceBeforeFgYardage = playText.IndexOf(" ", playerNameIndex + abbreviatedPlayerName.Length);
 
                                             int indexOfSpaceAfterFgDistance = playText.IndexOf(" ", indexOfSpaceBeforeFgYardage + 1);
                                             int fgDistance = int.Parse(playText.Substring(indexOfSpaceBeforeFgYardage, (indexOfSpaceAfterFgDistance - indexOfSpaceBeforeFgYardage)));

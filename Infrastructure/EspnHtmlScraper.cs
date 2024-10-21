@@ -559,7 +559,7 @@
                         // returns, we can just check the last row which is the team total so we don't have to loop through each player on the team
                         if (position.Equals(Position.DEF))
                         {
-                            if (stat.Equals("Defensive"))
+                            if (stat.Equals("Defense"))
                             {
                                 var defensiveTeamStatsTotalNode = boxscoreTeamNode.SelectNodes(".//tr[@class='Boxscore__Totals Table__TR Table__TR--sm Table__even']")[1];
                                 fantasyPoints += handleDefensiveStats(defensiveTeamStatsTotalNode);

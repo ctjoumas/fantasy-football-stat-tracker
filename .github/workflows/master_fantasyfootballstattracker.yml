@@ -29,6 +29,11 @@ jobs:
       - name: 'Checkout GitHub Action'
         uses: actions/checkout@v3
 
+      - name: 'Login via Azure CLI'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_RBAC_CREDENTIALS }}
+
       - name: Set up .NET Core ${{ env.DOTNET_VERSION }} Environment
         uses: actions/setup-dotnet@v3
         with:
@@ -52,6 +57,5 @@ jobs:
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
-          app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_09BEEE031D9A44179121C17C728B9100 }}
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
           package: '${{ env.AZURE_WEBAPP_PACKAGE_PATH }}'

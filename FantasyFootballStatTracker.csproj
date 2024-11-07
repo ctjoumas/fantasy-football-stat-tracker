@@ -3,16 +3,38 @@
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <UserSecretsId>52e582df-f455-4629-a54c-fa4310ef689d</UserSecretsId>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Core" Version="1.26.0" />
-    <PackageReference Include="Azure.Identity" Version="1.5.0" />
+    <Compile Remove="N2SqlLibrary\**" />
+    <Compile Remove="nl2sql.library\**" />
+    <Content Remove="N2SqlLibrary\**" />
+    <Content Remove="nl2sql.library\**" />
+    <EmbeddedResource Remove="N2SqlLibrary\**" />
+    <EmbeddedResource Remove="nl2sql.library\**" />
+    <None Remove="N2SqlLibrary\**" />
+    <None Remove="nl2sql.library\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Core" Version="1.44.1" />
+    <PackageReference Include="Azure.Identity" Version="1.13.1" />
+    <PackageReference Include="Dapper" Version="2.1.35" />
     <PackageReference Include="HtmlAgilityPack" Version="1.11.37" />
     <PackageReference Include="Microsoft.AspNetCore.Session" Version="2.2.0" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.1" />
     <PackageReference Include="Microsoft.Extensions.Logging.AzureAppServices" Version="6.0.3" />
+    <PackageReference Include="Microsoft.SemanticKernel" Version="1.15.1" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="3.1.5" />
-    <PackageReference Include="System.Data.SqlClient" Version="4.8.3" />
+    <PackageReference Include="System.Data.SqlClient" Version="4.8.6" />
+    <PackageReference Include="System.Linq.Async" Version="6.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="nl2sql.library\Nl2Sql.Library.csproj" />
   </ItemGroup>
 
 </Project>

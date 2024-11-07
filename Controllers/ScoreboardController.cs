@@ -26,6 +26,11 @@
         public const string SessionKeyWeek = "_Week";
 
         /// <summary>
+        /// Session key for the AI Season Insights
+        /// </summary>
+        //public const string SessionKeySeasonInsights = "_SeasonInsights";
+
+        /// <summary>
         /// Session key for the Azure SQL Access token
         /// </summary>
         public const string SessionKeyAzureSqlAccessToken = "_Token";
@@ -111,7 +116,7 @@
                         HttpContext.Session.SetObjectAsJson(Infrastructure.SessionExtensions.SessionKeyLogos, OwnerLogos);
                     }
                 }
-            }            
+            }
 
             // call stored procedure to get all players for each team's roster for this week
             using (SqlCommand command = new SqlCommand("GetTeamsForGivenWeek", sqlConnection))
@@ -134,7 +139,7 @@
                         int ownerId = (int)reader.GetValue(reader.GetOrdinal("OwnerID"));
                         string ownerName = reader.GetValue(reader.GetOrdinal("OwnerName")).ToString();
                         string playerName = reader.GetValue(reader.GetOrdinal("PlayerName")).ToString();
-                        Position position = (Position)Enum.Parse(typeof(Position),reader.GetValue(reader.GetOrdinal("Position")).ToString().Trim());
+                        Position position = (Position)Enum.Parse(typeof(Position), reader.GetValue(reader.GetOrdinal("Position")).ToString().Trim());
                         bool gameEnded = (bool)reader.GetValue(reader.GetOrdinal("GameEnded"));
                         bool gameCanceled = (bool)reader.GetValue(reader.GetOrdinal("GameCanceled"));
                         double finalPoints = (double)reader.GetValue(reader.GetOrdinal("FinalPoints"));
@@ -391,7 +396,7 @@
 
             // Pull out the players for team two and sort by position
             List<SelectedPlayer> teamTwoPlayers = players.Where(x => x.OwnerId == 2).ToList();
-            teamTwoPlayers = teamTwoPlayers.OrderBy(x => (int) x.Position).ToList();
+            teamTwoPlayers = teamTwoPlayers.OrderBy(x => (int)x.Position).ToList();
 
             // Total up the scores from this team
             pointsList = teamTwoPlayers.Select(x => x.Points).ToList();
@@ -494,7 +499,7 @@
         /// </summary>
         /// <param name="selectedWeek">The week selected from the form; null if page is first loaded</param>
         /// <returns>/A list of all weeks a matchup has been played</returns>
-        private List<SelectListItem> GetGameWeeks(string selectedWeek)
+        private async Task<List<SelectListItem>> GetGameWeeks(string selectedWeek)
         {
             List<SelectListItem> weeks = new List<SelectListItem>();
 
@@ -506,21 +511,17 @@
                 Encrypt = true
             };
 
-            var sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
-
             string azureSqlToken = Microsoft.AspNetCore.Http.SessionExtensions.GetString(HttpContext.Session, SessionKeyAzureSqlAccessToken);
 
             // if we haven't retrieved the token yet, retrieve it and set it in the session (at this point though, we should have the token)
             if (azureSqlToken == null)
             {
-                var tokenRequestContext = new TokenRequestContext(new[] { "https://database.windows.net//.default" });
-                var tokenRequestResult = new DefaultAzureCredential().GetToken(tokenRequestContext);
-
-                azureSqlToken = tokenRequestResult.Token;
+                azureSqlToken = await GetAzureSqlAccessToken();
 
                 Microsoft.AspNetCore.Http.SessionExtensions.SetString(HttpContext.Session, SessionKeyAzureSqlAccessToken, azureSqlToken);
             }
 
+            SqlConnection sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
             sqlConnection.AccessToken = azureSqlToken;
 
             sqlConnection.Open();
@@ -670,7 +671,7 @@
         /// <param name="playerFinalScore">The final score the player got in the game</param>
         /// <param name="finalScoreString">The final score string for the player's team, which is displayed in the UI</param>
         /// <param name="week">The week we are updating</param>
-        private void updateCurrentRosterWithFinalScore(bool gameEnded, bool gameCanceled, int ownerId, string espnPlayerId, double playerFinalScore, string finalScoreString, int week)
+        private async Task updateCurrentRosterWithFinalScore(bool gameEnded, bool gameCanceled, int ownerId, string espnPlayerId, double playerFinalScore, string finalScoreString, int week)
         {
             var connectionStringBuilder = new SqlConnectionStringBuilder
             {
@@ -687,10 +688,7 @@
             // if we haven't retrieved the token yet, retrieve it and set it in the session
             if (azureSqlToken == null)
             {
-                var tokenRequestContext = new TokenRequestContext(new[] { "https://database.windows.net//.default" });
-                var tokenRequestResult = new DefaultAzureCredential().GetToken(tokenRequestContext);
-
-                azureSqlToken = tokenRequestResult.Token;
+                azureSqlToken = await GetAzureSqlAccessToken();
 
                 Microsoft.AspNetCore.Http.SessionExtensions.SetString(HttpContext.Session, SessionKeyAzureSqlAccessToken, azureSqlToken);
             }

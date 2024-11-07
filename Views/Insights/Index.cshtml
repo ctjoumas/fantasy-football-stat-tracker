@@ -1,0 +1,93 @@
+﻿@{
+    ViewData["Title"] = "Season Insights";
+}
+
+<style>
+    /* Global fix to prevent horizontal scroll */
+    body {
+        overflow-x: hidden; /* Ensure the whole page doesn't overflow horizontally */
+        font-family: 'Arial', sans-serif; /* Clean, modern font */
+        background-color: #f4f7fa; /* Light background color for the whole page */
+        color: #333; /* Dark text color for contrast */
+        margin: 0;
+        padding: 0;
+    }
+
+    /* Container for the insights box */
+    .container {
+        max-width: 55%; /* Control the width of the insights box */
+        margin-top: 30px;
+        margin-bottom: 30px;
+        padding: 0 15px; /* Optional padding for small spacing on sides */
+        overflow-x: hidden; /* Prevent horizontal scroll within the container */
+        text-align: center;
+        display: flex;
+        justify-content: center;
+    }
+
+    /* The insights box styling */
+    .insights-box {
+        border-radius: 8px; /* Rounded corners for a softer look */
+        padding: 20px;
+        background-color: #ffffff; /* White background */
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1); /* Soft shadow for depth */
+        word-wrap: break-word; /* Break long words */
+        word-break: break-word; /* Break unbreakable words */
+        overflow-wrap: break-word; /* For breaking long URLs or continuous strings */
+        max-height: 800px;
+        overflow-y: auto; /* Enable vertical scroll if content overflows */
+        box-sizing: border-box; /* Ensure padding & border are included in the width */
+        border-left: 5px solid #3498db; /* Colorful left border */
+        background: linear-gradient(135deg, #ffffff, #f9f9f9); /* Soft gradient for background */
+    }
+
+    /* Table styling (if needed) */
+    .table {
+        width: 100%;
+        text-align: left;
+        table-layout: fixed; /* Prevent the table from growing too wide */
+    }
+
+    /* Optional additional styling for the content */
+    td {
+        white-space: normal; /* Allow content to break into multiple lines */
+    }
+
+    /* Typography styling for the title */
+    h3 {
+        font-size: 1.5rem;
+        color: #2c3e50; /* Slightly darker text color for the title */
+        margin-bottom: 15px;
+        font-weight: bold;
+    }
+
+    /* Scrollbar styling for better aesthetics */
+    .insights-box::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .insights-box::-webkit-scrollbar-thumb {
+        background-color: #3498db; /* Blue scrollbar thumb */
+        border-radius: 4px;
+    }
+
+    .insights-box::-webkit-scrollbar-track {
+        background: #f0f0f0;
+        border-radius: 4px;
+    }
+</style>
+
+<div class="container">
+    <div class="insights-box">
+        <h3>Season Insights</h3>
+        <table class="table table-borderless">
+            <tbody>
+                <tr>
+                    <td>
+                        @Html.Raw(ViewBag.SeasonInsights) <!-- Ensure raw HTML is rendered if necessary -->
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -6,12 +6,9 @@
     using Azure.Core;
     using Azure.Identity;
     using Microsoft.AspNetCore.Http;
-    using Microsoft.AspNetCore.Mvc;
-    using Microsoft.AspNetCore.Mvc.Rendering;
     using System;
     using System.Data.SqlClient;
     using System.Threading.Tasks;
-    using FantasyFootballStatTracker.Infrastructure;
     
     public class DBQueryPlugin
     {
@@ -53,14 +50,11 @@
             var session = _httpContextAccessor.HttpContext.Session;
             string azureSqlToken = session.GetString(SessionKeyAzureSqlAccessToken);
 
-            //string azureSqlToken = Microsoft.AspNetCore.Http.SessionExtensions.GetString(HttpContext.Session, SessionKeyAzureSqlAccessToken);
-
             // if we haven't retrieved the token yet, retrieve it and set it in the session (at this point though, we should have the token)
             if (azureSqlToken == null)
             {
                 azureSqlToken = await GetAzureSqlAccessToken();
 
-                //Microsoft.AspNetCore.Http.SessionExtensions.SetString(HttpContext.Session, SessionKeyAzureSqlAccessToken, azureSqlToken);
                 session.SetString(SessionKeyAzureSqlAccessToken, azureSqlToken);
             }
 

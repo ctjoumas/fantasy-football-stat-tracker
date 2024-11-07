@@ -318,7 +318,7 @@
             string week = Microsoft.AspNetCore.Http.SessionExtensions.GetString(HttpContext.Session, SessionKeyWeek);
 
             // populate the week dropdown with all weeks a matchup has been played
-            ViewBag.weeks = GetGameWeeks(week);
+            ViewBag.weeks = await GetGameWeeks(week);
 
             // there may be a better way of doing this, but the GetGameWeeks call will update the session variable to the latest
             // week if no week was selected, whether it's the latest week or the new week which a team needs to be selected for
@@ -681,11 +681,9 @@
                 Encrypt = true
             };
 
-            var sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
-
             string azureSqlToken = Microsoft.AspNetCore.Http.SessionExtensions.GetString(HttpContext.Session, SessionKeyAzureSqlAccessToken);
 
-            // if we haven't retrieved the token yet, retrieve it and set it in the session
+            // if we haven't retrieved the token yet, retrieve it and set it in the session (at this point though, we should have the token)
             if (azureSqlToken == null)
             {
                 azureSqlToken = await GetAzureSqlAccessToken();
@@ -693,6 +691,7 @@
                 Microsoft.AspNetCore.Http.SessionExtensions.SetString(HttpContext.Session, SessionKeyAzureSqlAccessToken, azureSqlToken);
             }
 
+            SqlConnection sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
             sqlConnection.AccessToken = azureSqlToken;
 
             sqlConnection.Open();

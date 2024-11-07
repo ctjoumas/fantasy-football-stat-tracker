@@ -1,22 +1,70 @@
-namespace FantasyFootballStatTracker
+using FantasyFootballStatTracker.Plugins;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add configuration from appsettings.json and appsettings.Development.json
+builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                     .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true)
+                     .AddEnvironmentVariables(); // Optional, for environment variable overrides
+
+builder.Services.AddHttpContextAccessor();
+
+// Add services to the container.
+builder.Services.AddControllersWithViews();
+
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
 {
-    using Microsoft.AspNetCore.Hosting;
-    using Microsoft.Extensions.Hosting;
-    using Microsoft.Extensions.Logging;
+    options.IdleTimeout = TimeSpan.FromMinutes(1);
+});
 
-    public class Program
-    {
-        public static void Main(string[] args)
-        {
-            CreateHostBuilder(args).Build().Run();
-        }
+builder.Services.AddTransient<Kernel>(s =>
+{
+    var config = s.GetRequiredService<IConfiguration>();
 
-        public static IHostBuilder CreateHostBuilder(string[] args) =>
-            Host.CreateDefaultBuilder(args)
-                .ConfigureLogging(builder => builder.AddAzureWebAppDiagnostics())
-                .ConfigureWebHostDefaults(webBuilder =>
-                {
-                    webBuilder.UseStartup<Startup>();
-                });
-    }
+    var apiDeploymentName = config["AppConfiguration:ApiDeploymentName"];
+    var openAiEndpoint = config["AppConfiguration:OpenAiEndpoint"];
+    var openAiApiKey = config["AppConfiguration:OpenAiApiKey"];
+
+    var builder = Kernel.CreateBuilder();
+    builder.AddAzureOpenAIChatCompletion(
+        apiDeploymentName,
+        openAiEndpoint,
+        openAiApiKey
+    );
+
+    builder.Plugins.AddFromType<DBQueryPlugin>();
+
+    return builder.Build();
+});
+
+builder.Services.AddSingleton<IChatCompletionService>(sp =>
+            sp.GetRequiredService<Kernel>().GetRequiredService<IChatCompletionService>());
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Home/Error");
+    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+    //app.UseHsts();
 }
+
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+
+app.UseSession();
+
+app.UseRouting();
+
+app.UseAuthorization();
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}");
+
+app.Run();

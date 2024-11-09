@@ -52,7 +52,7 @@
                 Encrypt = true
             };
 
-            var sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
+            
 
             string azureSqlToken = SessionExtensions.GetString(HttpContext.Session, SessionKeyAzureSqlAccessToken);
 
@@ -67,9 +67,12 @@
                 SessionExtensions.SetString(HttpContext.Session, SessionKeyAzureSqlAccessToken, azureSqlToken);
             }
 
+            SqlConnection sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
             sqlConnection.AccessToken = azureSqlToken;
 
-            var jsonSchema = await sqlHarness.ReverseEngineerSchemaJSONAsync(tableNames, sqlConnection.ConnectionString);
+            await sqlConnection.OpenAsync();
+
+            var jsonSchema = await sqlHarness.ReverseEngineerSchemaJSONAsync(tableNames, sqlConnection);
 
             var systemPrompt = $@"You are responsible for generating and executing a SQL query.
                                 Only target the tables described in the given database schema. The database stores

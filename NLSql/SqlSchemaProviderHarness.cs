@@ -27,10 +27,10 @@ public sealed class SqlSchemaProviderHarness
         return yaml;    
     }*/
 
-    public async Task<string> ReverseEngineerSchemaJSONAsync(string[] tableNames, string dbConnection)
+    public async Task<string> ReverseEngineerSchemaJSONAsync(string[] tableNames, SqlConnection sqlConnection)
     {
-        string dbName = GetDatabaseName(dbConnection);
-        var yaml = await this.CaptureSchemaJSONAsync(dbName, dbConnection, _dbDescription, tableNames).ConfigureAwait(false);
+        string dbName = await GetDatabaseName(sqlConnection);
+        var yaml = await this.CaptureSchemaJSONAsync(dbName, sqlConnection, _dbDescription, tableNames).ConfigureAwait(false);
 
         return yaml;
     }
@@ -55,16 +55,13 @@ public sealed class SqlSchemaProviderHarness
         //await this.SaveSchemaAsync("json", databaseKey, schema.ToJson()).ConfigureAwait(false);
     }
 
-    private async Task<string> CaptureSchemaJSONAsync(string databaseKey, string? connectionString, string? description, params string[] tableNames)
+    private async Task<string> CaptureSchemaJSONAsync(string databaseKey, SqlConnection sqlConnection, string? description, params string[] tableNames)
     {
-        using var connection = new SqlConnection(connectionString);
-        await connection.OpenAsync().ConfigureAwait(false);
-
-        var provider = new SqlSchemaProvider(connection);
+        var provider = new SqlSchemaProvider(sqlConnection);
 
         var schema = await provider.GetSchemaAsync(databaseKey, description, tableNames).ConfigureAwait(false);
 
-        await connection.CloseAsync().ConfigureAwait(false);
+        await sqlConnection.CloseAsync().ConfigureAwait(false);
 
         var yamlText = await schema.FormatAsync(YamlSchemaFormatter.Instance).ConfigureAwait(false);
 
@@ -75,19 +72,14 @@ public sealed class SqlSchemaProviderHarness
         //await this.SaveSchemaAsync("json", databaseKey, schema.ToJson()).ConfigureAwait(false);
     }
 
-    private static string GetDatabaseName(string connectionString)
+    private async Task<string> GetDatabaseName(SqlConnection sqlConnection)
     {
-        DbConnectionStringBuilder builder = new DbConnectionStringBuilder();
-        builder.ConnectionString = connectionString;
-        object databaseName;
+        string query = "SELECT DB_NAME() AS CurrentDatabase;";
 
-        if (builder.TryGetValue("Initial Catalog", out databaseName) || builder.TryGetValue("Database", out databaseName))
+        using (var command = new SqlCommand(query, sqlConnection))
         {
-            return databaseName.ToString();
-        }
-        else
-        {
-            return string.Empty;
+            var result = await command.ExecuteScalarAsync();
+            return result?.ToString();
         }
     }
 }

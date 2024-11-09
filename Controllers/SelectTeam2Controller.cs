@@ -261,10 +261,9 @@
 
             var sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
 
-            // check to see if the access token has already been retrieved and us it if so
             string azureSqlToken = Microsoft.AspNetCore.Http.SessionExtensions.GetString(HttpContext.Session, SessionKeyAzureSqlAccessToken);
 
-            // if we haven't retrieved the token yet, retrieve it and set it in the session
+            // if we haven't retrieved the token yet, retrieve it and set it in the session (at this point though, we should have the token)
             if (azureSqlToken == null)
             {
                 var tokenRequestContext = new TokenRequestContext(new[] { "https://database.windows.net//.default" });

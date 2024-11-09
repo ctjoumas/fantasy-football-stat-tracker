@@ -9,7 +9,7 @@
     using System;
     using System.Collections;
     using System.Collections.Generic;
-    using System.Data.SqlClient;
+    using Microsoft.Data.SqlClient;
     using System.Linq;
     using System.Threading.Tasks;
     using FantasyFootballStatTracker.Infrastructure;
@@ -524,7 +524,7 @@
             SqlConnection sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
             sqlConnection.AccessToken = azureSqlToken;
 
-            sqlConnection.Open();
+            await sqlConnection.OpenAsync();
 
             string week = "0";
 
@@ -694,7 +694,7 @@
             SqlConnection sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
             sqlConnection.AccessToken = azureSqlToken;
 
-            sqlConnection.Open();
+            await sqlConnection.OpenAsync();
 
             using (SqlCommand command = new SqlCommand("UpdatePlayerFinalScore", sqlConnection))
             {

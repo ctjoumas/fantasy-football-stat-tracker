@@ -1,5 +1,8 @@
+using Azure.AI.OpenAI;
 using FantasyFootballStatTracker.Plugins;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 
@@ -10,10 +13,10 @@ builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnCh
                      .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true)
                      .AddEnvironmentVariables(); // Optional, for environment variable overrides
 
-builder.Services.AddHttpContextAccessor();
-
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+
+//builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>

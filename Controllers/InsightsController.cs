@@ -52,17 +52,21 @@
                 Encrypt = true
             };
 
-            string azureSqlToken = Microsoft.AspNetCore.Http.SessionExtensions.GetString(HttpContext.Session, SessionKeyAzureSqlAccessToken);
+            var sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
+
+            string azureSqlToken = SessionExtensions.GetString(HttpContext.Session, SessionKeyAzureSqlAccessToken);
 
             // if we haven't retrieved the token yet, retrieve it and set it in the session (at this point though, we should have the token)
             if (azureSqlToken == null)
             {
-                azureSqlToken = await GetAzureSqlAccessToken();
+                var tokenRequestContext = new TokenRequestContext(new[] { "https://database.windows.net//.default" });
+                var tokenRequestResult = new DefaultAzureCredential().GetToken(tokenRequestContext);
 
-                Microsoft.AspNetCore.Http.SessionExtensions.SetString(HttpContext.Session, SessionKeyAzureSqlAccessToken, azureSqlToken);
+                azureSqlToken = tokenRequestResult.Token;
+
+                SessionExtensions.SetString(HttpContext.Session, SessionKeyAzureSqlAccessToken, azureSqlToken);
             }
 
-            SqlConnection sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
             sqlConnection.AccessToken = azureSqlToken;
 
             var jsonSchema = await sqlHarness.ReverseEngineerSchemaJSONAsync(tableNames, connectionStringBuilder.ConnectionString);
@@ -70,14 +74,17 @@
             var systemPrompt = $@"You are responsible for generating and executing a SQL query.
                                 Only target the tables described in the given database schema. The database stores
                                 information about two owners who are playing a weekly fantasy football game against each other.
-                                Your job is to analyze all of the weekly matchups which have taken place to date. You will provide
-                                an overview of which owner is doing better, how they are faring in selecting players each week, adding
-                                humorous context to the analysis.
+                                Your job is to analyze all of the weekly matchups which have taken place to date, using the Season year
+                                that is present in the tables. You will provide an overview of which owner is doing better, how they
+                                are faring in selecting players each week, adding humorous context to the analysis.
 
                                 Perform each of the following steps:
                                 1. Generate a query that is always entirely based on the targeted database schema.
                                 2. Execute the query using the available plugin.
-                                3. Summarize the results to the user.
+                                3. Determine if the most recent week played is completed or not. If this week is not yet completed, you
+                                   will specify that the week is in progress and you will provide commentary on how the week is going
+                                   and what each team has left in order to secure a victory.
+                                4. Summarize the results to the user.
 
                                 This data will be presented on a webpage, so please format the response in HTML without using
                                 any code block markers or markdown formatting.

@@ -12,17 +12,17 @@
     
     public class DBQueryPlugin
     {
-        private readonly IHttpContextAccessor _httpContextAccessor;
+       //private readonly IHttpContextAccessor _httpContextAccessor;
 
         /// <summary>
         /// Session key for the Azure SQL Access token
         /// </summary>
         public const string SessionKeyAzureSqlAccessToken = "_Token";
 
-        public DBQueryPlugin(IHttpContextAccessor httpContextAccessor)
+        /*public DBQueryPlugin(IHttpContextAccessor httpContextAccessor)
         {
             _httpContextAccessor = httpContextAccessor;
-        }
+        }*/
 
         private static async Task<string> GetAzureSqlAccessToken()
         {
@@ -47,7 +47,7 @@
                 Encrypt = true
             };
 
-            var session = _httpContextAccessor.HttpContext.Session;
+            /*var session = _httpContextAccessor.HttpContext.Session;
             string azureSqlToken = session.GetString(SessionKeyAzureSqlAccessToken);
 
             // if we haven't retrieved the token yet, retrieve it and set it in the session (at this point though, we should have the token)
@@ -56,9 +56,12 @@
                 azureSqlToken = await GetAzureSqlAccessToken();
 
                 session.SetString(SessionKeyAzureSqlAccessToken, azureSqlToken);
-            }
+            }*/
+
+            string azureSqlToken = await GetAzureSqlAccessToken();
 
             SqlConnection sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
+
             sqlConnection.AccessToken = azureSqlToken;
 
             var azureDbService = new AzureDbService(connectionStringBuilder.ConnectionString);

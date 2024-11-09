@@ -69,7 +69,7 @@
 
             sqlConnection.AccessToken = azureSqlToken;
 
-            var jsonSchema = await sqlHarness.ReverseEngineerSchemaJSONAsync(tableNames, connectionStringBuilder.ConnectionString);
+            var jsonSchema = await sqlHarness.ReverseEngineerSchemaJSONAsync(tableNames, sqlConnection.ConnectionString);
 
             var systemPrompt = $@"You are responsible for generating and executing a SQL query.
                                 Only target the tables described in the given database schema. The database stores

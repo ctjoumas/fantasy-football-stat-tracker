@@ -15,14 +15,17 @@
 
     /* Container for the insights box */
     .container {
-        max-width: 55%; /* Control the width of the insights box */
+        width: 90%; /* Ensure full width for small screens, and constrain on large */
+        max-width: 1100px; /* Max width for large screens */
         margin-top: 30px;
         margin-bottom: 30px;
         padding: 0 15px; /* Optional padding for small spacing on sides */
-        overflow-x: hidden; /* Prevent horizontal scroll within the container */
         text-align: center;
         display: flex;
         justify-content: center;
+        margin-left: auto;
+        margin-right: auto;
+        flex-wrap: wrap; /* Allow items to wrap on smaller screens */
     }
 
     /* The insights box styling */
@@ -39,6 +42,8 @@
         box-sizing: border-box; /* Ensure padding & border are included in the width */
         border-left: 5px solid #3498db; /* Colorful left border */
         background: linear-gradient(135deg, #ffffff, #f9f9f9); /* Soft gradient for background */
+        width: 100%; /* Ensure it takes full width of container */
+        box-sizing: border-box; /* Ensure padding is included in width */
     }
 
     /* Table styling (if needed) */
@@ -75,6 +80,27 @@
         background: #f0f0f0;
         border-radius: 4px;
     }
+
+    /* Flexbox to ensure responsiveness */
+    .container {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center; /* Center the content */
+        padding: 20px;
+    }
+
+    /* Ensure the insights box takes 100% width on smaller screens */
+    .insights-box {
+        flex: 1 1 100%; /* Allow the box to grow and shrink and take full width on smaller screens */
+        margin: 10px;
+        box-sizing: border-box; /* Ensure padding is included in width */
+    }
+
+    /* Control width for larger screens */
+    .insights-box {
+        max-width: 900px; /* You can control max width on larger screens */
+    }
+
 </style>
 
 <div class="container">

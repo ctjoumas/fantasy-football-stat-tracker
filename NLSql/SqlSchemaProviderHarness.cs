@@ -30,7 +30,7 @@ public sealed class SqlSchemaProviderHarness
     public async Task<string> ReverseEngineerSchemaJSONAsync(string[] tableNames, SqlConnection sqlConnection)
     {
         string dbName = await GetDatabaseName(sqlConnection);
-        logger.LogInformation(dbName);
+        System.Diagnostics.Debug.WriteLine($"Database name: {dbName}");
         var yaml = await this.CaptureSchemaJSONAsync(dbName, sqlConnection, _dbDescription, tableNames).ConfigureAwait(false);
 
         return yaml;
@@ -61,6 +61,8 @@ public sealed class SqlSchemaProviderHarness
         var provider = new SqlSchemaProvider(sqlConnection);
 
         var schema = await provider.GetSchemaAsync(databaseKey, description, tableNames).ConfigureAwait(false);
+
+        System.Diagnostics.Debug.WriteLine($"Schema: {schema}");
 
         await sqlConnection.CloseAsync().ConfigureAwait(false);
 

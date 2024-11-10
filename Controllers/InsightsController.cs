@@ -69,6 +69,7 @@
             sqlConnection.AccessToken = azureSqlToken;
 
             await sqlConnection.OpenAsync();
+            System.Diagnostics.Debug.WriteLine("Connection open");
 
             var jsonSchema = await sqlHarness.ReverseEngineerSchemaJSONAsync(tableNames, sqlConnection);
             

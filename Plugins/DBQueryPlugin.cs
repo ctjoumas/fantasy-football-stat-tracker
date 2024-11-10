@@ -68,7 +68,7 @@
             //var azureDbService = new AzureDbService(connectionStringBuilder.ConnectionString);
             var azureDbService = new AzureDbService();
             var dbResults = await azureDbService.GetDbResults(sqlConnection, query);
-
+            System.Diagnostics.Debug.WriteLine($"DB Results from plugin: {dbResults}");
             await sqlConnection.CloseAsync();
 
             string results = dbResults;

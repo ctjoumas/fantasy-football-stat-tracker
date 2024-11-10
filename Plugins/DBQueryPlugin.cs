@@ -61,11 +61,15 @@
             string azureSqlToken = await GetAzureSqlAccessToken();
 
             SqlConnection sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
-
             sqlConnection.AccessToken = azureSqlToken;
 
-            var azureDbService = new AzureDbService(connectionStringBuilder.ConnectionString);
-            var dbResults = await azureDbService.GetDbResults(query);
+            await sqlConnection.OpenAsync();
+
+            //var azureDbService = new AzureDbService(connectionStringBuilder.ConnectionString);
+            var azureDbService = new AzureDbService();
+            var dbResults = await azureDbService.GetDbResults(sqlConnection, query);
+
+            await sqlConnection.CloseAsync();
 
             string results = dbResults;
 

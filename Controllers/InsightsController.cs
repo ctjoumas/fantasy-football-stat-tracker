@@ -50,9 +50,7 @@
                 InitialCatalog = "PlayersAndSchedulesDetails",
                 TrustServerCertificate = false,
                 Encrypt = true
-            };
-
-            
+            };            
 
             string azureSqlToken = SessionExtensions.GetString(HttpContext.Session, SessionKeyAzureSqlAccessToken);
 
@@ -73,7 +71,7 @@
             await sqlConnection.OpenAsync();
 
             var jsonSchema = await sqlHarness.ReverseEngineerSchemaJSONAsync(tableNames, sqlConnection);
-
+            
             var systemPrompt = $@"You are responsible for generating and executing a SQL query.
                                 Only target the tables described in the given database schema. The database stores
                                 information about two owners who are playing a weekly fantasy football game against each other.

@@ -137,20 +137,20 @@
                     while (reader.Read())
                     {
                         int ownerId = (int)reader.GetValue(reader.GetOrdinal("OwnerID"));
-                        string ownerName = reader.GetValue(reader.GetOrdinal("OwnerName")).ToString();
-                        string playerName = reader.GetValue(reader.GetOrdinal("PlayerName")).ToString();
+                        string? ownerName = reader.GetValue(reader.GetOrdinal("OwnerName")).ToString();
+                        string? playerName = reader.GetValue(reader.GetOrdinal("PlayerName")).ToString();
                         Position position = (Position)Enum.Parse(typeof(Position), reader.GetValue(reader.GetOrdinal("Position")).ToString().Trim());
                         bool gameEnded = (bool)reader.GetValue(reader.GetOrdinal("GameEnded"));
                         bool gameCanceled = (bool)reader.GetValue(reader.GetOrdinal("GameCanceled"));
                         double finalPoints = (double)reader.GetValue(reader.GetOrdinal("FinalPoints"));
-                        string finalScoreString = reader.GetValue(reader.GetOrdinal("FinalScoreString")).ToString();
-                        string espnPlayerId = reader.GetValue(reader.GetOrdinal("EspnPlayerId")).ToString();
-                        string headshotUrl = reader.GetValue(reader.GetOrdinal("HeadshotUrl")).ToString();
-                        string espnGameId = ((int)reader.GetValue(reader.GetOrdinal("EspnGameId"))).ToString();
-                        string homeOrAway = reader.GetValue(reader.GetOrdinal("HomeOrAway")).ToString();
-                        string teamName = reader.GetValue(reader.GetOrdinal("TeamName")).ToString();
-                        string teamAbbreviation = reader.GetValue(reader.GetOrdinal("TeamAbbreviation")).ToString();
-                        string opponentAbbreviation = reader.GetValue(reader.GetOrdinal("OpponentAbbreviation")).ToString();
+                        string? finalScoreString = reader.GetValue(reader.GetOrdinal("FinalScoreString")).ToString();
+                        string? espnPlayerId = reader.GetValue(reader.GetOrdinal("EspnPlayerId")).ToString();
+                        string? headshotUrl = reader.GetValue(reader.GetOrdinal("HeadshotUrl")).ToString();
+                        string? espnGameId = ((int)reader.GetValue(reader.GetOrdinal("EspnGameId"))).ToString();
+                        string? homeOrAway = reader.GetValue(reader.GetOrdinal("HomeOrAway")).ToString();
+                        string? teamName = reader.GetValue(reader.GetOrdinal("TeamName")).ToString();
+                        string? teamAbbreviation = reader.GetValue(reader.GetOrdinal("TeamAbbreviation")).ToString();
+                        string? opponentAbbreviation = reader.GetValue(reader.GetOrdinal("OpponentAbbreviation")).ToString();
                         DateTime gameDate = DateTime.Parse((reader.GetValue(reader.GetOrdinal("GameDate")).ToString()));
 
                         Position positionType = Position.FLEX;
@@ -262,23 +262,23 @@
                         }
 
                         SelectedPlayer player = new SelectedPlayer();
-                        player.Name = playerName;
-                        player.Headshot = headshotUrl;
+                        player.Name = playerName ??= string.Empty;
+                        player.Headshot = headshotUrl ??= string.Empty;
                         player.TruePosition = position;
                         player.Position = positionType;
                         player.EspnGameId = espnGameId;
                         player.GameTime = gameDate;
-                        player.EspnPlayerId = espnPlayerId;
-                        player.TeamName = teamName;
-                        player.TeamAbbreviation = teamAbbreviation;
-                        player.OpponentAbbreviation = opponentAbbreviation;
-                        player.HomeOrAway = homeOrAway;
+                        player.EspnPlayerId = espnPlayerId ??= string.Empty;
+                        player.TeamName = teamName ??= string.Empty;
+                        player.TeamAbbreviation = teamAbbreviation ??= string.Empty;
+                        player.OpponentAbbreviation = opponentAbbreviation ??= string.Empty;
+                        player.HomeOrAway = homeOrAway ??= string.Empty;
                         player.OwnerId = ownerId;
-                        player.OwnerName = ownerName;
+                        player.OwnerName = ownerName ??= string.Empty;
                         player.GameEnded = gameEnded;
                         player.GameCanceled = gameCanceled;
                         player.Points = finalPoints;
-                        player.FinalScoreString = finalScoreString;
+                        player.FinalScoreString = finalScoreString ??= string.Empty;
                         player.Week = int.Parse(selectedWeek);
 
                         addPlayerToHashtable(playersHashTable, espnGameId, player);
@@ -422,7 +422,7 @@
         /// </summary>
         /// <param name="espnGameId">ESPN Game ID for the players on either roster</param>
         /// <param name="players">All players playing in the given ESPN Game ID</param>
-        private void scrapeStatsFromGame(string espnGameId, List<SelectedPlayer> players)
+        private async Task scrapeStatsFromGame(string espnGameId, List<SelectedPlayer> players)
         {
             //State stateInfo = (State)state;
 
@@ -483,7 +483,7 @@
 
                         p.FinalScoreString = finalScoreString;
 
-                        updateCurrentRosterWithFinalScore(p.GameEnded, p.GameCanceled, p.OwnerId, p.EspnPlayerId, p.Points, finalScoreString, p.Week);
+                        await updateCurrentRosterWithFinalScore(p.GameEnded, p.GameCanceled, p.OwnerId, p.EspnPlayerId, p.Points, finalScoreString, p.Week);
                     }
                 }
             }
@@ -559,7 +559,7 @@
 
             // the latest week is stored in the week variable and we can check this to see if this week has completed and
             // new week needs to be added
-            if ((week == "0") || !IsLatestWeekSelectedForEitherOwner(sqlConnection, week))
+            if ((week != null) && ((week == "0") || !IsLatestWeekSelectedForEitherOwner(sqlConnection, week)))
             {
                 int intWeek = int.Parse(week);
                 intWeek++;

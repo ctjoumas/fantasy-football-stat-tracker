@@ -75,7 +75,7 @@ public sealed class SqlSchemaProviderHarness
         //await this.SaveSchemaAsync("json", databaseKey, schema.ToJson()).ConfigureAwait(false);
     }
 
-    private async Task<string> GetDatabaseName(SqlConnection sqlConnection)
+    private async Task<string?> GetDatabaseName(SqlConnection sqlConnection)
     {
         string query = "SELECT DB_NAME() AS CurrentDatabase;";
 

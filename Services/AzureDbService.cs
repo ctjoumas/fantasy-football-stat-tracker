@@ -7,7 +7,7 @@
 
     public class AzureDbService
     {
-        private readonly string _connectionString;
+        //private readonly string _connectionString;
 
         //public AzureDbService(string connectionString) {
         //    _connectionString = connectionString;

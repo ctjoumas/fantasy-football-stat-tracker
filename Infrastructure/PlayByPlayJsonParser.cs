@@ -34,11 +34,11 @@
                     if (driveResultValue != null)
                     {
                         // if parsing blocked punts and kicks, we can check to see if there is a block in this drive, otherwise, we don't need to parse this
-                        string driveResult = ((JValue)driveToken.SelectToken("displayResult")).Value.ToString();
+                        string? driveResult = ((JValue)driveToken.SelectToken("displayResult")).Value.ToString();
 
                         // only parse the plays in this drive if this drive resulted in a safety
                         // TODO: guessing that this is what the drive result would say; have not been able to see this yet during live game
-                        if (driveResult.ToLower().Contains(("safety")))
+                        if ((driveResult != null) && (driveResult.ToLower().Contains("safety")))
                         {
                             // get the team who just got the safety
                             string teamAbbreviation = (string)((JValue)driveToken.SelectToken("team.abbreviation")).Value;

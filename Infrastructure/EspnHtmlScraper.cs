@@ -850,11 +850,11 @@
                     if (driveResultValue != null)
                     {
                         // if parsing a safety, we can check to see if there is a safety in this drive, otherwise, we don't need to parse this
-                        string driveResult = ((JValue)driveResultValue).Value.ToString();
+                        string? driveResult = ((JValue)driveResultValue).Value.ToString();
 
                         // only parse the plays in this drive if this drive resulted in a safety
                         // TODO: guessing that this is what the drive result would say; have not been able to see this yet during live game
-                        if (driveResult.ToLower().Contains(("safety")))
+                        if ((driveResult != null) && driveResult.ToLower().Contains("safety"))
                         {
                             // get the team name who had the ball during this drive
                             string driveTeamName = (string)((JValue)driveToken.SelectToken("teamName")).Value;
@@ -895,10 +895,10 @@
                     if (driveResultValue != null)
                     {
                         // if parsing blocked punts and kicks, we can check to see if there is a block in this drive, otherwise, we don't need to parse this
-                        string driveResult = ((JValue)driveResultValue).Value.ToString();
+                        string? driveResult = ((JValue)driveResultValue).Value.ToString();
 
                         // only parse the plays in this drive if this drive resulted in a made FG
-                        if (driveResult.ToLower().Contains(("blocked")))
+                        if ((driveResult != null) && (driveResult.ToLower().Contains("blocked")))
                         {
                             // get the team name who had the ball during this drive
                             string driveTeamName = (string)((JValue)driveToken.SelectToken("teamName")).Value;
@@ -940,10 +940,10 @@
 
                     if (driveResultValue != null)
                     {
-                        string driveResult = ((JValue)driveResultValue).Value.ToString();
+                        string? driveResult = ((JValue)driveResultValue).Value.ToString();
 
                         // check to see if there is a touchdown on this drive, otherwise, we don't need to parse this
-                        if (driveResult.ToLower().Equals(("touchdown")))
+                        if ((driveResult != null) && (driveResult.ToLower().Equals("touchdown")))
                         {
                             // get the team name who had the ball during this drive
                             string driveTeamName = (string)((JValue)driveToken.SelectToken("teamName")).Value;

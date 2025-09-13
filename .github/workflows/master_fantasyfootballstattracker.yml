@@ -12,7 +12,8 @@ env:
   AZURE_WEBAPP_NAME: 'fantasyfootballstattracker'
   AZURE_WEBAPP_PACKAGE_PATH: './published'
   CONFIGURATION: Release
-  DOTNET_CORE_VERSION: '6.0.x'
+  DOTNET_CORE_VERSION: '8.0.x'
+  DOTNET_INSTALL_DIR: "./.dotnet"
   WORKING_DIRECTORY: .
   
 jobs:
@@ -59,4 +60,5 @@ jobs:
       with:
         app-name: ${{ env.AZURE_WEBAPP_NAME }}
         package: '${{ env.AZURE_WEBAPP_PACKAGE_PATH }}'
+
 

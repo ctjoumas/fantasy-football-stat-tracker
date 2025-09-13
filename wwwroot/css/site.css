@@ -126,47 +126,58 @@ main {
   text-align: center;
 }
 
-/* Team Summary Boxes - Separate Floating Cards */
+/* Unified Team Summary Header - Single box spanning full width */
 .team-summary-section {
-  padding: 25px 30px;
+  padding: 20px 30px;
   background-color: #f8f9fa;
   border-bottom: 1px solid #dee2e6;
 }
 
-.team-summary-box {
+.unified-team-header {
   background: linear-gradient(135deg, #ffffff, #f8f9fa);
   border: 2px solid #e0e0e0;
   border-radius: 12px;
-  padding: 20px;
+  padding: 20px 30px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  max-width: 100%; /* Prevent box from overflowing */
+  max-width: 100%;
   box-sizing: border-box;
+  min-height: 80px;
 }
 
-.team-summary-box:hover {
+.unified-team-header:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(0,0,0,0.15);
 }
 
+.team-summary-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: row;
+  flex: 1; /* Each team takes equal space */
+}
+
 .team-summary-logo {
-  height: 70px;
+  height: 50px;
   width: auto;
   object-fit: contain;
-  max-width: 90px;
-  flex-shrink: 0; /* Prevent logo from shrinking too much */
+  max-width: 65px;
+  margin-right: 15px;
+  flex-shrink: 0;
 }
 
 .team-summary-score {
-  font-size: 2.2rem;
+  font-size: 1.8rem;
   font-weight: bold;
   color: #2c3e50;
   text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
   letter-spacing: 1px;
-  white-space: nowrap; /* Prevent score from wrapping */
+  white-space: nowrap;
+  text-align: center;
 }
 
 .vs-divider {
@@ -182,7 +193,8 @@ main {
   align-items: center;
   justify-content: center;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  flex-shrink: 0; /* Prevent VS divider from shrinking */
+  flex-shrink: 0;
+  margin: 0 20px; /* Space from teams */
 }
 
 .scoreboard-content {
@@ -339,15 +351,32 @@ main {
   }
   
   .team-summary-section {
-    padding: 30px 40px;
+    padding: 25px 40px;
+  }
+  
+  .unified-team-header {
+    padding: 25px 40px;
   }
   
   .week-selection-label {
     font-size: 1.3rem;
   }
   
+  .team-summary-logo {
+    height: 55px;
+    max-width: 70px;
+    margin-right: 20px;
+  }
+  
   .team-summary-score {
-    font-size: 2.5rem;
+    font-size: 2.2rem;
+  }
+  
+  .vs-divider {
+    width: 70px;
+    height: 70px;
+    font-size: 1.6rem;
+    margin: 0 30px;
   }
   
   .player-row {
@@ -369,19 +398,25 @@ main {
     padding: 20px 15px;
   }
   
+  .unified-team-header {
+    padding: 20px 25px;
+  }
+  
   .team-summary-logo {
-    height: 60px;
-    max-width: 75px;
+    height: 45px;
+    max-width: 55px;
+    margin-right: 15px;
   }
   
   .team-summary-score {
-    font-size: 1.8rem;
+    font-size: 1.6rem;
   }
   
   .vs-divider {
-    width: 50px;
-    height: 50px;
-    font-size: 1.2rem;
+    width: 55px;
+    height: 55px;
+    font-size: 1.3rem;
+    margin: 0 20px;
   }
   
   .player-row {
@@ -426,28 +461,29 @@ main {
     padding: 15px 10px;
   }
   
+  .unified-team-header {
+    padding: 15px 20px;
+  }
+  
   .week-selection-label {
     font-size: 1.1rem;
   }
   
-  .team-summary-box {
-    padding: 15px;
-    margin-bottom: 10px;
-  }
-  
   .team-summary-logo {
-    height: 50px;
-    max-width: 60px;
+    height: 35px;
+    max-width: 40px;
+    margin-right: 10px;
   }
   
   .team-summary-score {
-    font-size: 1.6rem;
+    font-size: 1.3rem;
   }
   
   .vs-divider {
     width: 40px;
     height: 40px;
-    font-size: 1rem;
+    font-size: 1.0rem;
+    margin: 0 15px;
   }
   
   .player-row {
@@ -507,14 +543,25 @@ main {
     padding: 8px 3px;
   }
   
+  .unified-team-header {
+    padding: 12px 15px;
+  }
+  
+  .team-summary-logo {
+    height: 30px;
+    max-width: 35px;
+    margin-right: 8px;
+  }
+  
   .team-summary-score {
-    font-size: 1.4rem;
+    font-size: 1.1rem;
   }
   
   .vs-divider {
     width: 35px;
     height: 35px;
     font-size: 0.9rem;
+    margin: 0 10px;
   }
   
   .player-headshot {

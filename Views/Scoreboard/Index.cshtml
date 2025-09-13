@@ -21,54 +21,41 @@
             </div>
         </div>
 
-        <!-- Team Summary Boxes -->
+        <!-- Unified Team Summary Header -->
         <div class="team-summary-section">
-            <div class="row justify-content-center">
-                @if (Model.Count > 0)
-                {
-                    var team1 = Model[0];
-                    <div class="col-5">
-                        <div class="team-summary-box">
-                            @{
-                                byte[] bytes1 = (byte[])team1.OwnerLogo;
-                                string base64String1 = Convert.ToBase64String(bytes1, 0, bytes1.Length);
-                                var logoSource1 = "data:image/png;base64," + base64String1;
-                            }
-                            <img class="team-summary-logo" src="@logoSource1" alt="Team Logo" />
-                            <div class="team-summary-score">
-                                @{
-                                    var totalTeamPoints1 = team1.TotalFantasyPoints.ToString("0.00");
-                                }
-                                @totalTeamPoints1
-                            </div>
-                        </div>
-                    </div>
-                }
-
-                <div class="col-2 d-flex align-items-center justify-content-center">
-                    <div class="vs-divider">VS</div>
+            <div class="unified-team-header">
+                <!-- Team 1 -->
+                <div class="team-summary-item">
+                    @if (Model.Count > 0)
+                    {
+                        var team1 = Model[0];
+                        byte[] bytes1 = (byte[])team1.OwnerLogo;
+                        string base64String1 = Convert.ToBase64String(bytes1, 0, bytes1.Length);
+                        var logoSource1 = "data:image/png;base64," + base64String1;
+                        var totalTeamPoints1 = team1.TotalFantasyPoints.ToString("0.00");
+                        
+                        <img class="team-summary-logo" src="@logoSource1" alt="Team Logo" />
+                        <div class="team-summary-score">@totalTeamPoints1</div>
+                    }
                 </div>
 
-                @if (Model.Count > 1)
-                {
-                    var team2 = Model[1];
-                    <div class="col-5">
-                        <div class="team-summary-box">
-                            @{
-                                byte[] bytes2 = (byte[])team2.OwnerLogo;
-                                string base64String2 = Convert.ToBase64String(bytes2, 0, bytes2.Length);
-                                var logoSource2 = "data:image/png;base64," + base64String2;
-                            }
-                            <img class="team-summary-logo" src="@logoSource2" alt="Team Logo" />
-                            <div class="team-summary-score">
-                                @{
-                                    var totalTeamPoints2 = team2.TotalFantasyPoints.ToString("0.00");
-                                }
-                                @totalTeamPoints2
-                            </div>
-                        </div>
-                    </div>
-                }
+                <!-- VS Divider -->
+                <div class="vs-divider">VS</div>
+
+                <!-- Team 2 -->
+                <div class="team-summary-item">
+                    @if (Model.Count > 1)
+                    {
+                        var team2 = Model[1];
+                        byte[] bytes2 = (byte[])team2.OwnerLogo;
+                        string base64String2 = Convert.ToBase64String(bytes2, 0, bytes2.Length);
+                        var logoSource2 = "data:image/png;base64," + base64String2;
+                        var totalTeamPoints2 = team2.TotalFantasyPoints.ToString("0.00");
+                        
+                        <img class="team-summary-logo" src="@logoSource2" alt="Team Logo" />
+                        <div class="team-summary-score">@totalTeamPoints2</div>
+                    }
+                </div>
             </div>
         </div>
 
@@ -100,22 +87,6 @@
                                     var opponentAbbreviation = player.OpponentAbbreviation.ToUpper();
                                     var gameLocation = player.HomeOrAway.Equals("home") ? "vs" : "@";
 
-                                    if (player.GameEnded)
-                                    {
-                                        matchupDisplay = "Final " + player.FinalScoreString + " " + gameLocation + " " + opponentAbbreviation;
-                                    }
-                                    else if (player.GameCanceled)
-                                    {
-                                        matchupDisplay = "Canceled";
-                                    }
-                                    else if (player.GameInProgress)
-                                    {
-                                        matchupDisplay = player.TimeRemaining + " " + player.CurrentScoreString + " " + gameLocation + " " + opponentAbbreviation;
-                                    }
-                                    else
-                                    {
-                                        matchupDisplay = day + " " + hour + ":" + minute + pmOrAm + " " + gameLocation + " " + opponentAbbreviation;
-                                    }
 
                                     <div class="player-row @(player.GameInProgress ? "in-progress" : "")">
                                         <img class="player-headshot" src="@Html.DisplayFor(modelItem => player.Headshot)" alt="Player headshot" />
@@ -157,9 +128,6 @@
                 <!-- Position Labels Column -->
                 <div class="col-2">
                     <div class="position-labels-section">
-                        <!-- Header spacer to align with team headers -->
-                        <div class="position-header-spacer"></div>
-                        
                         @{
                             string[] positions = { "QB", "RB", "RB", "WR", "WR", "FLEX", "TE", "K", "DEF" };
                         }

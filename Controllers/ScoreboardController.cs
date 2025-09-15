@@ -26,11 +26,6 @@
         public const string SessionKeyWeek = "_Week";
 
         /// <summary>
-        /// Session key for the AI Season Insights
-        /// </summary>
-        //public const string SessionKeySeasonInsights = "_SeasonInsights";
-
-        /// <summary>
         /// Session key for the Azure SQL Access token
         /// </summary>
         public const string SessionKeyAzureSqlAccessToken = "_Token";
@@ -40,14 +35,15 @@
         /// </summary>
         private List<byte[]> OwnerLogos;
 
-        /// <summary>
-        /// Injecting HttpClientFactory to set the HttpClient used for calling the yahoo API to get data for each
-        /// player in the scoreboard.
-        /// </summary>
-        /// <param name="factory"></param>
         public ScoreboardController(ILogger<ScoreboardController> logger)
         {
             _logger = logger;
+        }
+
+        // New React action for testing
+        public IActionResult React()
+        {
+            return View();
         }
 
         private static async Task<string> GetAzureSqlAccessToken()
@@ -343,7 +339,7 @@
             var tasks = new Task[playersHashTable.Keys.Count];
 
             // loop through each key (espn game id) and parse the points for each player in that game,
-            // adding each SelectedPlayer in the hashtable to the approprate list of teams (team one or team two)
+            // adding each SelectedPlayer in the hashtable to the appropriote list of teams (team one or team two)
             foreach (string key in playersHashTable.Keys)
             {
                 List<SelectedPlayer> playersInGame = (List<SelectedPlayer>)playersHashTable[key];
@@ -735,6 +731,7 @@
                 playerTable.Add(espnGameId, playerList);
             }
         }
+    }
 
         // Maintain state to pass to the scrapeStatsFromGame method
         /*public class State
@@ -747,5 +744,4 @@
 
             public ManualResetEvent DoneEvent { get; set; }
         }*/
-    }
 }

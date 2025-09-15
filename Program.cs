@@ -15,6 +15,18 @@ builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnCh
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+builder.Services.AddControllers(); // For API controllers
+
+// Add CORS for React development
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReactApp",
+        builder => builder
+            .WithOrigins("http://localhost:3000", "https://localhost:3001")
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials());
+});
 
 //builder.Services.AddHttpContextAccessor();
 
@@ -62,6 +74,8 @@ app.UseStaticFiles();
 
 app.UseSession();
 
+app.UseCors("AllowReactApp"); // Enable CORS for React
+
 app.UseRouting();
 
 app.UseAuthorization();
@@ -69,5 +83,7 @@ app.UseAuthorization();
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
+
+app.MapControllers(); // For API routes
 
 app.Run();

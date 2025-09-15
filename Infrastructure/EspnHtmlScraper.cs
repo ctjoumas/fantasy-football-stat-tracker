@@ -264,60 +264,65 @@
                 int spaceIndex = playerName.IndexOf(" ");
                 string abbreviatedPlayerName = playerName.Substring(0, 1) + "." + playerName.Substring(spaceIndex + 1);
 
-                foreach (JToken driveToken in driveTokens)
+                foreach (JToken quarterToken in driveTokens)
                 {
-                    JToken driveResultValue = driveToken.SelectToken("headline");
+                    JToken quarterDrives = quarterToken.SelectToken("items");
 
-                    if (driveResultValue != null)
+                    foreach (JToken quarterDrive in quarterDrives)
                     {
-                        string driveResult = ((JValue)driveResultValue).Value.ToString();
+                        JToken driveResultValue = quarterDrive.SelectToken("headline");
 
-                        // check to see if there is a touchdown on this drive, otherwise, we don't need to parse this
-                        if (driveResult.ToLower().Contains(("touchdown")))
+                        if (driveResultValue != null)
                         {
-                            // Now go through each play in this drive to find the two-point conversion and see if it didn't fail.
-                            // We are going through each play because if there is a penalty, it looks like that would be the last play
-                            // and not the 2 point conversion
-                            JToken playTokens = driveToken.SelectToken("plays");
+                            string driveResult = ((JValue)driveResultValue).Value.ToString();
 
-                            foreach (JToken playToken in playTokens)
+                            // check to see if there is a touchdown on this drive, otherwise, we don't need to parse this
+                            if (driveResult.ToLower().Contains(("touchdown")))
                             {
-                                string play = (string)((JValue)playToken.SelectToken("description")).Value;
+                                // Now go through each play in this drive to find the two-point conversion and see if it didn't fail.
+                                // We are going through each play because if there is a penalty, it looks like that would be the last play
+                                // and not the 2 point conversion
+                                JToken playTokens = quarterDrive.SelectToken("plays");
 
-                                if (play.ToLower().Contains("two-point") &&
-                                    !play.ToLower().Contains("fails") && !play.ToLower().Contains("failed") &&
-                                    (play.ToLower().Contains(playerName.ToLower()) || play.ToLower().Contains(abbreviatedPlayerName.ToLower())))
+                                foreach (JToken playToken in playTokens)
                                 {
-                                    // We need one more check to ensure this player actually made the play. This will need more testing as there are several
-                                    // ways this is shown in the play by play:
-                                    // (12:42 - 4th) Stefon Diggs Pass From Josh Allen for 9 Yrds TWO-POINT CONVERSION ATTEMPT. J.Allen rushes right end. ATTEMPT SUCCEEDS.
-                                    // (10:34 - 4th) James Robinson 1 Yard Rush (Pass formation) TWO-POINT CONVERSION ATTEMPT. T.Lawrence pass to D.Arnold is complete. ATTEMPT SUCCEEDS.
-                                    // (0:37 - 2nd) Nahshon Wright 0 Yd Return of Blocked Punt (Ezekiel Elliott Run for Two-Point Conversion)
-                                    // In the first two examples, the play before "TWO-POINT CONVERSION ATTEMPT" is the TD play and what follows is the two-point conversion;
-                                    // in the last example, the two-point conversion play is in parentheses. It seems safe to check both conditions
+                                    string play = (string)((JValue)playToken.SelectToken("description")).Value;
 
-                                    string twoPointConversionText;
-                                    int index;
+                                    if (play.ToLower().Contains("two-point") &&
+                                        !play.ToLower().Contains("fails") && !play.ToLower().Contains("failed") &&
+                                        (play.ToLower().Contains(playerName.ToLower()) || play.ToLower().Contains(abbreviatedPlayerName.ToLower())))
+                                    {
+                                        // We need one more check to ensure this player actually made the play. This will need more testing as there are several
+                                        // ways this is shown in the play by play:
+                                        // (12:42 - 4th) Stefon Diggs Pass From Josh Allen for 9 Yrds TWO-POINT CONVERSION ATTEMPT. J.Allen rushes right end. ATTEMPT SUCCEEDS.
+                                        // (10:34 - 4th) James Robinson 1 Yard Rush (Pass formation) TWO-POINT CONVERSION ATTEMPT. T.Lawrence pass to D.Arnold is complete. ATTEMPT SUCCEEDS.
+                                        // (0:37 - 2nd) Nahshon Wright 0 Yd Return of Blocked Punt (Ezekiel Elliott Run for Two-Point Conversion)
+                                        // In the first two examples, the play before "TWO-POINT CONVERSION ATTEMPT" is the TD play and what follows is the two-point conversion;
+                                        // in the last example, the two-point conversion play is in parentheses. It seems safe to check both conditions
 
-                                    // check first condition
-                                    if (play.ToLower().Contains("two-point conversion attempt"))
-                                    {
-                                        // cut off the scoring play and just check the two point conversion text remaining
-                                        index = play.ToLower().IndexOf("two-point conversion attempt");
-                                        twoPointConversionText = play.Substring(index);
-                                    }
-                                    else
-                                    {
-                                        // cut off the scoring play, which is before the parentheses
-                                        index = play.IndexOf("(");
-                                        twoPointConversionText = play.Substring(index);
-                                    }
+                                        string twoPointConversionText;
+                                        int index;
 
-                                    // now we can check the text containing only the two point conversion play to see if this player was involved
-                                    if (twoPointConversionText.ToLower().Contains(playerName.ToLower()) ||
-                                        twoPointConversionText.ToLower().Contains(abbreviatedPlayerName.ToLower()))
-                                    {
-                                        fantasyPoints += 2;
+                                        // check first condition
+                                        if (play.ToLower().Contains("two-point conversion attempt"))
+                                        {
+                                            // cut off the scoring play and just check the two point conversion text remaining
+                                            index = play.ToLower().IndexOf("two-point conversion attempt");
+                                            twoPointConversionText = play.Substring(index);
+                                        }
+                                        else
+                                        {
+                                            // cut off the scoring play, which is before the parentheses
+                                            index = play.IndexOf("(");
+                                            twoPointConversionText = play.Substring(index);
+                                        }
+
+                                        // now we can check the text containing only the two point conversion play to see if this player was involved
+                                        if (twoPointConversionText.ToLower().Contains(playerName.ToLower()) ||
+                                            twoPointConversionText.ToLower().Contains(abbreviatedPlayerName.ToLower()))
+                                        {
+                                            fantasyPoints += 2;
+                                        }
                                     }
                                 }
                             }
@@ -349,49 +354,54 @@
             // if the game started and there are no drives yet
             if (driveTokens != null)
             {
-                foreach (JToken driveToken in driveTokens)
+                foreach (JToken quarterToken in driveTokens)
                 {
-                    // if parsing field goals, we can check to see if there is a FG made in this drive, otherwise, we don't need to parse this
-                    JToken driveResultValue = driveToken.SelectToken("headline");
+                    JToken quarterDrives = quarterToken.SelectToken("items");
 
-                    if (driveResultValue != null)
+                    foreach (JToken quarterDrive in quarterDrives)
                     {
-                        string driveResult = ((JValue)driveResultValue).Value.ToString();
+                        // if parsing field goals, we can check to see if there is a FG made in this drive, otherwise, we don't need to parse this
+                        JToken driveResultValue = quarterDrive.SelectToken("headline");
 
-                        // only parse the plays in this drive if this drive resulted in a TD
-                        if (driveResult.ToLower().Equals(("touchdown")))
+                        if (driveResultValue != null)
                         {
-                            JToken playTokens = driveToken.SelectToken("plays");
+                            string driveResult = ((JValue)driveResultValue).Value.ToString();
 
-                            // loop through all plays in the drive to find the fumble recovery for a touchdown
-                            foreach (JToken playToken in playTokens)
+                            // only parse the plays in this drive if this drive resulted in a TD
+                            if (driveResult.ToLower().Equals(("touchdown")))
                             {
-                                // the fumble recovery for a touchdown play will have the following format:
-                                // "(8:45 - 2nd) (Shotgun) J.Wilson up the middle to MIA 47 for 6 yards (A.Gilman). FUMBLES (A.Gilman), touched at MIA 44, recovered by MIA-T.Hill at MIA 43. T.Hill for 57 yards, TOUCHDOWN.J.Sanders extra point is GOOD, Center-B.Ferguson, Holder-T.Morstead."
-                                JToken playDescription = playToken["description"];
+                                JToken playTokens = quarterDrive.SelectToken("plays");
 
-                                if (playDescription != null)
+                                // loop through all plays in the drive to find the fumble recovery for a touchdown
+                                foreach (JToken playToken in playTokens)
                                 {
-                                    string playText = ((JValue)playDescription).Value.ToString();
+                                    // the fumble recovery for a touchdown play will have the following format:
+                                    // "(8:45 - 2nd) (Shotgun) J.Wilson up the middle to MIA 47 for 6 yards (A.Gilman). FUMBLES (A.Gilman), touched at MIA 44, recovered by MIA-T.Hill at MIA 43. T.Hill for 57 yards, TOUCHDOWN.J.Sanders extra point is GOOD, Center-B.Ferguson, Holder-T.Morstead."
+                                    JToken playDescription = playToken["description"];
 
-                                    // The play text should have "fumbles", "recovered", and "touchdown" in it. If so, we can then check for the players name
-                                    if (playText.ToLower().Contains("fumbles") &&
-                                        playText.ToLower().Contains("recovered") &&
-                                        playText.ToLower().Contains("touchdown"))
+                                    if (playDescription != null)
                                     {
-                                        // we have the fumble recovery for touchdown play, so now let's see if the players name is in this play
-                                        // and, if so, it appears after the last occurence of "recovered", just in case there were multiple fumbles
-                                        // in the drive before the last player who touched it scored (rare case, but may happen)
-                                        int indexOfLastRecoveredWord = playText.LastIndexOf("recovered");
-                                        int indexOfLastAbbreviatedPlayerName = playText.LastIndexOf(abbreviatedPlayerName);
-                                        int indexOfLastFullPlayerName = playText.LastIndexOf(playerName);
+                                        string playText = ((JValue)playDescription).Value.ToString();
 
-                                        // everything looks to be in the right place for this player to have scored the fumble recover,
-                                        // so award them 6 points for the TD
-                                        if ((indexOfLastAbbreviatedPlayerName > indexOfLastRecoveredWord) ||
-                                            (indexOfLastFullPlayerName > indexOfLastRecoveredWord))
+                                        // The play text should have "fumbles", "recovered", and "touchdown" in it. If so, we can then check for the players name
+                                        if (playText.ToLower().Contains("fumbles") &&
+                                            playText.ToLower().Contains("recovered") &&
+                                            playText.ToLower().Contains("touchdown"))
                                         {
-                                            fantasyPoints += 6;
+                                            // we have the fumble recovery for touchdown play, so now let's see if the players name is in this play
+                                            // and, if so, it appears after the last occurence of "recovered", just in case there were multiple fumbles
+                                            // in the drive before the last player who touched it scored (rare case, but may happen)
+                                            int indexOfLastRecoveredWord = playText.LastIndexOf("recovered");
+                                            int indexOfLastAbbreviatedPlayerName = playText.LastIndexOf(abbreviatedPlayerName);
+                                            int indexOfLastFullPlayerName = playText.LastIndexOf(playerName);
+
+                                            // everything looks to be in the right place for this player to have scored the fumble recover,
+                                            // so award them 6 points for the TD
+                                            if ((indexOfLastAbbreviatedPlayerName > indexOfLastRecoveredWord) ||
+                                                (indexOfLastFullPlayerName > indexOfLastRecoveredWord))
+                                            {
+                                                fantasyPoints += 6;
+                                            }
                                         }
                                     }
                                 }
@@ -424,66 +434,71 @@
             // if the game started and there are no drives yet
             if (driveTokens != null)
             {
-                foreach (JToken driveToken in driveTokens)
+                foreach (JToken quarterToken in driveTokens)
                 {
-                    // if parsing field goals, we can check to see if there is a FG made in this drive, otherwise, we don't need to parse this
-                    JToken driveResultValue = driveToken.SelectToken("headline");
+                    JToken quarterDrives = quarterToken.SelectToken("items");
 
-                    if (driveResultValue != null)
+                    foreach (JToken quarterDrive in quarterDrives)
                     {
-                        string driveResult = ((JValue)driveResultValue).Value.ToString();
+                        // if parsing field goals, we can check to see if there is a FG made in this drive, otherwise, we don't need to parse this
+                        JToken driveResultValue = quarterDrive.SelectToken("headline");
 
-                        // only parse the plays in this drive if this drive resulted in a made FG
-                        if (driveResult.ToLower().Equals(("field goal")))
+                        if (driveResultValue != null)
                         {
-                            JToken playTokens = driveToken.SelectToken("plays");
+                            string driveResult = ((JValue)driveResultValue).Value.ToString();
 
-                            // there could be a penalty or a timeout after the kick, so the FG may not be the last play token so we
-                            // need to loop through all plays
-                            foreach (JToken playToken in playTokens)
+                            // only parse the plays in this drive if this drive resulted in a made FG
+                            if (driveResult.ToLower().Equals(("field goal")))
                             {
-                                // if this is the field goal token, the description will have the word "field goal" in it; we'll assume if there was
-                                // a penalty in any field goal attempt, it is in a later token, so we should be ok just checking for "field goal" since
-                                // a successful field goal will be the first play we encounter
-                                JToken playDescription = playToken["description"];
-                                
-                                if (playDescription != null)
+                                JToken playTokens = quarterDrive.SelectToken("plays");
+
+                                // there could be a penalty or a timeout after the kick, so the FG may not be the last play token so we
+                                // need to loop through all plays
+                                foreach (JToken playToken in playTokens)
                                 {
-                                    string playText = ((JValue)playDescription).Value.ToString();
-                                    
-                                    if (playText.ToLower().Contains("field goal"))
+                                    // if this is the field goal token, the description will have the word "field goal" in it; we'll assume if there was
+                                    // a penalty in any field goal attempt, it is in a later token, so we should be ok just checking for "field goal" since
+                                    // a successful field goal will be the first play we encounter
+                                    JToken playDescription = playToken["description"];
+
+                                    if (playDescription != null)
                                     {
-                                        // if this play has the player name, check the distance of the kick
-                                        // this will be in the format of: "(4:25) C.Boswell 20 yard field goal is GOOD, Center-C.Kuntz, Holder-P.Harvin."
-                                        if (playText.ToLower().Contains(abbreviatedPlayerName.ToLower()) ||
-                                            playText.ToLower().Contains(playerName.ToLower()))
+                                        string playText = ((JValue)playDescription).Value.ToString();
+
+                                        if (playText.ToLower().Contains("field goal"))
                                         {
-                                            int indexOfSpaceBeforeFgYardage;
-                                            int playerNameIndex = playText.IndexOf(abbreviatedPlayerName);
-
-                                            // If the abbreviated player name isn't found, we need to check for the full player name.
-                                            // The format will then be (7:33 - 4th) Justin Tucker Made 50 Yd Field Goal, so we need to account for the word "Made"
-                                            // As of September 2024, the text with a full name now shows up as: "(11:39 - 2nd) Brandon Aubrey 38 Yd Field Goal"
-                                            if (playerNameIndex == -1)
+                                            // if this play has the player name, check the distance of the kick
+                                            // this will be in the format of: "(4:25) C.Boswell 20 yard field goal is GOOD, Center-C.Kuntz, Holder-P.Harvin."
+                                            if (playText.ToLower().Contains(abbreviatedPlayerName.ToLower()) ||
+                                                playText.ToLower().Contains(playerName.ToLower()))
                                             {
-                                                playerNameIndex = playText.IndexOf(playerName);
-                                                //indexOfSpaceBeforeFgYardage = playText.IndexOf("Made") + "Made".Length;
+                                                int indexOfSpaceBeforeFgYardage;
+                                                int playerNameIndex = playText.IndexOf(abbreviatedPlayerName);
+
+                                                // If the abbreviated player name isn't found, we need to check for the full player name.
+                                                // The format will then be (7:33 - 4th) Justin Tucker Made 50 Yd Field Goal, so we need to account for the word "Made"
+                                                // As of September 2024, the text with a full name now shows up as: "(11:39 - 2nd) Brandon Aubrey 38 Yd Field Goal"
+                                                if (playerNameIndex == -1)
+                                                {
+                                                    playerNameIndex = playText.IndexOf(playerName);
+                                                    //indexOfSpaceBeforeFgYardage = playText.IndexOf("Made") + "Made".Length;
+                                                }
+                                                //else
+                                                //{
+                                                //    indexOfSpaceBeforeFgYardage = playText.IndexOf(" ", playerNameIndex + abbreviatedPlayerName.Length);
+                                                //}
+                                                indexOfSpaceBeforeFgYardage = playText.IndexOf(" ", playerNameIndex + abbreviatedPlayerName.Length);
+
+                                                int indexOfSpaceAfterFgDistance = playText.IndexOf(" ", indexOfSpaceBeforeFgYardage + 1);
+                                                int fgDistance = int.Parse(playText.Substring(indexOfSpaceBeforeFgYardage, (indexOfSpaceAfterFgDistance - indexOfSpaceBeforeFgYardage)));
+
+                                                if (fgDistance < 40)
+                                                    fieldGoalPoints += 3;
+                                                else if (fgDistance < 50)
+                                                    fieldGoalPoints += 4;
+                                                else if (fgDistance >= 50)
+                                                    fieldGoalPoints += 5;
                                             }
-                                            //else
-                                            //{
-                                            //    indexOfSpaceBeforeFgYardage = playText.IndexOf(" ", playerNameIndex + abbreviatedPlayerName.Length);
-                                            //}
-                                            indexOfSpaceBeforeFgYardage = playText.IndexOf(" ", playerNameIndex + abbreviatedPlayerName.Length);
-
-                                            int indexOfSpaceAfterFgDistance = playText.IndexOf(" ", indexOfSpaceBeforeFgYardage + 1);
-                                            int fgDistance = int.Parse(playText.Substring(indexOfSpaceBeforeFgYardage, (indexOfSpaceAfterFgDistance - indexOfSpaceBeforeFgYardage)));
-
-                                            if (fgDistance < 40)
-                                                fieldGoalPoints += 3;
-                                            else if (fgDistance < 50)
-                                                fieldGoalPoints += 4;
-                                            else if (fgDistance >= 50)
-                                                fieldGoalPoints += 5;
                                         }
                                     }
                                 }
@@ -843,26 +858,31 @@
             // if the game started and there are no drives yet
             if (driveTokens != null)
             {
-                foreach (JToken driveToken in driveTokens)
+                foreach (JToken quarterToken in driveTokens)
                 {
-                    JToken driveResultValue = driveToken.SelectToken("headline");
+                    JToken quarterDrives = quarterToken.SelectToken("items");
 
-                    if (driveResultValue != null)
+                    foreach (JToken quarterDrive in quarterDrives)
                     {
-                        // if parsing a safety, we can check to see if there is a safety in this drive, otherwise, we don't need to parse this
-                        string? driveResult = ((JValue)driveResultValue).Value.ToString();
+                        // if parsing blocked kicks and punts, we can check to see if there is a block in this drive, otherwise, we don't need to parse this
+                        JToken driveResultValue = quarterDrive.SelectToken("headline");
 
-                        // only parse the plays in this drive if this drive resulted in a safety
-                        // TODO: guessing that this is what the drive result would say; have not been able to see this yet during live game
-                        if ((driveResult != null) && driveResult.ToLower().Contains("safety"))
+                        if (driveResultValue != null)
                         {
-                            // get the team name who had the ball during this drive
-                            string driveTeamName = (string)((JValue)driveToken.SelectToken("teamName")).Value;
+                            // if parsing blocked punts and kicks, we can check to see if there is a block in this drive, otherwise, we don't need to parse this
+                            string? driveResult = ((JValue)driveResultValue).Value.ToString();
 
-                            // if the team name is not the same as the defense we are scoring, that means they blocked the punt, so give them 2 points
-                            if (!driveTeamName.ToLower().Equals(teamName.ToLower()))
+                            // only parse the plays in this drive if this drive resulted in a made FG
+                            if ((driveResult != null) && (driveResult.ToLower().Contains("safety")))
                             {
-                                safetyPoints += 2;
+                                // get the team name who had the ball during this drive
+                                string driveTeamName = (string)((JValue)quarterDrive.SelectToken("teamName")).Value;
+
+                                // if the team name is not the same as the defense we are scoring, that means they blocked the punt, so give them 2 points
+                                if (!driveTeamName.ToLower().Equals(teamName.ToLower()))
+                                {
+                                    safetyPoints += 2;
+                                }
                             }
                         }
                     }
@@ -888,25 +908,31 @@
             // if the game started and there are no drives yet
             if (driveTokens != null)
             {
-                foreach (JToken driveToken in driveTokens)
+                foreach (JToken quarterToken in driveTokens)
                 {
-                    JToken driveResultValue = driveToken.SelectToken("headline");
+                    JToken quarterDrives = quarterToken.SelectToken("items");
 
-                    if (driveResultValue != null)
+                    foreach (JToken quarterDrive in quarterDrives)
                     {
-                        // if parsing blocked punts and kicks, we can check to see if there is a block in this drive, otherwise, we don't need to parse this
-                        string? driveResult = ((JValue)driveResultValue).Value.ToString();
+                        // if parsing blocked kicks and punts, we can check to see if there is a block in this drive, otherwise, we don't need to parse this
+                        JToken driveResultValue = quarterDrive.SelectToken("headline");
 
-                        // only parse the plays in this drive if this drive resulted in a made FG
-                        if ((driveResult != null) && (driveResult.ToLower().Contains("blocked")))
+                        if (driveResultValue != null)
                         {
-                            // get the team name who had the ball during this drive
-                            string driveTeamName = (string)((JValue)driveToken.SelectToken("teamName")).Value;
+                            // if parsing blocked punts and kicks, we can check to see if there is a block in this drive, otherwise, we don't need to parse this
+                            string? driveResult = ((JValue)driveResultValue).Value.ToString();
 
-                            // if the team name is not the same as the defense we are scoring, that means they blocked the punt, so give them 2 points
-                            if (!driveTeamName.ToLower().Equals(teamName.ToLower()))
+                            // only parse the plays in this drive if this drive resulted in a made FG
+                            if ((driveResult != null) && (driveResult.ToLower().Contains("blocked")))
                             {
-                                blockedPoints += 2;
+                                // get the team name who had the ball during this drive
+                                string driveTeamName = (string)((JValue)quarterDrive.SelectToken("teamName")).Value;
+
+                                // if the team name is not the same as the defense we are scoring, that means they blocked the punt, so give them 2 points
+                                if (!driveTeamName.ToLower().Equals(teamName.ToLower()))
+                                {
+                                    blockedPoints += 2;
+                                }
                             }
                         }
                     }
@@ -933,20 +959,21 @@
             // if the game started and there are no drives yet
             if (driveTokens != null)
             {
-                foreach (JToken driveToken in driveTokens)
+                foreach (JToken quarterToken in driveTokens)
                 {
-                    // "headline" will be "Touchdown" if this is a scoring drive
-                    JToken driveResultValue = driveToken.SelectToken("headline");
+                    JToken quarterDrives = quarterToken.SelectToken("items");
 
-                    if (driveResultValue != null)
+                    foreach (JToken quarterDrive in quarterDrives)
                     {
+                        // "headline" will be "Touchdown" if this is a scoring drive
+                        JToken driveResultValue = quarterDrive.SelectToken("headline");
                         string? driveResult = ((JValue)driveResultValue).Value.ToString();
 
                         // check to see if there is a touchdown on this drive, otherwise, we don't need to parse this
                         if ((driveResult != null) && (driveResult.ToLower().Equals("touchdown")))
                         {
                             // get the team name who had the ball during this drive
-                            string driveTeamName = (string)((JValue)driveToken.SelectToken("teamName")).Value;
+                            string driveTeamName = (string)((JValue)quarterDrive.SelectToken("teamName")).Value;
 
                             // if the team name is not the same as the defense we are scoring, that means the other team scored a 2 point conversion, so add 2 points
                             // if there is a 2 point conversion
@@ -955,7 +982,7 @@
                                 // Now go through each play in this drive to find the two-point conversion and see if it didn't fail.
                                 // We are going through each play because if there is a penalty, it looks like that would be the last play
                                 // and not the 2 point conversion
-                                JToken playTokens = driveToken.SelectToken("plays");
+                                JToken playTokens = quarterDrive.SelectToken("plays");
 
                                 foreach (JToken playToken in playTokens)
                                 {

@@ -4,6 +4,48 @@
     ViewData["Title"] = "Scoreboard";
 }
 
+@functions {
+    /// <summary>
+    /// Abbreviates player names to "First Initial. Last Name" format and shortens defense names to mascot only
+    /// Examples: "Justin Jefferson" -> "J. Jefferson", "Los Angeles Rams" -> "Rams"
+    /// </summary>
+    /// <param name="playerName">The full player or defense name</param>
+    /// <param name="position">The player's position</param>
+    /// <returns>Abbreviated name</returns>
+    private string AbbreviatePlayerName(string playerName, Position position)
+    {
+        if (string.IsNullOrEmpty(playerName))
+            return string.Empty;
+
+        if (position == Position.DEF)
+        {
+            // For defenses, extract just the mascot (last word)
+            // "Los Angeles Rams" -> "Rams", "New England Patriots" -> "Patriots"
+            var words = playerName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            return words.Length > 0 ? words[words.Length - 1] : playerName;
+        }
+        else
+        {
+            // For regular players, convert to "First Initial. Last Name"
+            // "Justin Jefferson" -> "J. Jefferson"
+            var nameParts = playerName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            
+            if (nameParts.Length >= 2)
+            {
+                // Get first initial and last name
+                string firstInitial = nameParts[0].Substring(0, 1).ToUpper();
+                string lastName = nameParts[nameParts.Length - 1];
+                return $"{firstInitial}. {lastName}";
+            }
+            else
+            {
+                // If name doesn't have expected format, return as-is
+                return playerName;
+            }
+        }
+    }
+}
+
 <div class="scoreboard-container">
     <!-- Main Scoreboard Card Container -->
     <div class="scoreboard-main-card">
@@ -87,12 +129,28 @@
                                     var opponentAbbreviation = player.OpponentAbbreviation.ToUpper();
                                     var gameLocation = player.HomeOrAway.Equals("home") ? "vs" : "@";
 
+                                    if (player.GameEnded)
+                                    {
+                                        matchupDisplay = "Final " + player.FinalScoreString + " " + gameLocation + " " + opponentAbbreviation;
+                                    }
+                                    else if (player.GameCanceled)
+                                    {
+                                        matchupDisplay = "Canceled";
+                                    }
+                                    else if (player.GameInProgress)
+                                    {
+                                        matchupDisplay = player.TimeRemaining + " " + player.CurrentScoreString + " " + gameLocation + " " + opponentAbbreviation;
+                                    }
+                                    else
+                                    {
+                                        matchupDisplay = day + " " + hour + ":" + minute + pmOrAm + " " + gameLocation + " " + opponentAbbreviation;
+                                    }
 
                                     <div class="player-row @(player.GameInProgress ? "in-progress" : "")">
                                         <img class="player-headshot" src="@Html.DisplayFor(modelItem => player.Headshot)" alt="Player headshot" />
                                         
                                         <div class="player-info">
-                                            <div class="player-name">@Html.DisplayFor(modelItem => player.Name)</div>
+                                            <div class="player-name">@AbbreviatePlayerName(player.Name, player.TruePosition)</div>
                                             <div class="player-details">
                                                 @player.TeamAbbreviation.ToUpper() - @player.TruePosition<br />
                                                 <span class="mobile-hide-details">
@@ -186,7 +244,7 @@
                                         <img class="player-headshot" src="@Html.DisplayFor(modelItem => player.Headshot)" alt="Player headshot" />
                                         
                                         <div class="player-info">
-                                            <div class="player-name">@Html.DisplayFor(modelItem => player.Name)</div>
+                                            <div class="player-name">@AbbreviatePlayerName(player.Name, player.TruePosition)</div>
                                             <div class="player-details">
                                                 @player.TeamAbbreviation.ToUpper() - @player.TruePosition<br />
                                                 <span class="mobile-hide-details">

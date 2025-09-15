@@ -1,0 +1,332 @@
+@{
+    ViewData["Title"] = "Scoreboard - React Preview";
+}
+
+<div id="scoreboard-react-root"></div>
+
+@section Scripts {
+    <!-- React Development Build -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <script>
+        const { useState, useEffect } = React;
+        
+        // Team Summary Component
+        const TeamSummary = ({ team1, team2 }) => {
+            if (!team1 && !team2) return null;
+
+            return React.createElement('div', { className: 'unified-team-header' },
+                // Team 1
+                React.createElement('div', { className: 'team-summary-item' },
+                    team1 && [
+                        React.createElement('img', { 
+                            key: 'logo1',
+                            className: 'team-summary-logo', 
+                            src: `data:image/png;base64,${team1.ownerLogo}`, 
+                            alt: 'Team Logo' 
+                        }),
+                        React.createElement('div', { key: 'score1', className: 'team-summary-score' },
+                            team1.totalFantasyPoints.toFixed(2)
+                        )
+                    ]
+                ),
+                // VS Divider
+                React.createElement('div', { className: 'vs-divider' }, 'VS'),
+                // Team 2
+                React.createElement('div', { className: 'team-summary-item' },
+                    team2 && [
+                        React.createElement('img', { 
+                            key: 'logo2',
+                            className: 'team-summary-logo', 
+                            src: `data:image/png;base64,${team2.ownerLogo}`, 
+                            alt: 'Team Logo' 
+                        }),
+                        React.createElement('div', { key: 'score2', className: 'team-summary-score' },
+                            team2.totalFantasyPoints.toFixed(2)
+                        )
+                    ]
+                )
+            );
+        };
+
+        // Player Row Component
+        const PlayerRow = ({ player }) => {
+            const abbreviatePlayerName = (playerName, position) => {
+                if (!playerName) return '';
+                
+                if (position === 'DEF') {
+                    // For defenses, extract just the mascot (last word)
+                    // "Los Angeles Rams" -> "Rams", "New England Patriots" -> "Patriots"
+                    const words = playerName.trim().split(/\s+/);
+                    return words.length > 0 ? words[words.length - 1] : playerName;
+                } else {
+                    // For regular players, convert to "First Initial. Last Name"
+                    // "Justin Jefferson" -> "J. Jefferson"
+                    const nameParts = playerName.trim().split(/\s+/);
+                    
+                    if (nameParts.length >= 2) {
+                        // Get first initial and last name
+                        const firstInitial = nameParts[0].substring(0, 1).toUpperCase();
+                        const lastName = nameParts[nameParts.length - 1];
+                        return `${firstInitial}. ${lastName}`;
+                    } else {
+                        // If name doesn't have expected format, return as-is
+                        return playerName;
+                    }
+                }
+            };
+
+            const getMatchupDisplay = () => {
+                if (!player.gameTime) return '';
+
+                const gameDate = new Date(player.gameTime);
+                const day = gameDate.toLocaleDateString('en-US', { weekday: 'short' });
+                let hour = gameDate.getHours();
+                if (hour > 12) hour = hour - 12;
+                const minute = gameDate.getMinutes().toString().padStart(2, '0');
+                const amPm = gameDate.getHours() >= 12 ? 'PM' : 'AM';
+                const opponentAbbreviation = player.opponentAbbreviation.toUpperCase();
+                const gameLocation = player.homeOrAway === 'home' ? 'vs' : 'at';
+
+                if (player.gameEnded) {
+                    return `Final ${player.finalScoreString} ${gameLocation} ${opponentAbbreviation}`;
+                } else if (player.gameCanceled) {
+                    return 'Canceled';
+                } else if (player.gameInProgress) {
+                    return `${player.timeRemaining} ${player.currentScoreString} ${gameLocation} ${opponentAbbreviation}`;
+                } else {
+                    return `${day} ${hour}:${minute}${amPm} ${gameLocation} ${opponentAbbreviation}`;
+                }
+            };
+
+            const getPlayerPoints = () => {
+                if (!player.gameEnded && !player.gameCanceled && !player.gameInProgress) {
+                    return '-';
+                }
+                return player.points.toFixed(2);
+            };
+
+            return React.createElement('div', { 
+                className: `player-row ${player.gameInProgress ? 'in-progress' : ''}` 
+            }, [
+                React.createElement('img', { 
+                    key: 'headshot',
+                    className: 'player-headshot', 
+                    src: player.headshot || '/images/default-player.png', 
+                    alt: 'Player headshot' 
+                }),
+                React.createElement('div', { key: 'info', className: 'player-info' }, [
+                    React.createElement('div', { key: 'name', className: 'player-name' }, 
+                        abbreviatePlayerName(player.name, player.truePosition)
+                    ),
+                    React.createElement('div', { key: 'details', className: 'player-details' }, [
+                        `${player.teamAbbreviation.toUpperCase()} - ${player.truePosition}`,
+                        React.createElement('br', { key: 'br' }),
+                        React.createElement('span', { key: 'matchup', className: 'mobile-hide-details' },
+                            player.gameCanceled ? 
+                                React.createElement('span', { style: { color: '#FF7F7F' } }, getMatchupDisplay()) :
+                                getMatchupDisplay()
+                        )
+                    ])
+                ]),
+                React.createElement('div', { 
+                    key: 'points',
+                    className: `player-points ${player.gameInProgress ? 'in-progress' : ''}` 
+                }, getPlayerPoints())
+            ]);
+        };
+
+        // Position Labels Component
+        const PositionLabels = () => {
+            const positions = ['QB', 'RB', 'RB', 'WR', 'WR', 'FLEX', 'TE', 'K', 'DEF'];
+            
+            return React.createElement('div', { className: 'position-labels-section' },
+                positions.map((position, index) =>
+                    React.createElement('div', { key: index, className: 'position-column' }, position)
+                )
+            );
+        };
+
+        // Week Selection Component
+        const WeekSelection = ({ weeks, selectedWeek, onWeekChange }) => {
+            return React.createElement('div', { className: 'scoreboard-header' },
+                React.createElement('div', { className: 'row justify-content-center' },
+                    React.createElement('div', { className: 'col-12 col-md-6' },
+                        React.createElement('div', { className: 'week-selection-container' }, [
+                            React.createElement('label', { key: 'label', className: 'week-selection-label' }, 'Select Week'),
+                            React.createElement('select', { 
+                                key: 'select',
+                                className: 'form-control', 
+                                value: selectedWeek, 
+                                onChange: (e) => onWeekChange(e.target.value)
+                            }, 
+                                weeks.map((week, index) =>
+                                    React.createElement('option', { key: index, value: week.value }, week.text)
+                                )
+                            )
+                        ])
+                    )
+                )
+            );
+        };
+
+        // Main Scoreboard Component
+        const ReactScoreboard = () => {
+            const [teams, setTeams] = useState([]);
+            const [weeks, setWeeks] = useState([]);
+            const [selectedWeek, setSelectedWeek] = useState('');
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
+
+            // Fetch available weeks
+            useEffect(() => {
+                const fetchWeeks = async () => {
+                    try {
+                        const response = await fetch('/api/scoreboard/weeks');
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            throw new Error(`HTTP ${response.status}: ${errorText}`);
+                        }
+                        
+                        const weeksData = await response.json();
+                        setWeeks(weeksData);
+                        
+                        // Find the default week to select - prioritize latest week like server-side does
+                        let defaultWeek;
+                        
+                        // If multiple weeks are selected (when selectedWeek=null), take the last one (latest week)
+                        const selectedWeeks = weeksData.filter(w => w.selected);
+                        if (selectedWeeks.length > 1) {
+                            // Multiple weeks selected means we want the latest (last) one
+                            defaultWeek = selectedWeeks[selectedWeeks.length - 1];
+                        } else {
+                            // Normal case - find the selected week or fall back to last week
+                            defaultWeek = weeksData.find(w => w.selected) || weeksData[weeksData.length - 1];
+                        }
+                        
+                        if (defaultWeek) {
+                            setSelectedWeek(defaultWeek.value);
+                        }
+                    } catch (err) {
+                        setError('Failed to load weeks: ' + err.message);
+                    }
+                };
+
+                fetchWeeks();
+            }, []);
+
+            // Fetch teams when selectedWeek changes
+            useEffect(() => {
+                if (!selectedWeek) return;
+
+                const fetchTeams = async () => {
+                    setLoading(true);
+                    try {
+                        const response = await fetch(`/api/scoreboard/teams/${selectedWeek}`);
+                        if (!response.ok) throw new Error('Failed to fetch teams');
+                        const teamsData = await response.json();
+                        setTeams(teamsData);
+                    } catch (err) {
+                        setError('Failed to load teams: ' + err.message);
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+
+                fetchTeams();
+            }, [selectedWeek]);
+
+            const handleWeekChange = async (week) => {
+                setSelectedWeek(week);
+                
+                try {
+                    await fetch(`/api/scoreboard/week/${week}`, { method: 'POST' });
+                } catch (err) {
+                    console.error('Failed to update week on server:', err);
+                }
+            };
+
+            if (error) {
+                return React.createElement('div', { className: 'alert alert-danger' }, 
+                    React.createElement('h4', null, 'React Scoreboard - Error'),
+                    React.createElement('p', null, error),
+                    React.createElement('small', null, 'Check browser console for more details')
+                );
+            }
+
+            const team1 = teams[0] || null;
+            const team2 = teams[1] || null;
+
+            return React.createElement('div', { className: 'scoreboard-container' },
+                React.createElement('div', { className: 'scoreboard-main-card' }, [
+                    // Week Selection Header
+                    React.createElement(WeekSelection, { 
+                        key: 'week-selection',
+                        weeks: weeks,
+                        selectedWeek: selectedWeek,
+                        onWeekChange: handleWeekChange
+                    }),
+
+                    // Team Summary Header
+                    React.createElement('div', { key: 'team-summary', className: 'team-summary-section' },
+                        React.createElement(TeamSummary, { team1: team1, team2: team2 })
+                    ),
+
+                    // Main Scoreboard Content
+                    React.createElement('div', { key: 'content', className: 'scoreboard-content' },
+                        loading ? 
+                            React.createElement('div', { className: 'text-center p-4' },
+                                React.createElement('div', { className: 'spinner-border' },
+                                    React.createElement('span', { className: 'sr-only' }, 'Loading...')
+                                ),
+                                React.createElement('p', { className: 'mt-2' }, 'Loading React Scoreboard...')
+                            ) :
+                            React.createElement('div', { className: 'row no-gutters' }, [
+                                // Team 1 Players
+                                React.createElement('div', { key: 'team1', className: 'col-5' },
+                                    React.createElement('div', { className: 'team-players-section' },
+                                        team1 && team1.players.length === 0 ?
+                                            React.createElement('div', { className: 'select-team-link' },
+                                                React.createElement('a', { 
+                                                    href: `/SelectTeam2/Index?week=${team1.week}&ownerId=${team1.ownerId}`,
+                                                    className: 'btn btn-primary'
+                                                }, 'Click here to select this week\'s roster')
+                                            ) :
+                                            team1 && team1.players.map((player, index) =>
+                                                React.createElement(PlayerRow, { key: index, player: player })
+                                            )
+                                    )
+                                ),
+
+                                // Position Labels
+                                React.createElement('div', { key: 'positions', className: 'col-2' },
+                                    React.createElement(PositionLabels)
+                                ),
+
+                                // Team 2 Players  
+                                React.createElement('div', { key: 'team2', className: 'col-5' },
+                                    React.createElement('div', { className: 'team-players-section' },
+                                        team2 && team2.players.length === 0 ?
+                                            React.createElement('div', { className: 'select-team-link' },
+                                                React.createElement('a', { 
+                                                    href: `/SelectTeam2/Index?week=${team2.week}&ownerId=${team2.ownerId}`,
+                                                    className: 'btn btn-primary'
+                                                }, 'Click here to select this week\'s roster')
+                                            ) :
+                                            team2 && team2.players.map((player, index) =>
+                                                React.createElement(PlayerRow, { key: index, player: player })
+                                            )
+                                    )
+                                )
+                            ])
+                    )
+                ])
+            );
+        };
+        
+        // Render the React component
+        const root = ReactDOM.createRoot(document.getElementById('scoreboard-react-root'));
+        root.render(React.createElement(ReactScoreboard));
+    </script>
+}

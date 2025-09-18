@@ -641,9 +641,9 @@
         padding-right: 0.15rem;
     }
     
-    /* Smaller team roster heights for mobile */
+    /* INCREASED team roster heights for mobile - much taller */
     .team-roster {
-        height: 450px; /* Even smaller for mobile */
+        height: 550px; /* INCREASED from 450px to properly fit content */
         margin-top: 20px;
         margin-bottom: 0.5rem;
     }
@@ -656,46 +656,46 @@
         top: -22px;
     }
     
-    /* More compact headers */
+    /* More compact headers but still readable */
     .team-roster .position-group strong {
-        font-size: 0.7rem;
-        padding: 0.15rem 0.3rem;
+        font-size: 0.75rem; /* INCREASED from 0.7rem for better readability */
+        padding: 0.18rem 0.35rem; /* INCREASED padding */
         letter-spacing: 0.3px;
     }
     
-    /* Smaller player text and badges */
+    /* Larger player text and badges for mobile readability */
     .team-roster .drafted-player,
     .team-roster .empty-slot {
-        font-size: 0.65rem;
-        padding: 0.15rem 0.3rem;
+        font-size: 0.7rem; /* INCREASED from 0.65rem */
+        padding: 0.18rem 0.35rem; /* INCREASED padding */
     }
     
-    /* Smaller position badges on mobile */
+    /* Slightly larger position badges on mobile */
     .position-badge.in-roster {
-        font-size: 0.55rem;
-        padding: 0.1rem 0.25rem;
+        font-size: 0.6rem; /* INCREASED from 0.55rem */
+        padding: 0.12rem 0.3rem; /* INCREASED padding */
         margin-left: 0.2rem;
     }
     
     /* Smaller available players section */
     .available-players-list {
-        max-height: 300px; /* Shorter on mobile */
+        max-height: 350px; /* INCREASED from 300px */
     }
     
     .player-item {
-        padding: 0.5rem; /* More compact */
+        padding: 0.6rem; /* INCREASED from 0.5rem */
     }
     
     .player-item .position-badge {
-        font-size: 0.6rem;
+        font-size: 0.65rem; /* INCREASED from 0.6rem */
         padding: 0.15rem 0.4rem;
         margin-left: 0.3rem;
     }
     
-    /* Smaller draft buttons */
+    /* Larger draft buttons for easier tapping */
     .draft-player-btn {
-        font-size: 0.75rem;
-        padding: 0.25rem 0.5rem;
+        font-size: 0.8rem; /* INCREASED from 0.75rem */
+        padding: 0.3rem 0.6rem; /* INCREASED padding */
     }
     
     /* Header adjustments */
@@ -716,7 +716,7 @@
 /* Extra small screens (phones in portrait) */
 @@media (max-width: 576px) {
     .team-roster {
-        height: 400px; /* Even more compact */
+        height: 500px; /* INCREASED from 400px - still compact but shows all content */
     }
     
     /* Single column layout for very small screens */
@@ -731,11 +731,19 @@
         display: none; /* Hide team abbreviation */
     }
     
-    /* Make headers even more compact */
+    /* Make headers compact but still readable */
     .team-roster .position-group strong {
-        font-size: 0.65rem;
+        font-size: 0.7rem; /* INCREASED from 0.65rem */
         text-transform: none; /* Remove uppercase to save space */
         letter-spacing: normal;
+        padding: 0.15rem 0.3rem; /* Adequate padding */
+    }
+    
+    /* Ensure player text is readable */
+    .team-roster .drafted-player,
+    .team-roster .empty-slot {
+        font-size: 0.68rem; /* INCREASED from original */
+        padding: 0.15rem 0.3rem;
     }
 }
 </style>

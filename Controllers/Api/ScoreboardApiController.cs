@@ -98,7 +98,7 @@ namespace FantasyFootballStatTracker.Controllers.Api
         }
 
         [HttpPost("week/{week}")]
-        public async Task<ActionResult> UpdateWeek(int week)
+        public ActionResult UpdateWeek(int week)
         {
             try
             {

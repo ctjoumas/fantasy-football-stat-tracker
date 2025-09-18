@@ -1,0 +1,971 @@
+﻿@using FantasyFootballStatTracker.Models
+@{
+    ViewData["Title"] = "Draft - Week " + ViewData["Week"];
+    var draftState = (DraftState)ViewData["DraftState"];
+    var availablePlayers = (List<EspnPlayer>)ViewData["AvailablePlayers"];
+}
+
+<script>
+    // Embed complete roster data
+    window.draftState = {
+        currentPickOwnerId: @draftState.CurrentPickOwnerId,
+        pickNumber: @draftState.PickNumber,
+        totalPicks: @draftState.TotalPicks,
+        currentPickOwnerName: '@Html.Raw(draftState.GetCurrentPickOwnerName())',
+        owner1Name: '@Html.Raw(draftState.GetOwnerName(1))',
+        owner2Name: '@Html.Raw(draftState.GetOwnerName(2))',
+        owner1Roster: @Html.Raw(Json.Serialize(draftState.Owner1Roster.GroupBy(p => p.Position).ToDictionary(g => g.Key, g => g.Count()))),
+        owner2Roster: @Html.Raw(Json.Serialize(draftState.Owner2Roster.GroupBy(p => p.Position).ToDictionary(g => g.Key, g => g.Count())))
+    };
+</script>
+
+<div class="draft-container">
+    <div class="draft-header">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-8">
+                    <h2>Week @ViewData["Week"] Draft</h2>
+                    <div class="draft-status">
+                        <span class="badge badge-primary">@draftState.GetPickDisplay()</span>
+                        <span class="current-pick">
+                            <strong>@draftState.GetCurrentPickOwnerName()</strong> is picking...
+                        </span>
+                    </div>
+                </div>
+                <div class="col-md-4 text-right">
+                    <div class="draft-progress">
+                        <small>Progress: @draftState.PickNumber / @draftState.TotalPicks picks</small>
+                        <div class="progress">
+                            <div class="progress-bar" role="progressbar" 
+                                 style="width: @(((double)draftState.PickNumber / draftState.TotalPicks) * 100)%"
+                                 aria-valuenow="@draftState.PickNumber" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="@draftState.TotalPicks">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="draft-content">
+        <div class="container-fluid">
+            <div class="row">
+                <!-- Available Players -->
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Available Players</h5>
+                            <div class="player-filters">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <input type="text" id="playerSearch" class="form-control form-control-sm" placeholder="Search players..." />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <select id="positionFilter" class="form-control form-control-sm">
+                                            <option value="">All Positions</option>
+                                            <option value="QB">QB</option>
+                                            <option value="RB">RB</option>
+                                            <option value="WR">WR</option>
+                                            <option value="TE">TE</option>
+                                            <option value="PK">K</option>
+                                            <option value="DEF">DEF</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body available-players-list">
+                            @foreach (var player in availablePlayers)
+                            {
+                                <div class="player-item" data-position="@player.Position" data-player-id="@player.EspnPlayerId" data-player-name="@player.PlayerName.ToLower()">
+                                    <div class="player-info">
+                                        <strong>@player.PlayerName</strong>
+                                        <span class="position-badge @player.Position.ToLower()">@(player.Position == "PK" ? "K" : player.Position)</span>
+                                        <small class="text-muted">(@player.TeamAbbreviation.ToUpper())</small>
+                                    </div>
+                                    <button class="btn btn-sm btn-success draft-player-btn"
+                                            data-player-id="@player.EspnPlayerId"
+                                            data-player-name="@player.PlayerName"
+                                            data-player-position="@player.Position">
+                                        Draft
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Team Rosters -->
+                <div class="col-md-6">
+                    <div class="row">
+                        <!-- Team 1 Roster -->
+                        <div class="col-md-6">
+                            <div class="card team-roster @(draftState.CurrentPickOwnerId == 1 ? "current-pick" : "")">
+                                <div class="card-header">
+                                    <h6>@draftState.GetOwnerName(1) Roster (@draftState.Owner1Roster.Count/9)</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="position-slots">
+                                        @{
+                                            var team1ByPosition = draftState.Owner1Roster.GroupBy(p => p.Position).ToDictionary(g => g.Key, g => g.ToList());
+                                        }
+                                        
+                                        @foreach (var position in new[] { "QB", "RB", "WR", "TE", "FLEX", "K", "DEF" })
+                                        {
+                                            if (position == "FLEX")
+                                            {
+                                                // Show FLEX players (3rd RB, 3rd WR, or 2nd TE)
+                                                var flexPlayers = new List<DraftedPlayer>();
+                                                
+                                                // Add extra RBs
+                                                var rbs = team1ByPosition.ContainsKey("RB") ? team1ByPosition["RB"] : new List<DraftedPlayer>();
+                                                flexPlayers.AddRange(rbs.Skip(2));
+                                                
+                                                // Add extra WRs
+                                                var wrs = team1ByPosition.ContainsKey("WR") ? team1ByPosition["WR"] : new List<DraftedPlayer>();
+                                                flexPlayers.AddRange(wrs.Skip(2));
+                                                
+                                                // Add extra TEs
+                                                var tes = team1ByPosition.ContainsKey("TE") ? team1ByPosition["TE"] : new List<DraftedPlayer>();
+                                                flexPlayers.AddRange(tes.Skip(1));
+
+                                                <div class="position-group">
+                                                    <strong>
+                                                        FLEX (@flexPlayers.Count/1)
+                                                    </strong>
+                                                    <div class="drafted-player-container">
+                                                        @if (flexPlayers.Count > 0)
+                                                        {
+                                                            @foreach (var player in flexPlayers.Take(1))
+                                                            {
+                                                                <div class="drafted-player flex-player">
+                                                                    @player.PlayerName
+                                                                    <span class="position-badge in-roster @player.Position.ToLower()">@(player.Position == "PK" ? "K" : player.Position)</span>
+                                                                </div>
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            <div class="empty-slot">Available FLEX slot</div>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                var players = team1ByPosition.ContainsKey(position) ? team1ByPosition[position] : new List<DraftedPlayer>();
+                                                var required = position switch { "QB" => 1, "K" => 1, "DEF" => 1, "RB" => 2, "WR" => 2, "TE" => 1, _ => 0 };
+                                                var maxToShow = position switch { "RB" => 2, "WR" => 2, "TE" => 1, _ => required };
+
+                                                var playerCount = players.Count > maxToShow ? maxToShow : players.Count;
+
+                                                <div class="position-group">
+                                                    <strong>
+                                                        @position (@playerCount/@required)
+                                                    </strong>
+                                                    @for (int i = 0; i < required; i++)
+                                                    {
+                                                        <div class="drafted-player-container">
+                                                            @if (i < players.Count)
+                                                            {
+                                                                <div class="drafted-player">
+                                                                    @players[i].PlayerName
+                                                                    <span class="position-badge in-roster @players[i].Position.ToLower()">@(players[i].Position == "PK" ? "K" : players[i].Position)</span>
+                                                                </div>
+                                                            }
+                                                            else
+                                                            {
+                                                                <div class="empty-slot">Available @position slot</div>
+                                                            }
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Team 2 Roster -->
+                        <div class="col-md-6">
+                            <div class="card team-roster @(draftState.CurrentPickOwnerId == 2 ? "current-pick" : "")">
+                                <div class="card-header">
+                                    <h6>@draftState.GetOwnerName(2) Roster (@draftState.Owner2Roster.Count/9)</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="position-slots">
+                                        @{
+                                            var team2ByPosition = draftState.Owner2Roster.GroupBy(p => p.Position).ToDictionary(g => g.Key, g => g.ToList());
+                                        }
+                                        
+                                        @foreach (var position in new[] { "QB", "RB", "WR", "TE", "FLEX", "K", "DEF" })
+                                        {
+                                            if (position == "FLEX")
+                                            {
+                                                // Show FLEX players (3rd RB, 3rd WR, or 2nd TE)
+                                                var flexPlayers = new List<DraftedPlayer>();
+                                                
+                                                // Add extra RBs
+                                                var rbs = team2ByPosition.ContainsKey("RB") ? team2ByPosition["RB"] : new List<DraftedPlayer>();
+                                                flexPlayers.AddRange(rbs.Skip(2));
+                                                
+                                                // Add extra WRs
+                                                var wrs = team2ByPosition.ContainsKey("WR") ? team2ByPosition["WR"] : new List<DraftedPlayer>();
+                                                flexPlayers.AddRange(wrs.Skip(2));
+                                                
+                                                // Add extra TEs
+                                                var tes = team2ByPosition.ContainsKey("TE") ? team2ByPosition["TE"] : new List<DraftedPlayer>();
+                                                flexPlayers.AddRange(tes.Skip(1));
+
+                                                <div class="position-group">
+                                                    <strong>
+                                                        FLEX (@flexPlayers.Count/1)
+                                                    </strong>
+                                                    <div class="drafted-player-container">
+                                                        @if (flexPlayers.Count > 0)
+                                                        {
+                                                            @foreach (var player in flexPlayers.Take(1))
+                                                            {
+                                                                <div class="drafted-player flex-player">
+                                                                    @player.PlayerName
+                                                                    <span class="position-badge in-roster @player.Position.ToLower()">@(player.Position == "PK" ? "K" : player.Position)</span>
+                                                                </div>
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            <div class="empty-slot">Available FLEX slot</div>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                var players = team2ByPosition.ContainsKey(position) ? team2ByPosition[position] : new List<DraftedPlayer>();
+                                                var required = position switch { "QB" => 1, "K" => 1, "DEF" => 1, "RB" => 2, "WR" => 2, "TE" => 1, _ => 0 };
+                                                var maxToShow = position switch { "RB" => 2, "WR" => 2, "TE" => 1, _ => required };
+
+                                                var playerCount = players.Count > maxToShow ? maxToShow : players.Count;
+
+                                                <div class="position-group">
+                                                    <strong>
+                                                        @position (@playerCount/@required)
+                                                    </strong>
+                                                    @for (int i = 0; i < required; i++)
+                                                    {
+                                                        <div class="drafted-player-container">
+                                                            @if (i < players.Count)
+                                                            {
+                                                                <div class="drafted-player">
+                                                                    @players[i].PlayerName
+                                                                    <span class="position-badge in-roster @players[i].Position.ToLower()">@(players[i].Position == "PK" ? "K" : players[i].Position)</span>
+                                                                </div>
+                                                            }
+                                                            else
+                                                            {
+                                                                <div class="empty-slot">Available @position slot</div>
+                                                            }
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .draft-container {
+        padding: 0;
+    }
+
+    .draft-header {
+        background: linear-gradient(135deg, #007bff, #0056b3);
+        color: white;
+        padding: 1rem 0;
+        margin-bottom: 1rem;
+    }
+
+    .draft-status {
+        margin-top: 0.5rem;
+    }
+
+    .current-pick {
+        font-size: 1.1rem;
+        margin-left: 1rem;
+    }
+
+    .draft-progress {
+        color: rgba(255, 255, 255, 0.9);
+    }
+
+    .available-players-list {
+        max-height: 600px;
+        overflow-y: auto;
+    }
+
+    .player-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        border-bottom: 1px solid #dee2e6;
+        transition: background-color 0.2s;
+    }
+
+        .player-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .player-item:last-child {
+            border-bottom: none;
+        }
+
+        .player-item.disabled {
+            opacity: 0.5;
+            background-color: #f8f9fa;
+        }
+
+            .player-item.disabled .draft-player-btn {
+                display: none;
+            }
+
+    .player-filters {
+        margin-top: 0.5rem;
+    }
+
+    /* UPDATED: Adjusted column sizes - smaller available players, larger rosters */
+    .draft-content .col-md-6:first-child {
+        flex: 0 0 40%; /* Available players - 40% width */
+        max-width: 40%;
+    }
+
+    .draft-content .col-md-6:last-child {
+        flex: 0 0 60%; /* Team rosters - 60% width */
+        max-width: 60%;
+    }
+
+        /* FIXED: Make team roster columns consistent width */
+        .draft-content .col-md-6:last-child .col-md-6 {
+            flex: 0 0 50%; /* Each team roster exactly 50% of the 60% space */
+            max-width: 50%;
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+        }
+
+    .team-roster {
+        margin-bottom: 1rem;
+        height: 590px; /* OPTIMIZED height - less than before but enough for content */
+        position: relative;
+        margin-top: 25px;
+    }
+
+        /* Enhanced current pick styling - much more obvious */
+        .team-roster.current-pick {
+            border: 3px solid #28a745 !important;
+            box-shadow: 0 0 20px rgba(40, 167, 69, 0.4) !important;
+            position: relative;
+        }
+
+            .team-roster.current-pick::before {
+                content: "👈 CURRENTLY PICKING";
+                position: absolute;
+                top: -25px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #28a745;
+                color: white;
+                padding: 6px 16px;
+                border-radius: 15px;
+                font-size: 0.75rem;
+                font-weight: bold;
+                z-index: 10;
+                animation: pulse 2s infinite;
+                white-space: nowrap;
+            }
+
+            .team-roster.current-pick .card-header {
+                background: linear-gradient(135deg, #28a745, #20c997) !important;
+                color: white !important;
+                font-weight: bold;
+            }
+
+    @@keyframes pulse {
+        0%, 100% {
+            transform: translateX(-50%) scale(1);
+        }
+
+        50% {
+            transform: translateX(-50%) scale(1.05);
+        }
+    }
+
+    /* Pulse animation for newly drafted players */
+    @@keyframes newPlayerPulse {
+        0%, 100% {
+            background-color: #fff3cd;
+            border-color: #ffc107;
+            transform: scale(1);
+        }
+
+        50% {
+            background-color: #ffeaa7;
+            border-color: #fdcb6e;
+            transform: scale(1.02);
+        }
+    }
+
+    /* Fixed roster layout - only affects team roster cards */
+    .team-roster .card-body {
+        height: calc(100% - 50px);
+        overflow: hidden; /* NO SCROLLBARS */
+        padding: 0.6rem; /* INCREASED padding slightly for better appearance */
+    }
+
+    .team-roster .position-slots {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between; /* CHANGED: Back to space-between for better distribution */
+    }
+
+    .team-roster .position-group {
+        flex: 1; /* CHANGED: Allow equal space distribution */
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 0; /* REMOVED margin since space-between handles spacing */
+        justify-content: flex-start; /* Content aligns to top of each section */
+    }
+
+    .team-roster .position-group strong {
+        display: block;
+        color: #2c3e50; /* Darker text for better contrast */
+        font-size: 0.82rem;
+        margin-bottom: 0.2rem;
+        padding: 0.25rem 0.5rem; /* Slightly more padding */
+        background: linear-gradient(135deg, #f8f9fa, #e9ecef); /* Subtle gradient */
+        border-radius: 6px; /* Slightly more rounded */
+        border-left: 4px solid #007bff; /* Thicker accent bar */
+        flex-shrink: 0;
+        font-weight: 700; /* Bolder text */
+        text-transform: uppercase; /* Make it stand out more */
+        letter-spacing: 0.5px; /* Slight letter spacing */
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1); /* Subtle shadow */
+    }
+
+    /* Drafted player containers - only in team rosters */
+    .team-roster .drafted-player-container {
+        flex: 0 0 auto;
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 0.12rem; /* SLIGHTLY increased spacing */
+    }
+
+    .team-roster .drafted-player {
+        background-color: #e9ecef;
+        padding: 0.22rem 0.45rem; /* SLIGHTLY increased padding for better readability */
+        margin: 0.06rem 0; /* SLIGHTLY increased margins */
+        border-radius: 4px;
+        font-size: 0.77rem; /* SLIGHTLY increased font size */
+        line-height: 1.25; /* SLIGHTLY improved line height */
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+        font-weight: 500;
+    }
+
+        .team-roster .drafted-player.flex-player {
+            background-color: #e9ecef;
+            color: #495057;
+            border-left: 4px solid #28a745;
+            font-weight: 600;
+        }
+
+        /* NEW: Newly drafted player highlighting */
+        .team-roster .drafted-player.newly-drafted {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7) !important;
+            border: 2px solid #ffc107 !important;
+            color: #856404 !important;
+            font-weight: 700 !important;
+            animation: newPlayerPulse 3s ease-in-out infinite;
+            box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+        }
+
+            .team-roster .drafted-player.newly-drafted.flex-player {
+                border-left: 4px solid #28a745 !important;
+            }
+
+    /* Empty slot placeholders - SAME styling for ALL teams */
+    .team-roster .empty-slot {
+        background-color: #f8f9fa;
+        border: 2px dashed #dee2e6;
+        padding: 0.22rem 0.45rem; /* SLIGHTLY increased padding */
+        border-radius: 4px;
+        font-size: 0.72rem; /* SLIGHTLY increased font size */
+        color: #6c757d;
+        text-align: center;
+        font-style: italic;
+        margin: 0.06rem 0; /* SLIGHTLY increased margins */
+        line-height: 1.25;
+        min-height: 30px; /* SLIGHTLY increased minimum height */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .draft-player-btn {
+        white-space: nowrap;
+    }
+
+        .draft-player-btn:disabled {
+            background-color: #6c757d;
+            border-color: #6c757d;
+            cursor: not-allowed;
+        }
+
+    /* Position Color Coding - Oval Badges */
+.position-badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-align: center;
+    min-width: 32px;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    margin-left: 0.3rem;
+}
+
+/* Position-specific colors */
+.position-badge.qb {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    border: 1px solid #0056b3;
+}
+
+.position-badge.rb {
+    background: linear-gradient(135deg, #28a745, #1e7e34);
+    border: 1px solid #1e7e34;
+}
+
+.position-badge.wr {
+    background: linear-gradient(135deg, #ffc107, #e0a800);
+    border: 1px solid #e0a800;
+    color: #212529; /* Dark text for better contrast on yellow */
+    text-shadow: none;
+}
+
+.position-badge.te {
+    background: linear-gradient(135deg, #fd7e14, #e8590c);
+    border: 1px solid #e8590c;
+}
+
+.position-badge.k, .position-badge.pk {
+    background: linear-gradient(135deg, #6f42c1, #59359a);
+    border: 1px solid #59359a;
+}
+
+.position-badge.def {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    border: 1px solid #c82333;
+}
+
+.position-badge.flex {
+    background: linear-gradient(135deg, #17a2b8, #138496);
+    border: 1px solid #138496;
+}
+
+/* Small badges for roster headers */
+.position-badge.small {
+    padding: 0.1rem 0.4rem;
+    font-size: 0.65rem;
+    min-width: 28px;
+    border-radius: 10px;
+}
+
+/* Available players - position badge styling */
+.player-item .position-badge {
+    margin-left: 0.5rem;
+    vertical-align: middle;
+}
+
+/* Drafted players - integrate badge into player name */
+.team-roster .drafted-player .position-badge {
+    margin-left: 0.4rem;
+    vertical-align: middle;
+}
+
+/* Position group headers - small badge next to position name */
+.team-roster .position-group strong .position-badge {
+    margin-left: 0.3rem;
+    vertical-align: middle;
+}
+
+/* Hover effects for badges */
+.position-badge:hover {
+    transform: scale(1.05);
+    transition: transform 0.2s ease;
+}
+
+/* Ensure badges look good in different contexts */
+.position-badge.in-roster {
+    font-size: 0.6rem;
+    padding: 0.15rem 0.4rem;
+    margin-left: 0.3rem;
+}
+
+    /* Responsive adjustments */
+    @@media (max-width: 768px) {
+    /* MOBILE: Stack layout vertically on very small screens */
+    .draft-content .col-md-6:first-child,
+    .draft-content .col-md-6:last-child {
+        flex: 0 0 100%; /* Stack vertically on mobile */
+        max-width: 100%;
+        margin-bottom: 1rem;
+    }
+    
+    /* Make roster tables side-by-side on mobile */
+    .draft-content .col-md-6:last-child .col-md-6 {
+        flex: 0 0 50%;
+        max-width: 50%;
+        padding-left: 0.15rem;
+        padding-right: 0.15rem;
+    }
+    
+    /* Smaller team roster heights for mobile */
+    .team-roster {
+        height: 450px; /* Even smaller for mobile */
+        margin-top: 20px;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Smaller current pick indicator */
+    .team-roster.current-pick::before {
+        content: "👈 PICKING";
+        font-size: 0.6rem;
+        padding: 3px 8px;
+        top: -22px;
+    }
+    
+    /* More compact headers */
+    .team-roster .position-group strong {
+        font-size: 0.7rem;
+        padding: 0.15rem 0.3rem;
+        letter-spacing: 0.3px;
+    }
+    
+    /* Smaller player text and badges */
+    .team-roster .drafted-player,
+    .team-roster .empty-slot {
+        font-size: 0.65rem;
+        padding: 0.15rem 0.3rem;
+    }
+    
+    /* Smaller position badges on mobile */
+    .position-badge.in-roster {
+        font-size: 0.55rem;
+        padding: 0.1rem 0.25rem;
+        margin-left: 0.2rem;
+    }
+    
+    /* Smaller available players section */
+    .available-players-list {
+        max-height: 300px; /* Shorter on mobile */
+    }
+    
+    .player-item {
+        padding: 0.5rem; /* More compact */
+    }
+    
+    .player-item .position-badge {
+        font-size: 0.6rem;
+        padding: 0.15rem 0.4rem;
+        margin-left: 0.3rem;
+    }
+    
+    /* Smaller draft buttons */
+    .draft-player-btn {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    /* Header adjustments */
+    .draft-header {
+        padding: 0.5rem 0;
+    }
+    
+    .draft-header h2 {
+        font-size: 1.5rem;
+    }
+    
+    .current-pick {
+        font-size: 0.95rem;
+        margin-left: 0.5rem;
+    }
+}
+
+/* Extra small screens (phones in portrait) */
+@@media (max-width: 576px) {
+    .team-roster {
+        height: 400px; /* Even more compact */
+    }
+    
+    /* Single column layout for very small screens */
+    .draft-content .col-md-6:last-child .col-md-6 {
+        flex: 0 0 100%;
+        max-width: 100%;
+        margin-bottom: 1rem;
+    }
+    
+    /* Hide some less critical info on tiny screens */
+    .player-item small {
+        display: none; /* Hide team abbreviation */
+    }
+    
+    /* Make headers even more compact */
+    .team-roster .position-group strong {
+        font-size: 0.65rem;
+        text-transform: none; /* Remove uppercase to save space */
+        letter-spacing: normal;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Get references to filter elements
+    const positionFilter = document.getElementById('positionFilter');
+    const playerSearch = document.getElementById('playerSearch');
+    const playerItems = document.querySelectorAll('.player-item');
+    
+    // Filter function
+    function filterPlayers() {
+        const selectedPosition = positionFilter.value;
+        const searchText = playerSearch.value.toLowerCase();
+        const currentPickOwner = getCurrentPickOwner();
+        
+        playerItems.forEach(item => {
+            const playerPosition = item.getAttribute('data-position');
+            const playerName = item.getAttribute('data-player-name');
+            
+            const positionMatch = selectedPosition === '' || playerPosition === selectedPosition;
+            const nameMatch = searchText === '' || playerName.includes(searchText);
+            const canDraft = canDraftPosition(playerPosition, currentPickOwner);
+            
+            if (positionMatch && nameMatch && canDraft) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+    
+    // Position filter event
+    positionFilter.addEventListener('change', filterPlayers);
+    
+    // Search input event
+    playerSearch.addEventListener('input', filterPlayers);
+    
+    // Get current roster counts by reading from the server-rendered data
+    function getCurrentRosterCounts(ownerId) {
+        const rosterData = ownerId === 1 ? window.draftState.owner1Roster : window.draftState.owner2Roster;
+
+        // Convert server data to the format we need
+        const counts = {
+            'QB': rosterData['QB'] || 0,
+            'RB': rosterData['RB'] || 0,
+            'WR': rosterData['WR'] || 0,
+            'TE': rosterData['TE'] || 0,
+            'K': rosterData['K'] || rosterData['PK'] || 0, // Handle PK/K conversion
+            'DEF': rosterData['DEF'] || 0,
+            'FLEX': 0 // Calculate FLEX from excess players
+        };
+
+        // Calculate FLEX players (3rd RB, 3rd WR, or 2nd TE)
+        counts['FLEX'] = Math.max(0, counts['RB'] - 2) +
+                        Math.max(0, counts['WR'] - 2) +
+                        Math.max(0, counts['TE'] - 1);
+
+        return counts;
+    }
+    
+    // Position validation - simplified logic
+    function canDraftPosition(position, currentPickOwner) {
+        const counts = getCurrentRosterCounts(currentPickOwner);
+        
+        // Position limits (maximum allowed)
+        const limits = {
+            'QB': 1, 
+            'K': 1, 
+            'DEF': 1, 
+            'RB': 2,
+            'WR': 2,
+            'TE': 1,
+            'FLEX': 1
+        };
+        
+        // Convert PK to K for validation
+        const validationPosition = position === 'PK' ? 'K' : position;
+
+        // Special handling for FLEX position
+        if (validationPosition === 'RB' || validationPosition === 'WR' || validationPosition === 'TE') {
+            // Check if we can draft this position as a FLEX
+            const flexCount = counts['FLEX'];
+            const flexLimit = limits['FLEX'];
+            
+            // Check if we have room in the main position first
+            const mainPositionCount = counts[validationPosition];
+            const mainPositionLimit = limits[validationPosition];
+
+            // if we can draft in the main position, allow it
+            if (mainPositionCount < mainPositionLimit) {
+                return true;
+            }
+
+            // if main position is full, check if we can draft as FLEX
+            if ((mainPositionCount === mainPositionLimit) && (flexCount < flexLimit)){
+                return true;
+            }
+
+            // at this point, we know the main and flex positions are both full
+            return false;
+        }
+
+        // For QB, DEF, and K, we only need to check the positional limit
+        return counts[validationPosition] < limits[validationPosition];
+    }
+    
+    // Get current pick owner from the page
+    function getCurrentPickOwner() {
+        return window.draftState.currentPickOwnerId;
+    }
+    
+    // Update button states based on position validation
+    function updateButtonStates() {
+        const currentPickOwner = getCurrentPickOwner();
+        
+        playerItems.forEach(item => {
+            const button = item.querySelector('.draft-player-btn');
+            const position = item.getAttribute('data-position');
+            
+            if (canDraftPosition(position, currentPickOwner)) {
+                button.disabled = false;
+                button.textContent = 'Draft';
+                item.classList.remove('disabled');
+            } else {
+                //button.disabled = true;
+                //button.textContent = 'Max reached';
+                //item.classList.add('disabled');
+                item.style.display = 'none';
+            }
+        });
+    }
+
+        // Function to highlight newly drafted players
+        function highlightNewlyDraftedPlayer(playerName) {
+            // Remove previous highlighting
+            document.querySelectorAll('.newly-drafted').forEach(el => {
+                el.classList.remove('newly-drafted');
+            });
+
+            // Find and highlight the newly drafted player
+            document.querySelectorAll('.drafted-player').forEach(player => {
+                if (player.textContent.trim() === playerName) {
+                    player.classList.add('newly-drafted');
+
+                    // Remove highlighting after 10 seconds
+                    setTimeout(() => {
+                        player.classList.remove('newly-drafted');
+                    }, 10000);
+
+                    // Scroll player into view
+                    player.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            });
+        }
+    
+    // Initial button state update
+    updateButtonStates();
+    
+    // Draft player buttons
+    const draftButtons = document.querySelectorAll('.draft-player-btn');
+    
+    draftButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            if (this.disabled) return;
+            
+            const playerId = this.getAttribute('data-player-id');
+            const playerName = this.getAttribute('data-player-name');
+            const playerPosition = this.getAttribute('data-player-position');
+
+                // Store for highlighting after draft
+                lastDraftedPlayer = playerName;
+
+            // Get current pick owner
+            const currentPickOwner = getCurrentPickOwner();
+            
+            // Final validation before drafting
+            if (!canDraftPosition(playerPosition, currentPickOwner)) {
+                alert(`Cannot draft another ${playerPosition}. Position limit reached.`);
+                return;
+            }
+            
+            // Disable button and show loading
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Drafting...';
+            
+            // Make the pick
+            fetch('@Url.Action("MakePick", "Draft")', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'playerId=' + encodeURIComponent(playerId)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (data.draftComplete) {
+                        // Draft is complete, redirect to scoreboard
+                        window.location.href = data.redirectUrl;
+                    } else {
+                        // Just reload the page to show updated state
+                        window.location.reload();
+                    }
+                } else {
+                    alert('Error making pick: ' + data.message);
+                    // Re-enable button
+                    this.disabled = false;
+                    this.innerHTML = 'Draft';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error making pick. Please try again.');
+                // Re-enable button
+                this.disabled = false;
+                this.innerHTML = 'Draft';
+            });
+        });
+    });
+
+    // Check for newly drafted player after page load
+    const lastDrafted = sessionStorage.getItem('lastDraftedPlayer');
+    if (lastDrafted) {
+        // Small delay to ensure DOM is ready
+        setTimeout(() => {
+            highlightNewlyDraftedPlayer(lastDrafted);
+            sessionStorage.removeItem('lastDraftedPlayer');
+        }, 500);
+    }
+});
+</script>

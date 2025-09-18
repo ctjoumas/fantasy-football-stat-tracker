@@ -38,4 +38,8 @@
     <ProjectReference Include="nl2sql.library\Nl2Sql.Library.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Database\" />
+  </ItemGroup>
+
 </Project>

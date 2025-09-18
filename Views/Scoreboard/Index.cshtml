@@ -114,7 +114,9 @@
                             @if (team.Players.Count == 0)
                             {
                                 <div class="select-team-link">
-                                    @Html.ActionLink("Click here to select this week's roster", "Index", "SelectTeam2", new { week = team.Week, ownerId = team.OwnerId }, new { @class = "btn btn-primary" })
+                                    <div class="text-muted">
+                                        <i class="fas fa-hourglass-half"></i> Waiting for draft to begin...
+                                    </div>
                                 </div>
                             }
                             else
@@ -208,7 +210,9 @@
                             @if (team.Players.Count == 0)
                             {
                                 <div class="select-team-link">
-                                    @Html.ActionLink("Click here to select this week's roster", "Index", "SelectTeam2", new { week = team.Week, ownerId = team.OwnerId }, new { @class = "btn btn-primary" })
+                                    <div class="text-muted">
+                                        <i class="fas fa-hourglass-half"></i> Waiting for draft to begin...
+                                    </div>
                                 </div>
                             }
                             else
@@ -278,5 +282,66 @@
                 </div>
             </div>
         </div>
+
+        @* Replace the draft overlay section with this *@
+        @if (Model != null && Model.Count >= 2 && Model[0].Players.Count == 0 && Model[1].Players.Count == 0)
+        {
+            <div class="draft-prompt-container">
+                <div class="draft-prompt-card">
+                    <div class="card-header text-center bg-primary text-white">
+                        <h4><i class="fas fa-trophy"></i> Week @Model[0].Week Draft Ready</h4>
+                    </div>
+                    <div class="card-body text-center">
+                        <div class="draft-illustration mb-3">
+                            <i class="fas fa-users" style="font-size: 3rem; color: #007bff;"></i>
+                        </div>
+                        <h5>Time to Draft Your Teams!</h5>
+                        <p class="text-muted">Select your lineup for Week @Model[0].Week and compete for victory.</p>
+                        <a href="/Draft/Start?week=@Model[0].Week" class="btn btn-success btn-lg">
+                            <i class="fas fa-play"></i> Begin Draft
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <style>
+                .draft-prompt-container {
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    z-index: 10;
+                    width: 90%;
+                    max-width: 450px;
+                }
+
+                .draft-prompt-card {
+                    background: white;
+                    border-radius: 15px;
+                    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+                    border: 3px solid #007bff;
+                }
+
+                    .draft-prompt-card .card-header {
+                        border-radius: 12px 12px 0 0;
+                        padding: 1.5rem;
+                    }
+
+                    .draft-prompt-card .card-body {
+                        padding: 2rem;
+                    }
+
+                .draft-illustration {
+                    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+                    border-radius: 50%;
+                    width: 80px;
+                    height: 80px;
+                    margin: 0 auto;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+            </style>
+        }
     </div>
 </div>

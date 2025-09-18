@@ -289,9 +289,9 @@
                                         team1 && team1.players.length === 0 ?
                                             React.createElement('div', { className: 'select-team-link' },
                                                 React.createElement('a', { 
-                                                    href: `/SelectTeam2/Index?week=${team1.week}&ownerId=${team1.ownerId}`,
-                                                    className: 'btn btn-primary'
-                                                }, 'Click here to select this week\'s roster')
+                                                    href: `/Draft/Start?week=${team1.week}`,
+                                                    className: 'btn btn-success btn-lg'
+                                                }, '?? Start Week ' + team1.week + ' Draft')
                                             ) :
                                             team1 && team1.players.map((player, index) =>
                                                 React.createElement(PlayerRow, { key: index, player: player })
@@ -309,10 +309,10 @@
                                     React.createElement('div', { className: 'team-players-section' },
                                         team2 && team2.players.length === 0 ?
                                             React.createElement('div', { className: 'select-team-link' },
-                                                React.createElement('a', { 
-                                                    href: `/SelectTeam2/Index?week=${team2.week}&ownerId=${team2.ownerId}`,
-                                                    className: 'btn btn-primary'
-                                                }, 'Click here to select this week\'s roster')
+                                                React.createElement('div', { className: 'text-muted' },
+                                                    React.createElement('i', { className: 'fas fa-hourglass-half' }),
+                                                    ' Waiting for draft to begin...'
+                                                )
                                             ) :
                                             team2 && team2.players.map((player, index) =>
                                                 React.createElement(PlayerRow, { key: index, player: player })

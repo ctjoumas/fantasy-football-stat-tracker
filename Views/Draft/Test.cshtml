@@ -1,0 +1,171 @@
+@{
+    ViewData["Title"] = "Draft Testing Tools";
+}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h3 class="mb-0">?? Draft System Testing Tools</h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Testing Information:</strong> These tools help you test the draft system without waiting for the natural week transition logic.
+                    </div>
+
+                    <div class="row">
+                        <!-- Quick Draft Test -->
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5>?? Quick Draft Test</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p>Start a draft for any week immediately:</p>
+                                    <form method="get" action="@Url.Action("Test", "Draft")">
+                                        <div class="form-group">
+                                            <label for="testWeek">Week Number:</label>
+                                            <input type="number" id="testWeek" name="week" class="form-control" value="15" min="1" max="18" />
+                                        </div>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-play"></i> Start Test Draft
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Clear Rosters -->
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5>??? Clear Rosters</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p>Clear existing rosters for a week to test again:</p>
+                                    <div class="form-group">
+                                        <label for="clearWeek">Week Number:</label>
+                                        <input type="number" id="clearWeek" class="form-control" value="15" min="1" max="18" />
+                                    </div>
+                                    <button type="button" class="btn btn-warning" onclick="clearRosters()">
+                                        <i class="fas fa-trash"></i> Clear Week Rosters
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4">
+                        <!-- Navigation Links -->
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5>?? Quick Navigation</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="btn-group" role="group">
+                                        <a href="@Url.Action("Index", "Scoreboard")" class="btn btn-outline-primary">
+                                            <i class="fas fa-chart-line"></i> Scoreboard
+                                        </a>
+                                        <a href="@Url.Action("Start", "Draft", new { week = 15 })" class="btn btn-outline-success">
+                                            <i class="fas fa-football-ball"></i> Draft Week 15
+                                        </a>
+                                        <button type="button" class="btn btn-outline-secondary" onclick="resetDraft()">
+                                            <i class="fas fa-redo"></i> Reset Draft Session
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4">
+                        <!-- Testing Instructions -->
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5>?? Testing Instructions</h5>
+                                </div>
+                                <div class="card-body">
+                                    <ol>
+                                        <li><strong>Quick Test:</strong> Use "Start Test Draft" to immediately begin a draft for any week</li>
+                                        <li><strong>Clear & Retry:</strong> Use "Clear Week Rosters" to remove drafted players and test again</li>
+                                        <li><strong>Reset Session:</strong> If draft gets stuck, use "Reset Draft Session"</li>
+                                        <li><strong>Check Scoreboard:</strong> After completing a draft, verify players appear correctly</li>
+                                    </ol>
+                                    
+                                    <div class="alert alert-warning mt-3">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        <strong>Note:</strong> Make sure your database has the <code>GetAvailablePlayersForDraft</code> stored procedure created!
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function clearRosters() {
+    const week = document.getElementById('clearWeek').value;
+    
+    if (!week || week < 1 || week > 18) {
+        alert('Please enter a valid week number (1-18)');
+        return;
+    }
+    
+    if (confirm(`Are you sure you want to clear all rosters for week ${week}? This will delete both teams' players.`)) {
+        fetch('@Url.Action("ClearRosters", "Draft")', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'week=' + encodeURIComponent(week)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                if (data.redirectUrl) {
+                    window.location.href = data.redirectUrl;
+                }
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error clearing rosters. Check console for details.');
+        });
+    }
+}
+
+function resetDraft() {
+    if (confirm('Reset the current draft session? This will clear any draft in progress.')) {
+        fetch('@Url.Action("Reset", "Draft")', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Draft session reset successfully!');
+                window.location.reload();
+            } else {
+                alert('Error resetting draft session.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error resetting draft. Check console for details.');
+        });
+    }
+}
+</script>

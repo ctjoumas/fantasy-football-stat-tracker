@@ -15,7 +15,8 @@
         owner1Name: '@Html.Raw(draftState.GetOwnerName(1))',
         owner2Name: '@Html.Raw(draftState.GetOwnerName(2))',
         owner1Roster: @Html.Raw(Json.Serialize(draftState.Owner1Roster.GroupBy(p => p.Position).ToDictionary(g => g.Key, g => g.Count()))),
-        owner2Roster: @Html.Raw(Json.Serialize(draftState.Owner2Roster.GroupBy(p => p.Position).ToDictionary(g => g.Key, g => g.Count())))
+        owner2Roster: @Html.Raw(Json.Serialize(draftState.Owner2Roster.GroupBy(p => p.Position).ToDictionary(g => g.Key, g => g.Count()))),
+        draftId: '@ViewData["DraftId"]'
     };
 </script>
 
@@ -344,7 +345,7 @@
         margin-top: 0.5rem;
     }
 
-    /* UPDATED: Adjusted column sizes - smaller available players, larger rosters */
+    /* Adjusted column sizes - smaller available players, larger rosters */
     .draft-content .col-md-6:first-child {
         flex: 0 0 40%; /* Available players - 40% width */
         max-width: 40%;
@@ -355,7 +356,7 @@
         max-width: 60%;
     }
 
-        /* FIXED: Make team roster columns consistent width */
+        /* Make team roster columns consistent width */
         .draft-content .col-md-6:last-child .col-md-6 {
             flex: 0 0 50%; /* Each team roster exactly 50% of the 60% space */
             max-width: 50%;
@@ -370,62 +371,79 @@
         margin-top: 25px;
     }
 
-        /* Enhanced current pick styling - much more obvious */
-        .team-roster.current-pick {
-            border: 3px solid #28a745 !important;
-            box-shadow: 0 0 20px rgba(40, 167, 69, 0.4) !important;
-            position: relative;
-        }
+    /* Enhanced current pick styling - much more obvious */
+    .team-roster.current-pick {
+        border: 3px solid #28a745 !important;
+        box-shadow: 0 0 20px rgba(40, 167, 69, 0.4) !important;
+        position: relative;
+    }
 
-            .team-roster.current-pick::before {
-                content: "👈 CURRENTLY PICKING";
-                position: absolute;
-                top: -25px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: #28a745;
-                color: white;
-                padding: 6px 16px;
-                border-radius: 15px;
-                font-size: 0.75rem;
-                font-weight: bold;
-                z-index: 10;
-                animation: pulse 2s infinite;
-                white-space: nowrap;
-            }
+    .team-roster.current-pick::before {
+        content: "👈 CURRENTLY PICKING";
+        position: absolute;
+        top: -25px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #28a745;
+        color: white;
+        padding: 6px 16px;
+        border-radius: 15px;
+        font-size: 0.75rem;
+        font-weight: bold;
+        z-index: 10;
+        animation: pulse 2s infinite;
+        white-space: nowrap;
+    }
 
-            .team-roster.current-pick .card-header {
-                background: linear-gradient(135deg, #28a745, #20c997) !important;
-                color: white !important;
-                font-weight: bold;
-            }
+    .team-roster.current-pick .card-header {
+        background: linear-gradient(135deg, #28a745, #20c997) !important;
+        color: white !important;
+        font-weight: bold;
+    }
 
     @@keyframes pulse {
         0%, 100% {
             transform: translateX(-50%) scale(1);
         }
-
         50% {
             transform: translateX(-50%) scale(1.05);
         }
     }
 
-    /* Pulse animation for newly drafted players */
+    /* Pulse animation for newly drafted players - FIXED: Less intrusive */
     @@keyframes newPlayerPulse {
-        0%, 100% {
-            background-color: #fff3cd;
-            border-color: #ffc107;
+        0% {
+            background-color: #fff3cd !important;
+            border-color: #ffc107 !important;
             transform: scale(1);
         }
 
-        50% {
-            background-color: #ffeaa7;
-            border-color: #fdcb6e;
+        25% {
+            background-color: #ffeaa7 !important;
+            border-color: #fdcb6e !important;
             transform: scale(1.02);
+        }
+
+        50% {
+            background-color: #fff3cd !important;
+            border-color: #ffc107 !important;
+            transform: scale(1);
+        }
+
+        75% {
+            background-color: #ffeaa7 !important;
+            border-color: #fdcb6e !important;
+            transform: scale(1.01);
+        }
+
+        100% {
+            background-color: #e9ecef !important;
+            border-color: transparent !important;
+            transform: scale(1);
         }
     }
 
-    /* Fixed roster layout - only affects team roster cards */
+    /* Roster layout - only affects team roster cards */
     .team-roster .card-body {
         height: calc(100% - 50px);
         overflow: hidden; /* NO SCROLLBARS */
@@ -440,10 +458,10 @@
     }
 
     .team-roster .position-group {
-        flex: 1; /* CHANGED: Allow equal space distribution */
+        flex: 1; /* Allow equal space distribution */
         display: flex;
         flex-direction: column;
-        margin-bottom: 0; /* REMOVED margin since space-between handles spacing */
+        margin-bottom: 0; /* Margin since space-between handles spacing */
         justify-content: flex-start; /* Content aligns to top of each section */
     }
 
@@ -483,26 +501,56 @@
         font-weight: 500;
     }
 
-        .team-roster .drafted-player.flex-player {
-            background-color: #e9ecef;
-            color: #495057;
-            border-left: 4px solid #28a745;
-            font-weight: 600;
-        }
+    .team-roster .drafted-player.flex-player {
+        background-color: #e9ecef;
+        color: #495057;
+        border-left: 4px solid #28a745;
+        font-weight: 600;
+    }
 
-        /* NEW: Newly drafted player highlighting */
+    /* Newly drafted player highlighting */
         .team-roster .drafted-player.newly-drafted {
             background: linear-gradient(135deg, #fff3cd, #ffeaa7) !important;
             border: 2px solid #ffc107 !important;
             color: #856404 !important;
             font-weight: 700 !important;
-            animation: newPlayerPulse 3s ease-in-out infinite;
-            box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+            animation: newPlayerPulse 2s ease-in-out forwards;
+            box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3) !important;
+            position: relative;
+            z-index: 1;
         }
 
-            .team-roster .drafted-player.newly-drafted.flex-player {
-                border-left: 4px solid #28a745 !important;
-            }
+    /* Add explicit normal state for drafted players */
+    .team-roster .drafted-player:not(.newly-drafted) {
+        background-color: #e9ecef !important;
+        border: 2px solid transparent !important;
+        transform: scale(1) !important;
+    }
+
+    .team-roster .drafted-player.newly-drafted.flex-player {
+        border-left: 4px solid #28a745 !important;
+    }
+
+    /* Force normal state after animation - higher specificity */
+    .team-roster .drafted-player.animation-complete {
+        background-color: #e9ecef !important;
+        border: 2px solid transparent !important;
+        transform: scale(1) !important;
+        color: #495057 !important;
+        font-weight: 500 !important;
+        box-shadow: none !important;
+        animation: none !important;
+    }
+
+    .team-roster .drafted-player.animation-complete.flex-player {
+        background-color: #e9ecef !important;
+        color: #495057 !important;
+        border-left: 4px solid #28a745 !important;
+        border-top: 2px solid transparent !important;
+        border-right: 2px solid transparent !important;
+        border-bottom: 2px solid transparent !important;
+        font-weight: 600 !important;
+    }
 
     /* Empty slot placeholders - SAME styling for ALL teams */
     .team-roster .empty-slot {
@@ -526,102 +574,102 @@
         white-space: nowrap;
     }
 
-        .draft-player-btn:disabled {
-            background-color: #6c757d;
-            border-color: #6c757d;
-            cursor: not-allowed;
-        }
+    .draft-player-btn:disabled {
+        background-color: #6c757d;
+        border-color: #6c757d;
+        cursor: not-allowed;
+    }
 
     /* Position Color Coding - Oval Badges */
-.position-badge {
-    display: inline-block;
-    padding: 0.2rem 0.6rem;
-    border-radius: 12px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-align: center;
-    min-width: 32px;
-    color: white;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-    margin-left: 0.3rem;
-}
+    .position-badge {
+        display: inline-block;
+        padding: 0.2rem 0.6rem;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-align: center;
+        min-width: 32px;
+        color: white;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        margin-left: 0.3rem;
+    }
 
-/* Position-specific colors */
-.position-badge.qb {
-    background: linear-gradient(135deg, #007bff, #0056b3);
-    border: 1px solid #0056b3;
-}
+    /* Position-specific colors */
+    .position-badge.qb {
+        background: linear-gradient(135deg, #007bff, #0056b3);
+        border: 1px solid #0056b3;
+    }
 
-.position-badge.rb {
-    background: linear-gradient(135deg, #28a745, #1e7e34);
-    border: 1px solid #1e7e34;
-}
+    .position-badge.rb {
+        background: linear-gradient(135deg, #28a745, #1e7e34);
+        border: 1px solid #1e7e34;
+    }
 
-.position-badge.wr {
-    background: linear-gradient(135deg, #ffc107, #e0a800);
-    border: 1px solid #e0a800;
-    color: #212529; /* Dark text for better contrast on yellow */
-    text-shadow: none;
-}
+    .position-badge.wr {
+        background: linear-gradient(135deg, #ffc107, #e0a800);
+        border: 1px solid #e0a800;
+        color: #212529; /* Dark text for better contrast on yellow */
+        text-shadow: none;
+    }
 
-.position-badge.te {
-    background: linear-gradient(135deg, #fd7e14, #e8590c);
-    border: 1px solid #e8590c;
-}
+    .position-badge.te {
+        background: linear-gradient(135deg, #fd7e14, #e8590c);
+        border: 1px solid #e8590c;
+    }
 
-.position-badge.k, .position-badge.pk {
-    background: linear-gradient(135deg, #6f42c1, #59359a);
-    border: 1px solid #59359a;
-}
+    .position-badge.k, .position-badge.pk {
+        background: linear-gradient(135deg, #6f42c1, #59359a);
+        border: 1px solid #59359a;
+    }
 
-.position-badge.def {
-    background: linear-gradient(135deg, #dc3545, #c82333);
-    border: 1px solid #c82333;
-}
+    .position-badge.def {
+        background: linear-gradient(135deg, #dc3545, #c82333);
+        border: 1px solid #c82333;
+    }
 
-.position-badge.flex {
-    background: linear-gradient(135deg, #17a2b8, #138496);
-    border: 1px solid #138496;
-}
+    .position-badge.flex {
+        background: linear-gradient(135deg, #17a2b8, #138496);
+        border: 1px solid #138496;
+    }
 
-/* Small badges for roster headers */
-.position-badge.small {
-    padding: 0.1rem 0.4rem;
-    font-size: 0.65rem;
-    min-width: 28px;
-    border-radius: 10px;
-}
+    /* Small badges for roster headers */
+    .position-badge.small {
+        padding: 0.1rem 0.4rem;
+        font-size: 0.65rem;
+        min-width: 28px;
+        border-radius: 10px;
+    }
 
-/* Available players - position badge styling */
-.player-item .position-badge {
-    margin-left: 0.5rem;
-    vertical-align: middle;
-}
+    /* Available players - position badge styling */
+    .player-item .position-badge {
+        margin-left: 0.5rem;
+        vertical-align: middle;
+    }
 
-/* Drafted players - integrate badge into player name */
-.team-roster .drafted-player .position-badge {
-    margin-left: 0.4rem;
-    vertical-align: middle;
-}
+    /* Drafted players - integrate badge into player name */
+    .team-roster .drafted-player .position-badge {
+        margin-left: 0.4rem;
+        vertical-align: middle;
+    }
 
-/* Position group headers - small badge next to position name */
-.team-roster .position-group strong .position-badge {
-    margin-left: 0.3rem;
-    vertical-align: middle;
-}
+    /* Position group headers - small badge next to position name */
+    .team-roster .position-group strong .position-badge {
+        margin-left: 0.3rem;
+        vertical-align: middle;
+    }
 
-/* Hover effects for badges */
-.position-badge:hover {
-    transform: scale(1.05);
-    transition: transform 0.2s ease;
-}
+    /* Hover effects for badges */
+    .position-badge:hover {
+        transform: scale(1.05);
+        transition: transform 0.2s ease;
+    }
 
-/* Ensure badges look good in different contexts */
-.position-badge.in-roster {
-    font-size: 0.6rem;
-    padding: 0.15rem 0.4rem;
-    margin-left: 0.3rem;
-}
+    /* Ensure badges look good in different contexts */
+    .position-badge.in-roster {
+        font-size: 0.6rem;
+        padding: 0.15rem 0.4rem;
+        margin-left: 0.3rem;
+    }
 
     /* Responsive adjustments */
     @@media (max-width: 768px) {
@@ -745,44 +793,371 @@
         font-size: 0.68rem; /* INCREASED from original */
         padding: 0.15rem 0.3rem;
     }
+
+    .pick-notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #28a745, #20c997);
+        color: white;
+        padding: 1rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 1000;
+        animation: slideIn 0.3s ease-out;
+        font-size: 0.9rem;
+    }
+
+    @@keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
 }
 </style>
 
+<!-- Include SignalR client library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Get references to filter elements
-    const positionFilter = document.getElementById('positionFilter');
-    const playerSearch = document.getElementById('playerSearch');
-    const playerItems = document.querySelectorAll('.player-item');
-    
-    // Filter function
-    function filterPlayers() {
-        const selectedPosition = positionFilter.value;
-        const searchText = playerSearch.value.toLowerCase();
-        const currentPickOwner = getCurrentPickOwner();
+    // SignalR connection
+    const connection = new signalR.HubConnectionBuilder()
+        .withUrl("/draftHub")
+        .build();
+
+    let currentDraftId = window.draftState.draftId;
+    let currentOwnerId = window.draftState.currentPickOwnerId;
+
+    // Start SignalR connection
+    connection.start().then(function () {
+        console.log("SignalR Connected");
+
+        if (currentDraftId) {
+            connection.invoke("JoinDraft", currentDraftId, currentOwnerId);
+        }
+    }).catch(function (err) {
+        console.error("SignalR Connection Error: ", err.toString());
+    });
+
+    // Listen for pick made events
+    connection.on("PickMade", function (draftEvent) {
+        console.log("Pick made:", draftEvent);
+
+        // we can't determine ownership at this point without a login, so show the notification for all picks
+        showPickNotification(draftEvent);
+
+        // update the UI dynamically
+        updateUIAfterPick(draftEvent);
+    });
+
+    // Listen for draft complete events and redirect both players
+    connection.on("DraftComplete", function () {
+        console.log("Draft completed via SignalR - redirecting to scoreboard");
+        // Show a brief message then redirect
+        setTimeout(() => {
+            const redirectUrl = '@Url.Action("Index", "Scoreboard", new { week = ViewData["Week"] })';
+            window.location.href = redirectUrl;
+        }, 1500); // Give time to see the final pick
+    });
+
+    // Show pick notification
+    function showPickNotification(draftEvent) {
+        const notification = document.createElement('div');
+        notification.className = 'pick-notification';
+        notification.innerHTML = `
+            <strong>${draftEvent.playerName}</strong> drafted by
+            ${draftEvent.ownerId === 1 ? window.draftState.owner1Name : window.draftState.owner2Name}
+        `;
+
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
+    }
+
+    function updateUIAfterPick(draftEvent) {
+        // Always remove player via SignalR for all browsers
+        // The browser that made the pick already removed it immediately for feedback
+        const playerElement = document.querySelector(`[data-player-id="${draftEvent.espnPlayerId}"]`);
+        if (playerElement) {
+            const playerItem = playerElement.closest('.player-item');
+            if (playerItem) {
+                playerItem.remove();
+                console.log(`Removed player ${draftEvent.playerName} from available list via SignalR`);
+            }
+        } else {
+            console.log(`Could not find player element for ID: ${draftEvent.espnPlayerId} (may already be removed)`);
+        }
+
+        // Update the roster counts in window.draftState BEFORE updating buttons
+        updateRosterCounts(draftEvent);
+
+        // Add player to the appropriate roster
+        addPlayerToRoster(draftEvent);
+
+        // Update draft status in header
+        updateDraftHeader(draftEvent);
+
+        // Update current pick highlighting
+        updateCurrentPickHighlighting(draftEvent);
+
+        // Re-run position validation to hide/show available players
+        setTimeout(() => {
+            updateButtonStates();
+            // FIXED: Force filter update to show correct players
+            if (window.filterPlayers) {
+                window.filterPlayers(); // Call the filter function to refresh the display
+            }
+        }, 100);
+    }
+
+    // Function to update roster counts in window.draftState
+    function updateRosterCounts(draftEvent) {
+        const position = draftEvent.position === 'PK' ? 'K' : draftEvent.position;
+        const ownerId = draftEvent.ownerId;
         
-        playerItems.forEach(item => {
-            const playerPosition = item.getAttribute('data-position');
-            const playerName = item.getAttribute('data-player-name');
-            
-            const positionMatch = selectedPosition === '' || playerPosition === selectedPosition;
-            const nameMatch = searchText === '' || playerName.includes(searchText);
-            const canDraft = canDraftPosition(playerPosition, currentPickOwner);
-            
-            if (positionMatch && nameMatch && canDraft) {
-                item.style.display = 'flex';
-            } else {
-                item.style.display = 'none';
+        // Update the appropriate roster counts
+        if (ownerId === 1) {
+            if (!window.draftState.owner1Roster[position]) {
+                window.draftState.owner1Roster[position] = 0;
+            }
+            window.draftState.owner1Roster[position]++;
+        } else {
+            if (!window.draftState.owner2Roster[position]) {
+                window.draftState.owner2Roster[position] = 0;
+            }
+            window.draftState.owner2Roster[position]++;
+        }
+        
+        console.log(`Updated roster counts for owner ${ownerId}:`, 
+                   ownerId === 1 ? window.draftState.owner1Roster : window.draftState.owner2Roster);
+    }
+
+    function addPlayerToRoster(draftEvent) {
+        // Find roster by owner name instead of DOM position
+        const targetOwnerName = draftEvent.ownerId === 1 ? 
+            window.draftState.owner1Name : 
+            window.draftState.owner2Name;
+        
+        let teamRoster = null;
+        
+        document.querySelectorAll('.team-roster').forEach(roster => {
+            const header = roster.querySelector('.card-header h6');
+            if (header && header.textContent.includes(targetOwnerName)) {
+                teamRoster = roster;
             }
         });
+
+        if (!teamRoster) {
+            console.error("Could not find team roster for owner:", draftEvent.ownerId, targetOwnerName);
+            return;
+        }
+
+        // Determine if this goes to main position or FLEX
+        const position = draftEvent.position === 'PK' ? 'K' : draftEvent.position;
+
+        // Try to add to main position first
+        let added = addToMainPosition(teamRoster, draftEvent, position);
+
+        // If main position is full, try FLEX
+        if (!added && (position === 'RB' || position === 'WR' || position === 'TE')) {
+            added = addToFlexPosition(teamRoster, draftEvent);
+        }
+
+        if (added) {
+            console.log(`Added ${draftEvent.playerName} to ${position} position for ${targetOwnerName}`);
+        } else {
+            console.error(`Could not add ${draftEvent.playerName} to roster for ${targetOwnerName}`);
+        }
     }
-    
-    // Position filter event
-    positionFilter.addEventListener('change', filterPlayers);
-    
-    // Search input event
-    playerSearch.addEventListener('input', filterPlayers);
-    
+
+    function addToMainPosition(teamRoster, draftEvent, position) {
+        // Find the position group
+        const positionGroups = teamRoster.querySelectorAll('.position-group strong');
+        let targetGroup = null;
+
+        positionGroups.forEach(group => {
+            const text = group.textContent.trim();
+            if (text.startsWith(position + ' ')) {
+                targetGroup = group.parentElement;
+            }
+        });
+
+        if (!targetGroup) {
+            console.error(`Could not find position group for: ${position}`);
+            return false;
+        }
+
+        // Find first empty slot
+        const emptySlot = targetGroup.querySelector('.empty-slot');
+        if (emptySlot) {
+            // Replace empty slot with drafted player
+            emptySlot.outerHTML = `
+                <div class="drafted-player newly-drafted">
+                    ${draftEvent.playerName}
+                    <span class="position-badge in-roster ${position.toLowerCase()}">${position}</span>
+                </div>
+            `;
+
+            // Update the position count in header
+            updatePositionCount(targetGroup, position);
+
+            // Trigger highlighting after player is added
+            setTimeout(() => {
+                highlightNewlyDraftedPlayer(draftEvent.playerName);
+            }, 100);
+
+            return true;
+        }
+
+        return false; // No empty slots
+    }
+
+    function addToFlexPosition(teamRoster, draftEvent) {
+        // Find FLEX position group
+        const positionGroups = teamRoster.querySelectorAll('.position-group strong');
+        let flexGroup = null;
+
+        positionGroups.forEach(group => {
+            const text = group.textContent.trim();
+            if (text.startsWith('FLEX ')) {
+                flexGroup = group.parentElement;
+            }
+        });
+
+        if (!flexGroup) {
+            console.error("Could not find FLEX position group");
+            return false;
+        }
+
+        // Find empty FLEX slot
+        const emptySlot = flexGroup.querySelector('.empty-slot');
+        if (emptySlot) {
+            const displayPosition = draftEvent.position === 'PK' ? 'K' : draftEvent.position;
+
+            // Replace empty slot with drafted player
+            emptySlot.outerHTML = `
+                <div class="drafted-player flex-player newly-drafted">
+                    ${draftEvent.playerName}
+                    <span class="position-badge in-roster ${displayPosition.toLowerCase()}">${displayPosition}</span>
+                </div>
+            `;
+
+            // Update FLEX count
+            updatePositionCount(flexGroup, 'FLEX');
+
+            // Trigger highlighting after player is added
+            setTimeout(() => {
+                highlightNewlyDraftedPlayer(draftEvent.playerName);
+            }, 100);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    function updatePositionCount(positionGroup, position) {
+        const header = positionGroup.querySelector('strong');
+        if (header) {
+            const currentText = header.textContent;
+            const regex = new RegExp(`${position} \\((\\d+)/(\\d+)\\)`);
+            const match = currentText.match(regex);
+
+            if (match) {
+                const current = parseInt(match[1]);
+                const total = parseInt(match[2]);
+                const newText = currentText.replace(regex, `${position} (${current + 1}/${total})`);
+                header.textContent = newText;
+            }
+        }
+    }
+
+    function updateDraftHeader(draftEvent) {
+        // Update pick number and progress
+        window.draftState.pickNumber = draftEvent.pickNumber + 1;
+
+        // Update progress bar
+        const progressBar = document.querySelector('.progress-bar');
+        if (progressBar) {
+            const percentage = (window.draftState.pickNumber / window.draftState.totalPicks) * 100;
+            progressBar.style.width = percentage + '%';
+            progressBar.setAttribute('aria-valuenow', window.draftState.pickNumber);
+        }
+
+        // Update progress text
+        const progressText = document.querySelector('.draft-progress small');
+        if (progressText) {
+            progressText.textContent = `Progress: ${window.draftState.pickNumber} / ${window.draftState.totalPicks} picks`;
+        }
+    }
+
+    function updateCurrentPickHighlighting(draftEvent) {
+        console.log("Updating current pick highlighting.");
+        console.log(`Current pick number: ${draftEvent.pickNumber}`);
+        console.log(`Current owner id pick: ${draftEvent.ownerId}`);
+        // Calculate next owner based on snake draft logic
+        const nextOwnerId = draftEvent.ownerId === 1 ? 2 : 1;
+        console.log(`Next Owner Id pick: ${nextOwnerId}`);
+        
+        // Remove current highlighting
+        document.querySelectorAll('.team-roster').forEach(roster => {
+            roster.classList.remove('current-pick');
+        });
+
+        // Only update highlighting if draft is not complete
+        if (draftEvent.pickNumber < window.draftState.totalPicks) {
+            // Find rosters by using owner names
+            const owner1Name = window.draftState.owner1Name;
+            const owner2Name = window.draftState.owner2Name;
+        
+            let nextRoster = null;
+        
+            document.querySelectorAll('.team-roster').forEach(roster => {
+                const header = roster.querySelector('.card-header h6');
+                if (header) {
+                    const headerText = header.textContent;
+                    if (nextOwnerId === 1 && headerText.includes(owner1Name)) {
+                        nextRoster = roster;
+                    } else if (nextOwnerId === 2 && headerText.includes(owner2Name)) {
+                        nextRoster = roster;
+                    }
+                }
+            });
+
+            if (nextRoster) {
+                nextRoster.classList.add('current-pick');
+                console.log(`Added current-pick class to ${nextOwnerId === 1 ? owner1Name : owner2Name} roster`);
+            } else {
+                console.error(`Could not find roster for owner ${nextOwnerId}`);
+            }
+
+            // Update current pick text
+            const nextOwnerName = nextOwnerId === 1 ? owner1Name : owner2Name;
+
+            const currentPickSpan = document.querySelector('.current-pick strong');
+            if (currentPickSpan) {
+                currentPickSpan.textContent = nextOwnerName;
+            }
+
+            // Update global state
+            window.draftState.currentPickOwnerId = nextOwnerId;
+        } else {
+            // Draft is complete, update UI to show completion
+            const currentPickSpan = document.querySelector('.current-pick strong');
+            if (currentPickSpan) {
+                currentPickSpan.textContent = "Draft Complete";
+            }
+        }
+    }
+
     // Get current roster counts by reading from the server-rendered data
     function getCurrentRosterCounts(ownerId) {
         const rosterData = ownerId === 1 ? window.draftState.owner1Roster : window.draftState.owner2Roster;
@@ -805,22 +1180,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
         return counts;
     }
-    
+
     // Position validation - simplified logic
     function canDraftPosition(position, currentPickOwner) {
         const counts = getCurrentRosterCounts(currentPickOwner);
-        
+
         // Position limits (maximum allowed)
         const limits = {
-            'QB': 1, 
-            'K': 1, 
-            'DEF': 1, 
+            'QB': 1,
+            'K': 1,
+            'DEF': 1,
             'RB': 2,
             'WR': 2,
             'TE': 1,
             'FLEX': 1
         };
-        
+
         // Convert PK to K for validation
         const validationPosition = position === 'PK' ? 'K' : position;
 
@@ -829,7 +1204,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Check if we can draft this position as a FLEX
             const flexCount = counts['FLEX'];
             const flexLimit = limits['FLEX'];
-            
+
             // Check if we have room in the main position first
             const mainPositionCount = counts[validationPosition];
             const mainPositionLimit = limits[validationPosition];
@@ -851,129 +1226,235 @@ document.addEventListener('DOMContentLoaded', function() {
         // For QB, DEF, and K, we only need to check the positional limit
         return counts[validationPosition] < limits[validationPosition];
     }
-    
+
     // Get current pick owner from the page
     function getCurrentPickOwner() {
         return window.draftState.currentPickOwnerId;
     }
-    
-    // Update button states based on position validation
+
+    // Update button states based on position validation and current pick owner
     function updateButtonStates() {
         const currentPickOwner = getCurrentPickOwner();
-        
+        const playerItems = document.querySelectorAll('.player-item');
+
         playerItems.forEach(item => {
             const button = item.querySelector('.draft-player-btn');
             const position = item.getAttribute('data-position');
-            
-            if (canDraftPosition(position, currentPickOwner)) {
+
+            // Check if it's this player's turn to pick
+            const isCurrentPlayerTurn = true; // For now, assume anyone can pick (you might want to add authentication logic here)
+
+            if (canDraftPosition(position, currentPickOwner) && isCurrentPlayerTurn) {
                 button.disabled = false;
                 button.textContent = 'Draft';
                 item.classList.remove('disabled');
+            } else if (!isCurrentPlayerTurn) {
+                // Disable buttons when it's not the player's turn
+                button.disabled = true;
+                button.textContent = 'Wait...';
+                item.classList.add('disabled');
             } else {
-                //button.disabled = true;
-                //button.textContent = 'Max reached';
-                //item.classList.add('disabled');
                 item.style.display = 'none';
             }
         });
     }
 
-        // Function to highlight newly drafted players
-        function highlightNewlyDraftedPlayer(playerName) {
-            // Remove previous highlighting
-            document.querySelectorAll('.newly-drafted').forEach(el => {
-                el.classList.remove('newly-drafted');
-            });
+    // Function to highlight newly drafted players
+    function highlightNewlyDraftedPlayer(playerName) {
+        // Remove previous highlighting
+        document.querySelectorAll('.newly-drafted').forEach(el => {
+            el.classList.remove('newly-drafted');
+            el.classList.add('animation-complete');
+        });
 
-            // Find and highlight the newly drafted player
-            document.querySelectorAll('.drafted-player').forEach(player => {
-                if (player.textContent.trim() === playerName) {
-                    player.classList.add('newly-drafted');
+        // Remove animation-complete class from all players first
+        document.querySelectorAll('.animation-complete').forEach(el => {
+            el.classList.remove('animation-complete');
+        });
 
-                    // Remove highlighting after 10 seconds
+        // Find and highlight the newly drafted player
+        let found = false;
+        document.querySelectorAll('.drafted-player').forEach(player => {
+            if (found) return; // Skip if already found
+
+            const playerText = player.textContent.trim();
+            if (playerText.includes(playerName)) {
+                console.log(`Highlighting player: ${playerName}`);
+                found = true;
+
+                // Remove any existing classes that might interfere
+                player.classList.remove('animation-complete');
+
+                player.classList.add('newly-drafted');
+
+                // Remove highlighting after animation completes and revert to normal background
+                setTimeout(() => {
+                    // Remove the highlighting class
+                    player.classList.remove('newly-drafted');
+
+                    // Add the completion class to force normal appearance
+                    player.classList.add('animation-complete');
+
+                        // Force style reset with direct style manipulation as backup
+                    player.style.backgroundColor = '#e9ecef';
+                    player.style.borderColor = 'transparent';
+                    player.style.transform = 'scale(1)';
+                    player.style.color = '#495057';
+                    player.style.fontWeight = player.classList.contains('flex-player') ? '600' : '500';
+                    player.style.boxShadow = 'none';
+                    player.style.animation = 'none';
+
+                    // Handle flex player special styling
+                    if (player.classList.contains('flex-player')) {
+                        player.style.borderLeft = '4px solid #28a745';
+                        player.style.borderTop = '2px solid transparent';
+                        player.style.borderRight = '2px solid transparent';
+                        player.style.borderBottom = '2px solid transparent';
+                    } else {
+                        player.style.border = '2px solid transparent';
+                    }
+
+                    // Remove the completion class after a brief moment
                     setTimeout(() => {
-                        player.classList.remove('newly-drafted');
-                    }, 10000);
+                         player.classList.remove('animation-complete');
+                        // Clear inline styles to let CSS take over
+                        player.style.backgroundColor = '';
+                        player.style.borderColor = '';
+                        player.style.transform = '';
+                        player.style.color = '';
+                        player.style.fontWeight = '';
+                        player.style.boxShadow = '';
+                        player.style.animation = '';
+                        player.style.border = '';
+                        player.style.borderLeft = '';
+                        player.style.borderTop = '';
+                        player.style.borderRight = '';
+                        player.style.borderBottom = '';
+                    }, 100);
 
-                    // Scroll player into view
-                    player.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 2000); // Match animation duration
+
+                // Scroll player into view
+                player.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
+
+        if (!found) {
+            console.log(`Could not find player to highlight: ${playerName}`);
+        }
+    }
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', function() {
+        if (currentDraftId && currentOwnerId) {
+            connection.invoke("LeaveDraft", currentDraftId, currentOwnerId);
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get references to filter elements
+        const positionFilter = document.getElementById('positionFilter');
+        const playerSearch = document.getElementById('playerSearch');
+        const playerItems = document.querySelectorAll('.player-item');
+    
+        // Make filterPlayers globally accessible
+        window.filterPlayers = function() {
+            const selectedPosition = positionFilter.value;
+            const searchText = playerSearch.value.toLowerCase();
+            const currentPickOwner = getCurrentPickOwner();
+        
+            playerItems.forEach(item => {
+                const playerPosition = item.getAttribute('data-position');
+                const playerName = item.getAttribute('data-player-name');
+            
+                const positionMatch = selectedPosition === '' || playerPosition === selectedPosition;
+                const nameMatch = searchText === '' || playerName.includes(searchText);
+                const canDraft = canDraftPosition(playerPosition, currentPickOwner);
+            
+                if (positionMatch && nameMatch && canDraft) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
                 }
             });
         }
     
-    // Initial button state update
-    updateButtonStates();
+        // Position filter event
+        positionFilter.addEventListener('change', window.filterPlayers);
     
-    // Draft player buttons
-    const draftButtons = document.querySelectorAll('.draft-player-btn');
+        // Search input event
+        playerSearch.addEventListener('input', window.filterPlayers);        
     
-    draftButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            if (this.disabled) return;
+        // Initial button state update
+        updateButtonStates();
+    
+        // Draft player buttons
+        const draftButtons = document.querySelectorAll('.draft-player-btn');
+    
+        draftButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                if (this.disabled) return;
             
-            const playerId = this.getAttribute('data-player-id');
-            const playerName = this.getAttribute('data-player-name');
-            const playerPosition = this.getAttribute('data-player-position');
+                const playerId = this.getAttribute('data-player-id');
+                const playerName = this.getAttribute('data-player-name');
+                const playerPosition = this.getAttribute('data-player-position');
 
                 // Store for highlighting after draft
-                lastDraftedPlayer = playerName;
+                //lastDraftedPlayer = playerName;
 
-            // Get current pick owner
-            const currentPickOwner = getCurrentPickOwner();
+                // Get current pick owner
+                const currentPickOwner = getCurrentPickOwner();
             
-            // Final validation before drafting
-            if (!canDraftPosition(playerPosition, currentPickOwner)) {
-                alert(`Cannot draft another ${playerPosition}. Position limit reached.`);
-                return;
-            }
-            
-            // Disable button and show loading
-            this.disabled = true;
-            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Drafting...';
-            
-            // Make the pick
-            fetch('@Url.Action("MakePick", "Draft")', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: 'playerId=' + encodeURIComponent(playerId)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    if (data.draftComplete) {
-                        // Draft is complete, redirect to scoreboard
-                        window.location.href = data.redirectUrl;
-                    } else {
-                        // Just reload the page to show updated state
-                        window.location.reload();
-                    }
-                } else {
-                    alert('Error making pick: ' + data.message);
-                    // Re-enable button
-                    this.disabled = false;
-                    this.innerHTML = 'Draft';
+                // Final validation before drafting
+                if (!canDraftPosition(playerPosition, currentPickOwner)) {
+                    alert(`Cannot draft another ${playerPosition}. Position limit reached.`);
+                    return;
                 }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Error making pick. Please try again.');
-                // Re-enable button
-                this.disabled = false;
-                this.innerHTML = 'Draft';
+            
+                // Disable button and show loading
+                this.disabled = true;
+                this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Drafting...';
+            
+                // Remove the drafted player immediately for feedback
+                const playerElement = document.querySelector(`[data-player-id="${playerId}"]`);
+                if (playerElement) {
+                    const playerItem = playerElement.closest('.player-item');
+                    if (playerItem) {
+                        playerItem.remove();
+                        console.log(`Immediately removed player ${playerName} from this browser`);
+                    }
+                }
+
+                // Make the pick
+                fetch('@Url.Action("MakePick", "Draft")', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: 'playerId=' + encodeURIComponent(playerId)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        if (data.draftComplete) {
+                            // Draft is complete, redirect to scoreboard
+                            window.location.href = data.redirectUrl;
+                        } else {
+                            // Don't reload - SignalR will handle all updates
+                            console.log('Pick successful - relying on SignalR for updates');
+                        }
+                    } else {
+                        // If there's an error, put the player back
+                        alert('Error making pick: ' + data.message);
+                        window.location.reload(); // Reload to restore correct state
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error making pick. Please try again.');
+                    window.location.reload(); // Reload to restore correct state
+                });
             });
         });
     });
-
-    // Check for newly drafted player after page load
-    const lastDrafted = sessionStorage.getItem('lastDraftedPlayer');
-    if (lastDrafted) {
-        // Small delay to ensure DOM is ready
-        setTimeout(() => {
-            highlightNewlyDraftedPlayer(lastDrafted);
-            sessionStorage.removeItem('lastDraftedPlayer');
-        }, 500);
-    }
-});
 </script>

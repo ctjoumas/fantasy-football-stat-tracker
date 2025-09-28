@@ -46,6 +46,32 @@
             return View();
         }
 
+        private async Task<SqlConnection> GetSqlConnection()
+        {
+            var connectionStringBuilder = new SqlConnectionStringBuilder
+            {
+                DataSource = "tcp:playersandschedulesdetails.database.windows.net,1433",
+                InitialCatalog = "PlayersAndSchedulesDetails",
+                TrustServerCertificate = false,
+                Encrypt = true
+            };
+
+            string azureSqlToken = Microsoft.AspNetCore.Http.SessionExtensions.GetString(HttpContext.Session, SessionKeyAzureSqlAccessToken);
+
+            // if we haven't retrieved the token yet, retrieve it and set it in the session (at this point though, we should have the token)
+            if (azureSqlToken == null)
+            {
+                azureSqlToken = await GetAzureSqlAccessToken();
+
+                Microsoft.AspNetCore.Http.SessionExtensions.SetString(HttpContext.Session, SessionKeyAzureSqlAccessToken, azureSqlToken);
+            }
+
+            SqlConnection sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
+            sqlConnection.AccessToken = azureSqlToken;
+
+            return sqlConnection;
+        }
+
         private static async Task<string> GetAzureSqlAccessToken()
         {
             // See https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/services-support-managed-identities#azure-sql
@@ -67,26 +93,7 @@
             // the number of times we need to download the doc
             Hashtable playersHashTable = new Hashtable();
 
-            var connectionStringBuilder = new SqlConnectionStringBuilder
-            {
-                DataSource = "tcp:playersandschedulesdetails.database.windows.net,1433",
-                InitialCatalog = "PlayersAndSchedulesDetails",
-                TrustServerCertificate = false,
-                Encrypt = true
-            };
-
-            string azureSqlToken = Microsoft.AspNetCore.Http.SessionExtensions.GetString(HttpContext.Session, SessionKeyAzureSqlAccessToken);
-
-            // if we haven't retrieved the token yet, retrieve it and set it in the session (at this point though, we should have the token)
-            if (azureSqlToken == null)
-            {
-                azureSqlToken = await GetAzureSqlAccessToken();
-
-                Microsoft.AspNetCore.Http.SessionExtensions.SetString(HttpContext.Session, SessionKeyAzureSqlAccessToken, azureSqlToken);
-            }
-
-            SqlConnection sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
-            sqlConnection.AccessToken = azureSqlToken;
+            SqlConnection sqlConnection = await GetSqlConnection();
 
             await sqlConnection.OpenAsync();
 
@@ -499,26 +506,7 @@
         {
             List<SelectListItem> weeks = new List<SelectListItem>();
 
-            var connectionStringBuilder = new SqlConnectionStringBuilder
-            {
-                DataSource = "tcp:playersandschedulesdetails.database.windows.net,1433",
-                InitialCatalog = "PlayersAndSchedulesDetails",
-                TrustServerCertificate = false,
-                Encrypt = true
-            };
-
-            string azureSqlToken = Microsoft.AspNetCore.Http.SessionExtensions.GetString(HttpContext.Session, SessionKeyAzureSqlAccessToken);
-
-            // if we haven't retrieved the token yet, retrieve it and set it in the session (at this point though, we should have the token)
-            if (azureSqlToken == null)
-            {
-                azureSqlToken = await GetAzureSqlAccessToken();
-
-                Microsoft.AspNetCore.Http.SessionExtensions.SetString(HttpContext.Session, SessionKeyAzureSqlAccessToken, azureSqlToken);
-            }
-
-            SqlConnection sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
-            sqlConnection.AccessToken = azureSqlToken;
+            SqlConnection sqlConnection = await GetSqlConnection();
 
             await sqlConnection.OpenAsync();
 
@@ -669,26 +657,7 @@
         /// <param name="week">The week we are updating</param>
         private async Task updateCurrentRosterWithFinalScore(bool gameEnded, bool gameCanceled, int ownerId, string espnPlayerId, double playerFinalScore, string finalScoreString, int week)
         {
-            var connectionStringBuilder = new SqlConnectionStringBuilder
-            {
-                DataSource = "tcp:playersandschedulesdetails.database.windows.net,1433",
-                InitialCatalog = "PlayersAndSchedulesDetails",
-                TrustServerCertificate = false,
-                Encrypt = true
-            };
-
-            string azureSqlToken = Microsoft.AspNetCore.Http.SessionExtensions.GetString(HttpContext.Session, SessionKeyAzureSqlAccessToken);
-
-            // if we haven't retrieved the token yet, retrieve it and set it in the session (at this point though, we should have the token)
-            if (azureSqlToken == null)
-            {
-                azureSqlToken = await GetAzureSqlAccessToken();
-
-                Microsoft.AspNetCore.Http.SessionExtensions.SetString(HttpContext.Session, SessionKeyAzureSqlAccessToken, azureSqlToken);
-            }
-
-            SqlConnection sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
-            sqlConnection.AccessToken = azureSqlToken;
+            SqlConnection sqlConnection = await GetSqlConnection();
 
             await sqlConnection.OpenAsync();
 

@@ -14,6 +14,9 @@ namespace FantasyFootballStatTracker.Models
         public List<DraftedPlayer> Owner1Roster { get; set; } = new();
         public List<DraftedPlayer> Owner2Roster { get; set; } = new();
         public bool IsComplete { get; set; }
+        public string DraftId { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+        public DateTime LastUpdated { get; set; }
 
         /// <summary>
         /// Gets the roster for a specific owner
@@ -101,6 +104,14 @@ namespace FantasyFootballStatTracker.Models
 
             return (rbCount >= 2 && wrCount >= 2 && teCount >= 1);
         }
+
+        /// <summary>
+        /// Generates a unique Draft ID based on the week and current UTC time
+        /// </summary>
+        public static string GenerateDraftId(int week)
+        {
+            return $"draft_week_{week}_{DateTimeOffset.UtcNow:yyyyMMdd}";
+        }
     }
 
     /// <summary>
@@ -140,5 +151,20 @@ namespace FantasyFootballStatTracker.Models
     {
         public int OwnerId { get; set; }
         public string OwnerName { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Represents an event that occurs during the draft
+    /// </summary>
+    public class DraftEvent
+    {
+        public string EventType { get; set; } = string.Empty; // "PICK_MADE", "DRAFT_COMPLETE", etc.
+        public string DraftId { get; set; } = string.Empty;
+        public int OwnerId { get; set; }
+        public string PlayerName { get; set; } = string.Empty;
+        public string Position { get; set; } = string.Empty;
+        public int PickNumber { get; set; }
+        public int EspnPlayerId { get; set; }
+        public DateTime Timestamp { get; set; } = DateTime.UtcNow;
     }
 }

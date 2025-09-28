@@ -1,8 +1,11 @@
 using Azure.Core;
 using Azure.Identity;
+using FantasyFootballStatTracker.Hubs;
 using FantasyFootballStatTracker.Infrastructure;
 using FantasyFootballStatTracker.Models;
+using FantasyFootballStatTracker.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Data.SqlClient;
 using System.Data;
 
@@ -12,6 +15,9 @@ namespace FantasyFootballStatTracker.Controllers
     {
         private readonly ILogger<DraftController> _logger;
         private readonly IConfiguration _config;
+
+        private readonly IDraftStateService _draftStateService;
+        private readonly IHubContext<DraftHub> _hubContext;
 
         /// <summary>
         /// Session key for draft state
@@ -33,10 +39,38 @@ namespace FantasyFootballStatTracker.Controllers
         /// </summary>
         public const string APP_SETTINGS_SEASON_NAME = "AppConfiguration:Season";
 
-        public DraftController(ILogger<DraftController> logger, IConfiguration config)
+        public DraftController(ILogger<DraftController> logger, IDraftStateService draftStateService, IHubContext<DraftHub> hubContext, IConfiguration config)
         {
             _logger = logger;
+            _draftStateService = draftStateService;
+            _hubContext = hubContext;
             _config = config;
+        }
+
+        private async Task<SqlConnection> GetSqlConnection()
+        {
+            var connectionStringBuilder = new SqlConnectionStringBuilder
+            {
+                DataSource = "tcp:playersandschedulesdetails.database.windows.net,1433",
+                InitialCatalog = "PlayersAndSchedulesDetails",
+                TrustServerCertificate = false,
+                Encrypt = true
+            };
+
+            string azureSqlToken = Microsoft.AspNetCore.Http.SessionExtensions.GetString(HttpContext.Session, SessionKeyAzureSqlAccessToken);
+
+            // if we haven't retrieved the token yet, retrieve it and set it in the session (at this point though, we should have the token)
+            if (azureSqlToken == null)
+            {
+                azureSqlToken = await GetAzureSqlAccessToken();
+
+                Microsoft.AspNetCore.Http.SessionExtensions.SetString(HttpContext.Session, SessionKeyAzureSqlAccessToken, azureSqlToken);
+            }
+
+            SqlConnection sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
+            sqlConnection.AccessToken = azureSqlToken;
+
+            return sqlConnection;
         }
 
         private static async Task<string> GetAzureSqlAccessToken()
@@ -82,46 +116,75 @@ namespace FantasyFootballStatTracker.Controllers
         [HttpPost]
         public async Task<IActionResult> StartDraft(int week, int firstPickOwnerId)
         {
-            var draftState = HttpContext.Session.GetObjectFromJson<DraftState>(SessionKeyDraftState);
+            try { 
+                // Get owners
+                var owners = await GetOwners();
 
-            draftState.CurrentPickOwnerId = firstPickOwnerId;
-            draftState.FirstPickOwnerId = firstPickOwnerId;
+                // Create new draft in database
+                var draftId = await _draftStateService.CreateNewDraftAsync(week, owners, firstPickOwnerId);
 
-            // Store draft state in session
-            HttpContext.Session.SetObjectAsJson(SessionKeyDraftState, draftState);
+                // Store draft ID in session
+                HttpContext.Session.SetString("DraftId", draftId);
 
-            // Load available players
-            var availablePlayers = await GetAllAvailablePlayers(week);
-            HttpContext.Session.SetObjectAsJson(SessionKeyAvailablePlayers, availablePlayers);
+                return RedirectToAction("Index");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error starting draft for week {Week}", week);
 
-            return RedirectToAction("Index", new { week = week });
-        }
+                TempData["Error"] = "Failed to start draft. Please try again.";
+
+                return RedirectToAction("SelectWeek");
+            }
+    }
 
         /// <summary>
         /// GET: Draft/Index - Main draft interface
         /// </summary>
-        public IActionResult Index(int week)
+        public async Task<IActionResult> Index(int week)
         {
-            var draftState = HttpContext.Session.GetObjectFromJson<DraftState>(SessionKeyDraftState);
-            var availablePlayers = HttpContext.Session.GetObjectFromJson<List<EspnPlayer>>(SessionKeyAvailablePlayers);
-
-            if (draftState == null)
+            try
             {
-                // Draft not started, redirect to start page
-                return RedirectToAction("Start", new { week = week });
-            }
+                // Check for existing draft ID in session
+                var draftId = HttpContext.Session.GetString("DraftId");
+                DraftState? draftState = null;
 
-            if (draftState.IsComplete)
+                if (!string.IsNullOrEmpty(draftId))
+                {
+                    // Try to load existing draft
+                    draftState = await _draftStateService.GetDraftStateAsync(draftId);
+                }
+
+                // If no draft found, redirect to start draft page
+                if (draftState == null)
+                {
+                    return RedirectToAction("StartDraft");
+                }
+
+                // If draft is complete, redirect to scoreboard
+                if (draftState.IsComplete)
+                {
+                    return RedirectToAction("Index", "Scoreboard", new { week = draftState.Week });
+                }
+
+                // Load available players
+                var availablePlayers = await GetAllAvailablePlayers(draftState.Week);
+
+                HttpContext.Session.SetObjectAsJson(SessionKeyAvailablePlayers, availablePlayers);
+
+                // Pass data to view
+                ViewData["Week"] = draftState.Week.ToString();
+                ViewData["DraftState"] = draftState;
+                ViewData["AvailablePlayers"] = availablePlayers;
+                ViewData["DraftId"] = draftState.DraftId; // For SignalR
+
+                return View();
+            }
+            catch (Exception ex)
             {
-                // Draft completed, redirect to scoreboard
-                return RedirectToAction("Index", "Scoreboard");
+                _logger.LogError(ex, "Error loading draft page");
+                return RedirectToAction("StartDraft");
             }
-
-            ViewData["Week"] = week;
-            ViewData["DraftState"] = draftState;
-            ViewData["AvailablePlayers"] = availablePlayers ?? new List<EspnPlayer>();
-
-            return View();
         }
 
         /// <summary>
@@ -130,117 +193,111 @@ namespace FantasyFootballStatTracker.Controllers
         [HttpPost]
         public async Task<IActionResult> MakePick(int playerId)
         {
-            var draftState = HttpContext.Session.GetObjectFromJson<DraftState>(SessionKeyDraftState);
-            var availablePlayers = HttpContext.Session.GetObjectFromJson<List<EspnPlayer>>(SessionKeyAvailablePlayers);
-
-            if (draftState == null || availablePlayers == null)
+            try
             {
-                return Json(new { success = false, message = "Draft state not found" });
+                // Get draft state from database
+                var draftId = HttpContext.Session.GetString("DraftId");
+                if (string.IsNullOrEmpty(draftId))
+                {
+                    return Json(new { success = false, message = "No active draft found" });
+                }
+
+                var draftState = await _draftStateService.GetDraftStateAsync(draftId);
+                if (draftState == null)
+                {
+                    return Json(new { success = false, message = "Draft not found" });
+                }
+
+                // Get player information
+                var availablePlayers = HttpContext.Session.GetObjectFromJson<List<EspnPlayer>>(SessionKeyAvailablePlayers);
+
+                var player = availablePlayers.FirstOrDefault(p => p.EspnPlayerId == playerId);
+                if (player == null)
+                {
+                    return Json(new { success = false, message = "Player not found" });
+                }
+
+                // Create drafted player
+                var draftedPlayer = new DraftedPlayer
+                {
+                    EspnPlayerId = player.EspnPlayerId,
+                    PlayerName = player.PlayerName,
+                    Position = player.Position,
+                    TeamAbbreviation = player.TeamAbbreviation,
+                    PickNumber = draftState.PickNumber,
+                    OwnerId = draftState.CurrentPickOwnerId
+                };
+
+                // Add to appropriate roster
+                if (draftState.CurrentPickOwnerId == 1)
+                {
+                    draftState.Owner1Roster.Add(draftedPlayer);
+                }
+                else
+                {
+                    draftState.Owner2Roster.Add(draftedPlayer);
+                }
+
+                // Update pick number and current owner
+                draftState.PickNumber++;
+                if (draftState.PickNumber <= draftState.TotalPicks)
+                {
+                    // straight alternating picks, so just slip to the other owner
+                    draftState.CurrentPickOwnerId = draftState.CurrentPickOwnerId == 1 ? 2 : 1;
+                }
+
+                // Check if draft is complete
+                if (draftState.PickNumber > draftState.TotalPicks)
+                {
+                    draftState.IsComplete = true;
+                }
+
+                // Save to database
+                await _draftStateService.SaveDraftStateAsync(draftState);
+                await _draftStateService.AddDraftedPlayerAsync(draftId, draftedPlayer);
+
+                // Save rosters to CurrentRoster table when draft is complete
+                if (draftState.IsComplete)
+                {
+                    await SaveDraftedRosters(draftState);
+                }
+
+                // Create draft event for SignalR
+                var draftEvent = new DraftEvent
+                {
+                    EventType = "PICK_MADE",
+                    DraftId = draftId,
+                    OwnerId = draftedPlayer.OwnerId,
+                    PlayerName = draftedPlayer.PlayerName,
+                    Position = draftedPlayer.Position,
+                    PickNumber = draftedPlayer.PickNumber,
+                    EspnPlayerId = draftedPlayer.EspnPlayerId
+                };
+
+                // Notify all clients via SignalR
+                await _hubContext.Clients.Group(draftId).SendAsync("PickMade", draftEvent);
+
+                // Store player name for highlighting
+                HttpContext.Session.SetString("lastDraftedPlayer", draftedPlayer.PlayerName);
+
+                if (draftState.IsComplete)
+                {
+                    await _hubContext.Clients.Group(draftId).SendAsync("DraftComplete");
+                    return Json(new
+                    {
+                        success = true,
+                        draftComplete = true,
+                        redirectUrl = Url.Action("Index", "Scoreboard", new { week = draftState.Week })
+                    });
+                }
+
+                return Json(new { success = true, draftComplete = false });
             }
-
-            // Find the selected player
-            var selectedPlayer = availablePlayers.FirstOrDefault(p => p.EspnPlayerId == playerId);
-            if (selectedPlayer == null)
+            catch (Exception ex)
             {
-                return Json(new { success = false, message = "Player not found" });
+                _logger.LogError(ex, "Error making pick for player {PlayerId}", playerId);
+                return Json(new { success = false, message = "An error occurred while making the pick" });
             }
-
-            // Validate position limits
-            var currentRoster = draftState.GetRosterForOwner(draftState.CurrentPickOwnerId);
-            if (!CanDraftPosition(selectedPlayer.Position, currentRoster))
-            {
-                return Json(new { success = false, message = $"Cannot draft another {selectedPlayer.Position}. Position limit reached." });
-            }
-
-            // Create drafted player
-            var draftedPlayer = new DraftedPlayer
-            {
-                EspnPlayerId = selectedPlayer.EspnPlayerId,
-                PlayerName = selectedPlayer.PlayerName,
-                Position = selectedPlayer.Position == "PK" ? "K" : selectedPlayer.Position,
-                TeamAbbreviation = selectedPlayer.TeamAbbreviation,
-                PickNumber = draftState.PickNumber,
-                OwnerId = draftState.CurrentPickOwnerId
-            };
-
-            // Add to appropriate roster
-            if (draftState.CurrentPickOwnerId == 1)
-            {
-                draftState.Owner1Roster.Add(draftedPlayer);
-            }
-            else
-            {
-                draftState.Owner2Roster.Add(draftedPlayer);
-            }
-
-            // Remove player from available players
-            availablePlayers.Remove(selectedPlayer);
-
-            // Advance the draft
-            draftState.PickNumber++;
-
-            // Check if draft is complete
-            if (draftState.PickNumber > draftState.TotalPicks)
-            {
-                draftState.IsComplete = true;
-                
-                // Save rosters to database
-                await SaveDraftedRosters(draftState);
-
-                // Update session
-                HttpContext.Session.SetObjectAsJson(SessionKeyDraftState, draftState);
-                HttpContext.Session.SetObjectAsJson(SessionKeyAvailablePlayers, availablePlayers);
-
-                return Json(new { 
-                    success = true, 
-                    draftComplete = true, 
-                    redirectUrl = Url.Action("Index", "Scoreboard") 
-                });
-            }
-
-            // Determine next pick owner (alternating)
-            DetermineNextPickOwner(draftState);
-
-            // Update session
-            HttpContext.Session.SetObjectAsJson(SessionKeyDraftState, draftState);
-            HttpContext.Session.SetObjectAsJson(SessionKeyAvailablePlayers, availablePlayers);
-
-            return Json(new { 
-                success = true, 
-                draftComplete = false,
-                currentPickOwner = draftState.CurrentPickOwnerId,
-                pickNumber = draftState.PickNumber,
-                playerName = selectedPlayer.PlayerName
-            });
-        }
-
-        /// <summary>
-        /// Validates if a position can be drafted based on current roster
-        /// </summary>
-        private bool CanDraftPosition(string position, List<DraftedPlayer> currentRoster)
-        {
-            // Convert PK to K for consistency
-            var checkPosition = position == "PK" ? "K" : position;
-            
-            // Count current positions
-            var positionCounts = currentRoster.GroupBy(p => p.Position == "PK" ? "K" : p.Position)
-                                            .ToDictionary(g => g.Key, g => g.Count());
-
-            // Position limits
-            var limits = new Dictionary<string, int>
-            {
-                ["QB"] = 1,
-                ["K"] = 1,
-                ["DEF"] = 1,
-                ["RB"] = 3,    // 2 regular + 1 FLEX
-                ["WR"] = 3,    // 2 regular + 1 FLEX
-                ["TE"] = 2     // 1 regular + 1 FLEX
-            };
-
-            var currentCount = positionCounts.ContainsKey(checkPosition) ? positionCounts[checkPosition] : 0;
-            var limit = limits.ContainsKey(checkPosition) ? limits[checkPosition] : 0;
-
-            return currentCount < limit;
         }
 
         /// <summary>
@@ -258,26 +315,7 @@ namespace FantasyFootballStatTracker.Controllers
         {
             var owners = new List<Owner>();
 
-            var connectionStringBuilder = new SqlConnectionStringBuilder
-            {
-                DataSource = "tcp:playersandschedulesdetails.database.windows.net,1433",
-                InitialCatalog = "PlayersAndSchedulesDetails",
-                TrustServerCertificate = false,
-                Encrypt = true
-            };
-
-            string azureSqlToken = Microsoft.AspNetCore.Http.SessionExtensions.GetString(HttpContext.Session, SessionKeyAzureSqlAccessToken);
-
-            // if we haven't retrieved the token yet, retrieve it and set it in the session (at this point though, we should have the token)
-            if (azureSqlToken == null)
-            {
-                azureSqlToken = await GetAzureSqlAccessToken();
-
-                Microsoft.AspNetCore.Http.SessionExtensions.SetString(HttpContext.Session, SessionKeyAzureSqlAccessToken, azureSqlToken);
-            }
-
-            SqlConnection sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
-            sqlConnection.AccessToken = azureSqlToken;
+            SqlConnection sqlConnection = await GetSqlConnection();
 
             await sqlConnection.OpenAsync();
 
@@ -310,26 +348,7 @@ namespace FantasyFootballStatTracker.Controllers
         {
             var players = new List<EspnPlayer>();
 
-            var connectionStringBuilder = new SqlConnectionStringBuilder
-            {
-                DataSource = "tcp:playersandschedulesdetails.database.windows.net,1433",
-                InitialCatalog = "PlayersAndSchedulesDetails",
-                TrustServerCertificate = false,
-                Encrypt = true
-            };
-
-            string azureSqlToken = Microsoft.AspNetCore.Http.SessionExtensions.GetString(HttpContext.Session, SessionKeyAzureSqlAccessToken);
-
-            // if we haven't retrieved the token yet, retrieve it and set it in the session (at this point though, we should have the token)
-            if (azureSqlToken == null)
-            {
-                azureSqlToken = await GetAzureSqlAccessToken();
-
-                Microsoft.AspNetCore.Http.SessionExtensions.SetString(HttpContext.Session, SessionKeyAzureSqlAccessToken, azureSqlToken);
-            }
-
-            SqlConnection sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
-            sqlConnection.AccessToken = azureSqlToken;
+            SqlConnection sqlConnection = await GetSqlConnection();
 
             await sqlConnection.OpenAsync();
 
@@ -362,26 +381,7 @@ namespace FantasyFootballStatTracker.Controllers
         /// </summary>
         private async Task SaveDraftedRosters(DraftState draftState)
         {
-            var connectionStringBuilder = new SqlConnectionStringBuilder
-            {
-                DataSource = "tcp:playersandschedulesdetails.database.windows.net,1433",
-                InitialCatalog = "PlayersAndSchedulesDetails",
-                TrustServerCertificate = false,
-                Encrypt = true
-            };
-
-            string azureSqlToken = Microsoft.AspNetCore.Http.SessionExtensions.GetString(HttpContext.Session, SessionKeyAzureSqlAccessToken);
-
-            // if we haven't retrieved the token yet, retrieve it and set it in the session (at this point though, we should have the token)
-            if (azureSqlToken == null)
-            {
-                azureSqlToken = await GetAzureSqlAccessToken();
-
-                Microsoft.AspNetCore.Http.SessionExtensions.SetString(HttpContext.Session, SessionKeyAzureSqlAccessToken, azureSqlToken);
-            }
-
-            SqlConnection sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
-            sqlConnection.AccessToken = azureSqlToken;
+            SqlConnection sqlConnection = await GetSqlConnection();
 
             await sqlConnection.OpenAsync();
 
@@ -464,24 +464,7 @@ namespace FantasyFootballStatTracker.Controllers
         {
             try
             {
-                var connectionStringBuilder = new SqlConnectionStringBuilder
-                {
-                    DataSource = "tcp:playersandschedulesdetails.database.windows.net,1433",
-                    InitialCatalog = "PlayersAndSchedulesDetails",
-                    TrustServerCertificate = false,
-                    Encrypt = true
-                };
-
-                string azureSqlToken = Microsoft.AspNetCore.Http.SessionExtensions.GetString(HttpContext.Session, SessionKeyAzureSqlAccessToken);
-
-                if (azureSqlToken == null)
-                {
-                    azureSqlToken = await GetAzureSqlAccessToken();
-                    Microsoft.AspNetCore.Http.SessionExtensions.SetString(HttpContext.Session, SessionKeyAzureSqlAccessToken, azureSqlToken);
-                }
-
-                SqlConnection sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
-                sqlConnection.AccessToken = azureSqlToken;
+                SqlConnection sqlConnection = await GetSqlConnection();
 
                 await sqlConnection.OpenAsync();
 

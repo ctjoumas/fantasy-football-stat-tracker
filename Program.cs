@@ -1,5 +1,7 @@
 using Azure.AI.OpenAI;
+using FantasyFootballStatTracker.Hubs;
 using FantasyFootballStatTracker.Plugins;
+using FantasyFootballStatTracker.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -28,12 +30,12 @@ builder.Services.AddCors(options =>
             .AllowCredentials());
 });
 
-//builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
-    options.IdleTimeout = TimeSpan.FromMinutes(1);
+    options.IdleTimeout = TimeSpan.FromMinutes(30);
 });
 
 builder.Services.AddTransient<Kernel>(s =>
@@ -58,6 +60,9 @@ builder.Services.AddTransient<Kernel>(s =>
 
 builder.Services.AddSingleton<IChatCompletionService>(sp =>
             sp.GetRequiredService<Kernel>().GetRequiredService<IChatCompletionService>());
+
+builder.Services.AddSignalR().AddAzureSignalR(builder.Configuration.GetConnectionString("AzureSignalR"));
+builder.Services.AddScoped<IDraftStateService, SqlDraftStateService>();
 
 var app = builder.Build();
 
@@ -85,5 +90,6 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.MapControllers(); // For API routes
+app.MapHub<DraftHub>("/draftHub");
 
 app.Run();

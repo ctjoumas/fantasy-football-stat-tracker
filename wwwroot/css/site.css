@@ -512,9 +512,9 @@ main {
   }
   
   /* Hide detailed game information on mobile to save space */
-  .mobile-hide-details {
+  /*.mobile-hide-details {
     display: none;
-  }
+  }*/
   
   .player-points {
     font-size: 0.9rem;

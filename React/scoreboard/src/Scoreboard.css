@@ -422,9 +422,9 @@
     line-height: 1.2;
   }
   
-  .mobile-hide-details {
+  /*.mobile-hide-details {
     display: none;
-  }
+  }*/
   
   .player-points {
     font-size: 0.9rem;

@@ -9,32 +9,27 @@
     using System.Collections.Generic;
     using System.Data.SqlClient;
     using System.Linq;
+    using System.Threading.Tasks;
 
     public class SelectTeamController : Controller
     {
         [HttpGet]
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
-            SqlConnection sqlConnection = GetSqlConnection();
-
-            sqlConnection.Open();
+            using SqlConnection sqlConnection = await GetSqlConnection();
 
             PlayerModel playerModel = new PlayerModel();
             playerModel.PlayerIdSelectedListOwner1 = new List<int>();
             playerModel.PlayerIdSelectedListOwner2 = new List<int>();
             playerModel.PlayerUnselectedList = GetAllPlayers(sqlConnection);
 
-            sqlConnection.Close();
-
             return View(playerModel);
         }
 
         [HttpPost]
-        public IActionResult Index(PlayerModel _playerModel)
+        public async Task<IActionResult> Index(PlayerModel _playerModel)
         {
-            SqlConnection sqlConnection = GetSqlConnection();
-
-            sqlConnection.Open();
+            using SqlConnection sqlConnection = await GetSqlConnection();
 
             List<EspnPlayer> allPlayers = GetAllPlayers(sqlConnection);
 
@@ -42,8 +37,6 @@
             List<EspnPlayer> playerListOwner2 = allPlayers.Where(m => _playerModel.PlayerIdSelectedListOwner2.Contains(m.EspnPlayerId)).ToList();
 
             UpdateCurrentRosterWithSelectedPlayers(sqlConnection, playerListOwner1, playerListOwner2);
-
-            sqlConnection.Close();
 
             // the current rosters are updated so we can now display the scoreboard
             return RedirectToAction("Index", "Scoreboard");
@@ -168,7 +161,7 @@
         /// Gets the SQL connection for our PlayersAndSchedulesDetails database.
         /// </summary>
         /// <returns>The SqlConnection object we will use to read and write data to our database.</returns>
-        private SqlConnection GetSqlConnection()
+        private async Task<SqlConnection> GetSqlConnection()
         {
             var connectionStringBuilder = new SqlConnectionStringBuilder
             {
@@ -185,6 +178,8 @@
 
             // THIS MAY TAKE A LONG TIME (NEED TO TEST FURTHER) - CAN THIS BE STORED SOMEWHERE SO ALL THREADS CAN USE IT?
             sqlConnection.AccessToken = tokenRequestResult.Token;
+
+            await sqlConnection.OpenAsync();
 
             return sqlConnection;
         }

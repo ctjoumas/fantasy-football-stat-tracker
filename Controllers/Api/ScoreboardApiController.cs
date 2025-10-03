@@ -49,6 +49,8 @@ namespace FantasyFootballStatTracker.Controllers.Api
             SqlConnection sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
             sqlConnection.AccessToken = azureSqlToken;
 
+            await sqlConnection.OpenAsync();
+
             return sqlConnection;
         }
 
@@ -213,9 +215,7 @@ namespace FantasyFootballStatTracker.Controllers.Api
         {
             Hashtable playersHashTable = new Hashtable();
 
-            SqlConnection sqlConnection = await GetSqlConnection();
-
-            await sqlConnection.OpenAsync();
+            using SqlConnection sqlConnection = await GetSqlConnection();
 
             // Get owner logos
             OwnerLogos = HttpContext.Session.GetObjectFromJson<List<byte[]>>(Infrastructure.SessionExtensions.SessionKeyLogos);
@@ -309,7 +309,6 @@ namespace FantasyFootballStatTracker.Controllers.Api
                 }
             }
 
-            await sqlConnection.CloseAsync();
             return playersHashTable;
         }
 
@@ -447,9 +446,7 @@ namespace FantasyFootballStatTracker.Controllers.Api
 
         private async Task updateCurrentRosterWithFinalScore(bool gameEnded, bool gameCanceled, int ownerId, string espnPlayerId, double playerFinalScore, string finalScoreString, int week)
         {
-            SqlConnection sqlConnection = await GetSqlConnection();
-
-            await sqlConnection.OpenAsync();
+            using SqlConnection sqlConnection = await GetSqlConnection();
 
             using (SqlCommand command = new SqlCommand("UpdatePlayerFinalScore", sqlConnection))
             {
@@ -464,17 +461,13 @@ namespace FantasyFootballStatTracker.Controllers.Api
 
                 command.ExecuteNonQuery();
             }
-
-            sqlConnection.Close();
         }
 
         private async Task<List<SelectListItem>> GetGameWeeks(string selectedWeek)
         {
             List<SelectListItem> weeks = new List<SelectListItem>();
 
-            SqlConnection sqlConnection = await GetSqlConnection();
-
-            await sqlConnection.OpenAsync();
+            using SqlConnection sqlConnection = await GetSqlConnection();
 
             string week = "0";
 
@@ -494,7 +487,6 @@ namespace FantasyFootballStatTracker.Controllers.Api
                 }
             }
 
-            sqlConnection.Close();
             return weeks;
         }
     }

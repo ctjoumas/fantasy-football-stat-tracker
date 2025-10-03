@@ -70,6 +70,8 @@ namespace FantasyFootballStatTracker.Controllers
             SqlConnection sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
             sqlConnection.AccessToken = azureSqlToken;
 
+            await sqlConnection.OpenAsync();
+
             return sqlConnection;
         }
 
@@ -315,9 +317,7 @@ namespace FantasyFootballStatTracker.Controllers
         {
             var owners = new List<Owner>();
 
-            SqlConnection sqlConnection = await GetSqlConnection();
-
-            await sqlConnection.OpenAsync();
+            using SqlConnection sqlConnection = await GetSqlConnection();
 
             using (SqlCommand command = new SqlCommand("GetOwners", sqlConnection))
             {
@@ -336,8 +336,6 @@ namespace FantasyFootballStatTracker.Controllers
                 }
             }
 
-            sqlConnection.Close();
-
             return owners;
         }
 
@@ -348,9 +346,7 @@ namespace FantasyFootballStatTracker.Controllers
         {
             var players = new List<EspnPlayer>();
 
-            SqlConnection sqlConnection = await GetSqlConnection();
-
-            await sqlConnection.OpenAsync();
+            using SqlConnection sqlConnection = await GetSqlConnection();
 
             using (SqlCommand command = new SqlCommand("GetAvailablePlayersForWeek", sqlConnection))
             {
@@ -372,7 +368,6 @@ namespace FantasyFootballStatTracker.Controllers
                 }
             }
 
-            sqlConnection.Close();
             return players.OrderBy(p => p.PlayerName).ToList();
         }
 
@@ -381,9 +376,7 @@ namespace FantasyFootballStatTracker.Controllers
         /// </summary>
         private async Task SaveDraftedRosters(DraftState draftState)
         {
-            SqlConnection sqlConnection = await GetSqlConnection();
-
-            await sqlConnection.OpenAsync();
+            using SqlConnection sqlConnection = await GetSqlConnection();
 
             // Save Owner 1 roster
             foreach (var player in draftState.Owner1Roster)
@@ -396,8 +389,6 @@ namespace FantasyFootballStatTracker.Controllers
             {
                 SaveDraftedPlayer(sqlConnection, player, draftState.Week);
             }
-
-            sqlConnection.Close();
         }
 
         /// <summary>
@@ -464,17 +455,13 @@ namespace FantasyFootballStatTracker.Controllers
         {
             try
             {
-                SqlConnection sqlConnection = await GetSqlConnection();
-
-                await sqlConnection.OpenAsync();
+                using SqlConnection sqlConnection = await GetSqlConnection();
 
                 // Clear rosters for the specified week
                 using (SqlCommand command = new SqlCommand("DELETE FROM CurrentRoster WHERE Week = @week", sqlConnection))
                 {
                     command.Parameters.Add(new SqlParameter("@week", SqlDbType.Int) { Value = week });
-                    int rowsDeleted = command.ExecuteNonQuery();
-
-                    sqlConnection.Close();
+                    int rowsDeleted = await command.ExecuteNonQueryAsync();
 
                     return Json(new { 
                         success = true, 

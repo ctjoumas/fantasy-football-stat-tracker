@@ -60,6 +60,8 @@ namespace FantasyFootballStatTracker.Services
             SqlConnection sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
             sqlConnection.AccessToken = azureSqlToken;
 
+            await sqlConnection.OpenAsync();
+
             return sqlConnection;
         }
 
@@ -76,7 +78,7 @@ namespace FantasyFootballStatTracker.Services
         {
             try
             {
-                SqlConnection sqlConnection = await GetSqlConnection();
+                using SqlConnection sqlConnection = await GetSqlConnection();                
 
                 using var command = new SqlCommand("GetDraftState", sqlConnection);
                 command.CommandType = System.Data.CommandType.StoredProcedure;
@@ -135,8 +137,6 @@ namespace FantasyFootballStatTracker.Services
                         draftState.Owner2Roster.Add(player);
                 }
 
-                await sqlConnection.CloseAsync();
-
                 return draftState;
             }
             catch (Exception ex)
@@ -150,7 +150,7 @@ namespace FantasyFootballStatTracker.Services
         {
             try
             {
-                SqlConnection sqlConnection = await GetSqlConnection();
+                using SqlConnection sqlConnection = await GetSqlConnection();
 
                 using var command = new SqlCommand("SaveDraftState", sqlConnection);
                 command.CommandType = System.Data.CommandType.StoredProcedure;
@@ -163,7 +163,6 @@ namespace FantasyFootballStatTracker.Services
                 command.Parameters.AddWithValue("@IsComplete", draftState.IsComplete);
 
                 await command.ExecuteNonQueryAsync();
-                await sqlConnection.CloseAsync();
                 
                 _logger.LogInformation("Draft state saved for {DraftId}", draftState.DraftId);
             }
@@ -178,14 +177,13 @@ namespace FantasyFootballStatTracker.Services
         {
             try
             {
-                SqlConnection sqlConnection = await GetSqlConnection();
+                using SqlConnection sqlConnection = await GetSqlConnection();
 
                 using var command = new SqlCommand("DraftExists", sqlConnection);
                 command.CommandType = System.Data.CommandType.StoredProcedure;
                 command.Parameters.AddWithValue("@DraftId", draftId);
 
                 var result = await command.ExecuteScalarAsync();
-                await sqlConnection.CloseAsync();
                 
                 return Convert.ToBoolean(result);
             }
@@ -200,13 +198,12 @@ namespace FantasyFootballStatTracker.Services
         {
             try
             {
-                SqlConnection sqlConnection = await GetSqlConnection();
+                using SqlConnection sqlConnection = await GetSqlConnection();
 
                 using var command = new SqlCommand("DELETE FROM DraftSessions WHERE DraftId = @DraftId", sqlConnection);
                 command.Parameters.AddWithValue("@DraftId", draftId);
 
                 await command.ExecuteNonQueryAsync();
-                await sqlConnection.CloseAsync();
                 
                 _logger.LogInformation("Draft deleted: {DraftId}", draftId);
             }
@@ -223,7 +220,7 @@ namespace FantasyFootballStatTracker.Services
             
             try
             {
-                SqlConnection sqlConnection = await GetSqlConnection();
+                using SqlConnection sqlConnection = await GetSqlConnection();
 
                 using var command = new SqlCommand("CreateNewDraft", sqlConnection);
                 command.CommandType = System.Data.CommandType.StoredProcedure;
@@ -232,7 +229,6 @@ namespace FantasyFootballStatTracker.Services
                 command.Parameters.AddWithValue("@FirstPickOwnerId", firstPickOwnerId);
 
                 await command.ExecuteNonQueryAsync();
-                await sqlConnection.CloseAsync();
                 
                 return draftId;
             }
@@ -247,7 +243,7 @@ namespace FantasyFootballStatTracker.Services
         {
             try
             {
-                SqlConnection sqlConnection = await GetSqlConnection();
+                using SqlConnection sqlConnection = await GetSqlConnection();
 
                 using var command = new SqlCommand("AddDraftedPlayer", sqlConnection);
                 command.CommandType = System.Data.CommandType.StoredProcedure;
@@ -260,7 +256,6 @@ namespace FantasyFootballStatTracker.Services
                 command.Parameters.AddWithValue("@OwnerId", player.OwnerId);
 
                 await command.ExecuteNonQueryAsync();
-                await sqlConnection.CloseAsync();
             }
             catch (Exception ex)
             {

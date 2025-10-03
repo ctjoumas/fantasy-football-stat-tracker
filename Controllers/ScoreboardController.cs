@@ -69,6 +69,8 @@
             SqlConnection sqlConnection = new SqlConnection(connectionStringBuilder.ConnectionString);
             sqlConnection.AccessToken = azureSqlToken;
 
+            await sqlConnection.OpenAsync();
+
             return sqlConnection;
         }
 
@@ -93,9 +95,7 @@
             // the number of times we need to download the doc
             Hashtable playersHashTable = new Hashtable();
 
-            SqlConnection sqlConnection = await GetSqlConnection();
-
-            await sqlConnection.OpenAsync();
+            using SqlConnection sqlConnection = await GetSqlConnection();
 
             OwnerLogos = HttpContext.Session.GetObjectFromJson<List<byte[]>>(Infrastructure.SessionExtensions.SessionKeyLogos);
 
@@ -288,8 +288,6 @@
                     }
                 }
             }
-
-            await sqlConnection.CloseAsync();
 
             return playersHashTable;
         }
@@ -506,9 +504,7 @@
         {
             List<SelectListItem> weeks = new List<SelectListItem>();
 
-            SqlConnection sqlConnection = await GetSqlConnection();
-
-            await sqlConnection.OpenAsync();
+            using SqlConnection sqlConnection = await GetSqlConnection();
 
             string week = "0";
 
@@ -571,8 +567,6 @@
             {
                 Microsoft.AspNetCore.Http.SessionExtensions.SetString(HttpContext.Session, SessionKeyWeek, week);
             }
-
-            sqlConnection.Close();
 
             return weeks;
         }
@@ -657,9 +651,7 @@
         /// <param name="week">The week we are updating</param>
         private async Task updateCurrentRosterWithFinalScore(bool gameEnded, bool gameCanceled, int ownerId, string espnPlayerId, double playerFinalScore, string finalScoreString, int week)
         {
-            SqlConnection sqlConnection = await GetSqlConnection();
-
-            await sqlConnection.OpenAsync();
+            using SqlConnection sqlConnection = await GetSqlConnection();
 
             using (SqlCommand command = new SqlCommand("UpdatePlayerFinalScore", sqlConnection))
             {
@@ -674,8 +666,6 @@
 
                 command.ExecuteNonQuery();
             }
-
-            sqlConnection.Close();
         }
 
         /// <summary>

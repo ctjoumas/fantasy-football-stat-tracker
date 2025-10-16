@@ -10,5 +10,6 @@ namespace FantasyFootballStatTracker.Services
         Task DeleteDraftAsync(string draftId);
         Task<string> CreateNewDraftAsync(int week, List<Owner> owners, int firstPickOwnerId);
         Task AddDraftedPlayerAsync(string draftId, DraftedPlayer player);
+        Task<DraftState> GetActiveDraftAsync();
     }
 }

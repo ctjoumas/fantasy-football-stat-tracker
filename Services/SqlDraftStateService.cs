@@ -263,5 +263,59 @@ namespace FantasyFootballStatTracker.Services
                 throw;
             }
         }
+
+        public async Task<DraftState> GetActiveDraftAsync()
+        {
+            DraftState activeDraft = null;
+
+            try
+            {
+                using SqlConnection sqlConnection = await GetSqlConnection();
+
+                using var command = new SqlCommand("GetActiveDraft", sqlConnection);
+                command.CommandType = System.Data.CommandType.StoredProcedure;
+
+                using var reader = await command.ExecuteReaderAsync();
+
+                if (await reader.ReadAsync())
+                {
+                    var draftState = new DraftState
+                    {
+                        DraftId = reader["DraftId"].ToString() ?? string.Empty,
+                        Week = int.Parse(reader["Week"].ToString()),
+                        CurrentPickOwnerId = int.Parse(reader["CurrentPickOwnerId"].ToString()),
+                        FirstPickOwnerId = int.Parse(reader["FirstPickOwnerId"].ToString()),
+                        PickNumber = int.Parse(reader["PickNumber"].ToString()),
+                        TotalPicks = int.Parse(reader["TotalPicks"].ToString()),
+                        IsComplete = bool.Parse(reader["IsComplete"].ToString()),
+                        CreatedAt = DateTime.Parse(reader["CreatedAt"].ToString()),
+                        LastUpdated = DateTime.Parse(reader["LastUpdated"].ToString()),
+                        Owners = new List<Owner>(),
+                        Owner1Roster = new List<DraftedPlayer>(),
+                        Owner2Roster = new List<DraftedPlayer>()
+                    };
+
+                    activeDraft = draftState;
+
+                    // The GetActiveDraft stored procuedure has two selects where the second select is to get the owners, so read owners from this second result set
+                    await reader.NextResultAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        activeDraft.Owners.Add(new Owner
+                        {
+                            OwnerId = int.Parse(reader["OwnerId"].ToString()),
+                            OwnerName = reader["OwnerName"].ToString()
+                        });
+                    }
+                }                
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting active drafts");
+                throw;
+            }
+
+            return activeDraft;
+        }
     }
 }

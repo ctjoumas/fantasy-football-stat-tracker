@@ -89,6 +89,18 @@ namespace FantasyFootballStatTracker.Controllers
         /// </summary>
         public async Task<IActionResult> Start(int week)
         {
+            // Check for an active drafts
+            var activeDraft = await _draftStateService.GetActiveDraftAsync();
+
+            if (activeDraft != null)
+            {
+                // Store draft ID in session
+                HttpContext.Session.SetString("DraftId", activeDraft.DraftId);
+
+                // Redirect to the main draft interface
+                return RedirectToAction("Index");
+            }
+
             // Initialize draft state
             var draftState = new DraftState
             {
@@ -138,12 +150,12 @@ namespace FantasyFootballStatTracker.Controllers
 
                 return RedirectToAction("SelectWeek");
             }
-    }
+        }
 
         /// <summary>
         /// GET: Draft/Index - Main draft interface
         /// </summary>
-        public async Task<IActionResult> Index(int week)
+        public async Task<IActionResult> Index(int? week)
         {
             try
             {
@@ -157,10 +169,18 @@ namespace FantasyFootballStatTracker.Controllers
                     draftState = await _draftStateService.GetDraftStateAsync(draftId);
                 }
 
-                // If no draft found, redirect to start draft page
+                // If no draft found in session, check for active drafts and redirect to start page
                 if (draftState == null)
                 {
-                    return RedirectToAction("StartDraft");
+                    if (week.HasValue)
+                    {
+                        return RedirectToAction("Start", new { week = week.Value });
+                    }
+                    else
+                    {
+                        // No week specified and no active draft, redirect to home or week selection
+                        return RedirectToAction("Index", "Home");
+                    }
                 }
 
                 // If draft is complete, redirect to scoreboard

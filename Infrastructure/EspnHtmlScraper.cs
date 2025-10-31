@@ -431,17 +431,19 @@
             // each play token is a drive, so we will go through this to parse all player stats; allPlys is a group of drives
             JToken driveTokens = _playByPlayJsonObject.SelectToken("page.content.gamepackage.allPlys");
 
-            // if the game started and there are no drives yet
-            if (driveTokens != null)
-            {
-                foreach (JToken quarterToken in driveTokens)
-                {
-                    JToken quarterDrives = quarterToken.SelectToken("items");
+            JToken scoringPlaysArray = (JArray)_playByPlayJsonObject.SelectToken("page.content.gamepackage.pbp.scoringPlaysData");
 
-                    foreach (JToken quarterDrive in quarterDrives)
+            foreach (var quarterScoringPlays in scoringPlaysArray)
+            {
+                // if the game started and there are no drives completed in the quarter yet
+                if (quarterScoringPlays != null)
+                {
+                    JToken quarterScoringPlaysArray = (JArray) quarterScoringPlays.SelectToken("items");
+
+                    foreach (JToken quarterScoringPlay in quarterScoringPlaysArray)
                     {
                         // if parsing field goals, we can check to see if there is a FG made in this drive, otherwise, we don't need to parse this
-                        JToken driveResultValue = quarterDrive.SelectToken("headline");
+                        JToken driveResultValue = quarterScoringPlay.SelectToken("playTitle");
 
                         if (driveResultValue != null)
                         {
@@ -450,58 +452,39 @@
                             // only parse the plays in this drive if this drive resulted in a made FG
                             if (driveResult.ToLower().Equals(("field goal")))
                             {
-                                JToken playTokens = quarterDrive.SelectToken("plays");
+                                JToken playText = quarterScoringPlay.SelectToken("playText");
+                                string playDescription = ((JValue)playText).Value.ToString();
 
-                                // there could be a penalty or a timeout after the kick, so the FG may not be the last play token so we
-                                // need to loop through all plays
-                                foreach (JToken playToken in playTokens)
+                                // if this play has the player name, check the distance of the kick
+                                // this will be in the format of: "(4:25) C.Boswell 20 yard field goal is GOOD, Center-C.Kuntz, Holder-P.Harvin."
+                                if (playDescription.ToLower().Contains(abbreviatedPlayerName.ToLower()) ||
+                                    playDescription.ToLower().Contains(playerName.ToLower()))
                                 {
-                                    // if this is the field goal token, the description will have the word "field goal" in it; we'll assume if there was
-                                    // a penalty in any field goal attempt, it is in a later token, so we should be ok just checking for "field goal" since
-                                    // a successful field goal will be the first play we encounter
-                                    JToken playDescription = playToken["description"];
+                                    int indexOfSpaceBeforeFgYardage;
+                                    int playerNameIndex = playDescription.IndexOf(abbreviatedPlayerName);
 
-                                    if (playDescription != null)
+                                    // If the abbreviated player name isn't found, we need to check for the full player name.
+                                    // The format will then be (7:33 - 4th) Justin Tucker Made 50 Yd Field Goal, so we need to account for the word "Made"
+                                    // As of September 2024, the text with a full name now shows up as: "(11:39 - 2nd) Brandon Aubrey 38 Yd Field Goal"
+                                    if (playerNameIndex == -1)
                                     {
-                                        string playText = ((JValue)playDescription).Value.ToString();
-
-                                        if (playText.ToLower().Contains("field goal"))
-                                        {
-                                            // if this play has the player name, check the distance of the kick
-                                            // this will be in the format of: "(4:25) C.Boswell 20 yard field goal is GOOD, Center-C.Kuntz, Holder-P.Harvin."
-                                            if (playText.ToLower().Contains(abbreviatedPlayerName.ToLower()) ||
-                                                playText.ToLower().Contains(playerName.ToLower()))
-                                            {
-                                                int indexOfSpaceBeforeFgYardage;
-                                                int playerNameIndex = playText.IndexOf(abbreviatedPlayerName);
-
-                                                // If the abbreviated player name isn't found, we need to check for the full player name.
-                                                // The format will then be (7:33 - 4th) Justin Tucker Made 50 Yd Field Goal, so we need to account for the word "Made"
-                                                // As of September 2024, the text with a full name now shows up as: "(11:39 - 2nd) Brandon Aubrey 38 Yd Field Goal"
-                                                if (playerNameIndex == -1)
-                                                {
-                                                    playerNameIndex = playText.IndexOf(playerName);
-                                                    //indexOfSpaceBeforeFgYardage = playText.IndexOf("Made") + "Made".Length;
-                                                }
-                                                //else
-                                                //{
-                                                //    indexOfSpaceBeforeFgYardage = playText.IndexOf(" ", playerNameIndex + abbreviatedPlayerName.Length);
-                                                //}
-                                                indexOfSpaceBeforeFgYardage = playText.IndexOf(" ", playerNameIndex + abbreviatedPlayerName.Length);
-
-                                                int indexOfSpaceAfterFgDistance = playText.IndexOf(" ", indexOfSpaceBeforeFgYardage + 1);
-                                                int fgDistance = int.Parse(playText.Substring(indexOfSpaceBeforeFgYardage, (indexOfSpaceAfterFgDistance - indexOfSpaceBeforeFgYardage)));
-
-                                                if (fgDistance < 40)
-                                                    fieldGoalPoints += 3;
-                                                else if (fgDistance < 50)
-                                                    fieldGoalPoints += 4;
-                                                else if (fgDistance >= 50)
-                                                    fieldGoalPoints += 5;
-                                            }
-                                        }
+                                        playerNameIndex = playDescription.IndexOf(playerName);
+                                        //indexOfSpaceBeforeFgYardage = playText.IndexOf("Made") + "Made".Length;
                                     }
+
+                                    indexOfSpaceBeforeFgYardage = playDescription.IndexOf(" ", playerNameIndex + abbreviatedPlayerName.Length);
+
+                                    int indexOfSpaceAfterFgDistance = playDescription.IndexOf(" ", indexOfSpaceBeforeFgYardage + 1);
+                                    int fgDistance = int.Parse(playDescription.Substring(indexOfSpaceBeforeFgYardage, (indexOfSpaceAfterFgDistance - indexOfSpaceBeforeFgYardage)));
+
+                                    if (fgDistance < 40)
+                                        fieldGoalPoints += 3;
+                                    else if (fgDistance < 50)
+                                        fieldGoalPoints += 4;
+                                    else if (fgDistance >= 50)
+                                        fieldGoalPoints += 5;
                                 }
+
                             }
                         }
                     }
